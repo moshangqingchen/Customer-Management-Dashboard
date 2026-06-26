@@ -96,6 +96,7 @@ fn sample_source_factory() -> SourceFactoryInput {
         contact_name: "陈经理".to_string(),
         phone: "020-88886012".to_string(),
         wechat: "huacai-print".to_string(),
+        qq: "285001234".to_string(),
         address: "广州市白云区印刷产业园".to_string(),
         tags: vec!["名片".to_string(), "铜版纸".to_string()],
         shipping_notes: "小件 8 元起".to_string(),
@@ -281,6 +282,7 @@ fn manages_source_quotes_and_preserves_order_cost_snapshots() {
     let factory = service
         .create_source_factory(sample_source_factory())
         .unwrap();
+    assert_eq!(factory.qq, "285001234");
     let mut invalid_quote = sample_source_quote(&factory.id);
     invalid_quote.item_name = String::new();
     assert!(service.create_source_quote(invalid_quote).is_err());
@@ -305,6 +307,11 @@ fn manages_source_quotes_and_preserves_order_cost_snapshots() {
     );
     assert!(service
         .search("铜版纸")
+        .unwrap()
+        .iter()
+        .any(|hit| hit.entity_type == "factory" && hit.entity_id == factory.id));
+    assert!(service
+        .search("285001234")
         .unwrap()
         .iter()
         .any(|hit| hit.entity_type == "factory" && hit.entity_id == factory.id));

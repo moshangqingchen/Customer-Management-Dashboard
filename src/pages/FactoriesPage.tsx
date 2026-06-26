@@ -86,6 +86,7 @@ const emptyFactory: SourceFactoryInput = {
   contactName: "",
   phone: "",
   wechat: "",
+  qq: "",
   address: "",
   tags: [],
   shippingNotes: "",
@@ -124,6 +125,7 @@ function factoryToInput(factory: SourceFactory): SourceFactoryInput {
     contactName: factory.contactName,
     phone: factory.phone,
     wechat: factory.wechat,
+    qq: factory.qq,
     address: factory.address,
     tags: factory.tags,
     shippingNotes: factory.shippingNotes,
@@ -308,9 +310,10 @@ function FactoryForm({ factory, onSaved, onCancel }: { factory?: SourceFactory; 
         </div>
         <div className="form-grid three">
           <label><span>微信</span><input value={form.wechat} onChange={(event) => setForm({ ...form, wechat: event.target.value })} placeholder="常用微信号" /></label>
+          <label><span>QQ号</span><input value={form.qq} onChange={(event) => setForm({ ...form, qq: event.target.value })} placeholder="常用 QQ 号" /></label>
           <label><span>标签</span><input value={tags} onChange={(event) => setTags(event.target.value)} placeholder="名片，写真，发货快" /></label>
-          <label><span>地址</span><input value={form.address} onChange={(event) => setForm({ ...form, address: event.target.value })} placeholder="厂家地址或所在市场" /></label>
         </div>
+        <label><span>地址</span><input value={form.address} onChange={(event) => setForm({ ...form, address: event.target.value })} placeholder="厂家地址或所在市场" /></label>
         <label><span>运费备注</span><textarea value={form.shippingNotes} onChange={(event) => setForm({ ...form, shippingNotes: event.target.value })} placeholder="例如：广东省内 8 元起，易拉宝按件计费。" /></label>
         <label><span>厂家备注</span><textarea value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} placeholder="质量、交期、适合做什么、注意事项…" /></label>
       </section>
@@ -753,7 +756,7 @@ export function FactoriesPage({
           <div className="factory-workspace-title">
             <span className="eyebrow">厂家项目报价</span>
             <h1>{activeFactory.name}</h1>
-            <p>{activeFactory.contactName || "未填联系人"} · {activeFactory.phone || activeFactory.wechat || "未填联系方式"}</p>
+            <p>{activeFactory.contactName || "未填联系人"} · {activeFactory.phone || activeFactory.wechat || activeFactory.qq || "未填联系方式"}</p>
           </div>
           <div className="panel-actions">
             <button className="icon-button" onClick={() => setFactoryModal(activeFactory)} aria-label="修改厂家"><Edit3 size={16} /></button>
@@ -764,6 +767,7 @@ export function FactoriesPage({
         <section className="factory-contact-strip">
           <div><Truck size={16} /><span>电话</span><strong>{activeFactory.phone || "未填写"}</strong></div>
           <div><span>微信</span><strong>{activeFactory.wechat || "未填写"}</strong></div>
+          <div><span>QQ号</span><strong>{activeFactory.qq || "未填写"}</strong></div>
           <div><span>地址</span><strong>{activeFactory.address || "未填写"}</strong></div>
           <div><span>更新</span><strong>{shortDate(activeFactory.updatedAt)}</strong></div>
           {(activeFactory.shippingNotes || activeFactory.notes) && <p>{activeFactory.shippingNotes || activeFactory.notes}</p>}
@@ -868,7 +872,7 @@ export function FactoriesPage({
               >
                 <div className="factory-card-top">
                   <div className="factory-mark"><Factory size={18} /></div>
-                  <div className="factory-title"><h3>{factory.name}</h3><span>{factory.contactName || "未填联系人"} · {factory.phone || factory.wechat || "未填联系方式"}</span></div>
+                  <div className="factory-title"><h3>{factory.name}</h3><span>{factory.contactName || "未填联系人"} · {factory.phone || factory.wechat || factory.qq || "未填联系方式"}</span></div>
                   <button className="icon-button" onClick={(event) => { event.stopPropagation(); setFactoryModal(factory); }} aria-label={`编辑${factory.name}`}><Edit3 size={16} /></button>
                 </div>
                 <p className="factory-note">{factory.notes || factory.shippingNotes || "暂无厂家备注"}</p>

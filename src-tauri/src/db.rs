@@ -110,6 +110,7 @@ fn migrate(connection: &Connection) -> Result<()> {
             contact_name TEXT NOT NULL DEFAULT '',
             phone TEXT NOT NULL DEFAULT '',
             wechat TEXT NOT NULL DEFAULT '',
+            qq TEXT NOT NULL DEFAULT '',
             address TEXT NOT NULL DEFAULT '',
             tags_json TEXT NOT NULL DEFAULT '[]',
             shipping_notes TEXT NOT NULL DEFAULT '',
@@ -207,6 +208,12 @@ fn migrate(connection: &Connection) -> Result<()> {
         "order_items",
         "source_shipping_cost_cents",
         "INTEGER NOT NULL DEFAULT 0",
+    )?;
+    ensure_column(
+        connection,
+        "source_factories",
+        "qq",
+        "TEXT NOT NULL DEFAULT ''",
     )?;
     ensure_column(
         connection,

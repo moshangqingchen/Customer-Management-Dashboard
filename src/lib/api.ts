@@ -110,6 +110,7 @@ let demoSourceFactories: SourceFactory[] = [
     contactName: "陈经理",
     phone: "020-8888 6012",
     wechat: "huacai-print",
+    qq: "285001234",
     address: "广州市白云区印刷产业园 8 栋",
     tags: ["名片", "单页", "铜版纸"],
     shippingNotes: "广东省内小件 8 元起，外省按件报价。",
@@ -124,6 +125,7 @@ let demoSourceFactories: SourceFactory[] = [
     contactName: "李工",
     phone: "0571-6688 0920",
     wechat: "xz-display",
+    qq: "16880920",
     address: "杭州市余杭区广告材料市场 3 区",
     tags: ["写真", "易拉宝", "展板"],
     shippingNotes: "写真类按尺寸和包装计费，易拉宝默认纸箱发货。",
@@ -572,7 +574,7 @@ export const api = {
         .map((order) => ({ entityType: "order", entityId: order.id, title: order.externalOrderNo, subtitle: `${order.customerName} ${order.platform}` })),
       ...demoFactoriesWithCounts()
         .filter((factory) => JSON.stringify(factory).toLowerCase().includes(normalized))
-        .map((factory) => ({ entityType: "factory", entityId: factory.id, title: factory.name, subtitle: `${factory.contactName} ${factory.phone} ${factory.quoteCount} 条报价` })),
+        .map((factory) => ({ entityType: "factory", entityId: factory.id, title: factory.name, subtitle: `${factory.contactName} ${factory.phone || factory.wechat || factory.qq} ${factory.quoteCount} 条报价` })),
       ...demoSourceQuotes
         .filter((quote) => JSON.stringify(quote).toLowerCase().includes(normalized))
         .map((quote) => ({ entityType: "factory", entityId: quote.factoryId, title: quote.factoryName, subtitle: `${quote.itemName} ${quote.quantity} ${quote.material} ${quote.finish}` })),

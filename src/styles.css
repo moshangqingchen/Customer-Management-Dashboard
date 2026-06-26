@@ -293,7 +293,7 @@ input,select { height: 38px; }
 .factory-workspace-title { min-width: 0; }
 .factory-workspace-title h1 { margin: 3px 0 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 28px; letter-spacing: -.05em; }
 .factory-workspace-title p { margin: 0; color: var(--muted); font-size: 12px; }
-.factory-contact-strip { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 9px; margin-bottom: 14px; padding: 11px; border: 1px solid var(--line); border-radius: 18px; background: rgba(255,253,248,.82); }
+.factory-contact-strip { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 9px; margin-bottom: 14px; padding: 11px; border: 1px solid var(--line); border-radius: 18px; background: rgba(255,253,248,.82); }
 .factory-contact-strip div { min-width: 0; padding: 9px 10px; border-radius: 12px; background: #faf9f5; }
 .factory-contact-strip div:first-child { display: grid; grid-template-columns: auto 1fr; column-gap: 6px; }
 .factory-contact-strip div:first-child strong { grid-column: 1 / -1; }

@@ -22,6 +22,7 @@ const factory: SourceFactory = {
   contactName: "陈经理",
   phone: "020-88886012",
   wechat: "huacai-print",
+  qq: "285001234",
   address: "广州市白云区印刷产业园",
   tags: ["名片", "铜版纸"],
   shippingNotes: "小件 8 元起",
@@ -37,6 +38,7 @@ const displayFactory: SourceFactory = {
   contactName: "李工",
   phone: "0571-66880920",
   wechat: "xz-display",
+  qq: "16880920",
   address: "杭州市广告材料市场",
   tags: ["写真", "展板"],
   shippingNotes: "按尺寸计费",
@@ -113,10 +115,36 @@ function chooseSelectOption(label: string, text: string) {
 
 describe("FactoriesPage", () => {
   beforeEach(() => {
+    vi.mocked(api.createSourceFactory).mockReset();
+    vi.mocked(api.updateSourceFactory).mockReset();
     vi.mocked(api.createSourceQuote).mockReset();
     vi.mocked(api.updateSourceQuote).mockReset();
     vi.mocked(api.deleteSourceQuote).mockReset();
     vi.mocked(api.deleteSourceFactory).mockReset();
+  });
+
+  it("saves the factory QQ number with the factory profile", async () => {
+    const onChanged = vi.fn();
+    vi.mocked(api.createSourceFactory).mockResolvedValue({ ...factory, id: "factory-new", qq: "123456789" });
+    render(<FactoriesPage factories={[]} quotes={[]} onSelect={vi.fn()} onChanged={onChanged} />);
+
+    fireEvent.click(screen.getAllByRole("button", { name: "添加厂家" })[0]);
+    fireEvent.change(screen.getByLabelText("厂家名称 *"), { target: { value: "博博印务" } });
+    fireEvent.change(screen.getByLabelText("联系人"), { target: { value: "陈经理" } });
+    fireEvent.change(screen.getByLabelText("电话"), { target: { value: "13800138000" } });
+    fireEvent.change(screen.getByLabelText("微信"), { target: { value: "bobo-print" } });
+    fireEvent.change(screen.getByLabelText("QQ号"), { target: { value: "123456789" } });
+    const submitButtons = screen.getAllByRole("button", { name: "添加厂家" });
+    fireEvent.click(submitButtons[submitButtons.length - 1]);
+
+    await waitFor(() => expect(api.createSourceFactory).toHaveBeenCalledWith(expect.objectContaining({
+      name: "博博印务",
+      contactName: "陈经理",
+      phone: "13800138000",
+      wechat: "bobo-print",
+      qq: "123456789",
+    })));
+    expect(onChanged).toHaveBeenCalled();
   });
 
   it("starts at the factory layer and enters the selected factory workspace", () => {

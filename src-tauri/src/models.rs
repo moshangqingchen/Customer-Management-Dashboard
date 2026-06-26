@@ -97,6 +97,8 @@ pub struct SourceFactoryInput {
     pub contact_name: String,
     pub phone: String,
     pub wechat: String,
+    #[serde(default)]
+    pub qq: String,
     pub address: String,
     pub tags: Vec<String>,
     pub shipping_notes: String,
@@ -111,6 +113,8 @@ pub struct SourceFactory {
     pub contact_name: String,
     pub phone: String,
     pub wechat: String,
+    #[serde(default)]
+    pub qq: String,
     pub address: String,
     pub tags: Vec<String>,
     pub shipping_notes: String,
