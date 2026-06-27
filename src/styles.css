@@ -300,10 +300,6 @@ input,select { height: 38px; }
 .factory-title h3 { margin: 0 0 4px; font-size: 15px; }
 .factory-title span { color: var(--muted); font-size: 12px; }
 .factory-note { min-height: 34px; margin: 13px 0 9px; color: #778286; font-size: 12px; line-height: 1.6; }
-.factory-stats { display: grid; grid-template-columns: 82px minmax(0, 1fr); gap: 10px; margin-top: 10px; border-top: 1px solid var(--line); padding-top: 10px; }
-.factory-stats b,.factory-stats small { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.factory-stats b { color: var(--ink); font-size: 13px; }
-.factory-stats small { margin-top: 3px; color: var(--muted); font-size: 11px; }
 .factory-workspace-header { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 14px; margin-bottom: 14px; }
 .factory-back-button { min-height: 38px; display: inline-flex; align-items: center; gap: 7px; border: 1px solid #e6e3da; border-radius: 12px; padding: 0 13px; color: #526166; background: #fffdf8; cursor: pointer; font-size: 12px; font-weight: 800; }
 .factory-workspace-title { min-width: 0; }

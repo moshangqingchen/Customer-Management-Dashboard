@@ -1184,10 +1184,6 @@ export function FactoriesPage({
       ) : (
         <div className="factory-grid-panel">
           {filtered.map((factory) => {
-            const factoryQuotes = quotes
-              .filter((quote) => quote.factoryId === factory.id)
-              .sort((left, right) => compareUpdatedAt(left.updatedAt, right.updatedAt));
-            const latestProjectName = factoryQuotes[0]?.itemName || "待录入";
             return (
               <article
                 className="factory-card"
@@ -1205,10 +1201,6 @@ export function FactoriesPage({
                 </div>
                 <p className="factory-note">{factory.notes || factory.shippingNotes || "暂无厂家备注"}</p>
                 <div className="tag-list">{factory.tags.map((tag) => <span key={tag}><Tag size={12} />{tag}</span>)}</div>
-                <div className="factory-stats">
-                  <span><b>{factoryQuotes.length}</b></span>
-                  <span><b>{latestProjectName}</b></span>
-                </div>
               </article>
             );
           })}
