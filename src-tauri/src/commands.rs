@@ -439,6 +439,47 @@ pub fn open_in_explorer(path: String) -> CommandResult<()> {
         .map_err(command_error)
 }
 
+fn normalize_external_url(url: &str) -> CommandResult<String> {
+    let trimmed = url.trim();
+    if trimmed.is_empty() {
+        return Err("下单网址为空".to_string());
+    }
+    let lower = trimmed.to_ascii_lowercase();
+    if lower.starts_with("http://") || lower.starts_with("https://") {
+        Ok(trimmed.to_string())
+    } else {
+        Ok(format!("https://{trimmed}"))
+    }
+}
+
+#[tauri::command]
+pub fn open_external_url(url: String) -> CommandResult<()> {
+    let target = normalize_external_url(&url)?;
+
+    #[cfg(target_os = "windows")]
+    let mut command = {
+        let mut command = Command::new("explorer");
+        command.arg(&target);
+        command
+    };
+
+    #[cfg(target_os = "macos")]
+    let mut command = {
+        let mut command = Command::new("open");
+        command.arg(&target);
+        command
+    };
+
+    #[cfg(all(unix, not(target_os = "macos")))]
+    let mut command = {
+        let mut command = Command::new("xdg-open");
+        command.arg(&target);
+        command
+    };
+
+    command.spawn().map(|_| ()).map_err(command_error)
+}
+
 #[tauri::command]
 pub fn restart_app(app: tauri::AppHandle) -> CommandResult<()> {
     app.restart()

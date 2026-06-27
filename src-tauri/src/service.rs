@@ -184,9 +184,9 @@ impl AppService {
         let now = now();
         transaction.execute(
             "INSERT INTO source_factories(
-                id, name, contact_name, phone, wechat, qq, address, tags_json,
+                id, name, contact_name, phone, wechat, qq, order_url, address, tags_json,
                 shipping_notes, notes, created_at, updated_at
-             ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?11)",
+             ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?12)",
             params![
                 id,
                 input.name.trim(),
@@ -194,6 +194,7 @@ impl AppService {
                 input.phone.trim(),
                 input.wechat.trim(),
                 input.qq.trim(),
+                input.order_url.trim(),
                 input.address.trim(),
                 serde_json::to_string(&input.tags)?,
                 input.shipping_notes,
@@ -219,7 +220,7 @@ impl AppService {
         let transaction = connection.transaction()?;
         let updated = transaction.execute(
             "UPDATE source_factories SET name=?2, contact_name=?3, phone=?4, wechat=?5, qq=?6,
-             address=?7, tags_json=?8, shipping_notes=?9, notes=?10, updated_at=?11,
+             order_url=?7, address=?8, tags_json=?9, shipping_notes=?10, notes=?11, updated_at=?12,
              version=version+1 WHERE id=?1 AND deleted_at IS NULL",
             params![
                 id,
@@ -228,6 +229,7 @@ impl AppService {
                 input.phone.trim(),
                 input.wechat.trim(),
                 input.qq.trim(),
+                input.order_url.trim(),
                 input.address.trim(),
                 serde_json::to_string(&input.tags)?,
                 input.shipping_notes,
@@ -1947,7 +1949,7 @@ fn index_source_factory(transaction: &Transaction<'_>, factory_id: &str) -> AppR
         "INSERT INTO search_index(entity_type, entity_id, title, content)
          SELECT 'factory', f.id, f.name,
          f.name || ' ' || f.contact_name || ' ' || f.phone || ' ' || f.wechat || ' ' || f.qq || ' ' ||
-         f.address || ' ' || f.shipping_notes || ' ' || f.notes || ' ' || f.tags_json || ' ' ||
+         f.order_url || ' ' || f.address || ' ' || f.shipping_notes || ' ' || f.notes || ' ' || f.tags_json || ' ' ||
           COALESCE((
               SELECT group_concat(
                  q.item_type || ' ' || q.item_name || ' ' || q.quantity || ' ' ||
@@ -2040,7 +2042,7 @@ fn load_customer(connection: &Connection, id: &str) -> AppResult<Option<Customer
 fn load_source_factory(connection: &Connection, id: &str) -> AppResult<Option<SourceFactory>> {
     let row = connection
         .query_row(
-            "SELECT f.id, f.name, f.contact_name, f.phone, f.wechat, f.qq, f.address, f.tags_json,
+            "SELECT f.id, f.name, f.contact_name, f.phone, f.wechat, f.qq, f.order_url, f.address, f.tags_json,
              f.shipping_notes, f.notes, f.created_at, f.updated_at,
              (SELECT COUNT(*) FROM source_factory_quotes q
               WHERE q.factory_id=f.id AND q.deleted_at IS NULL)
@@ -2060,7 +2062,8 @@ fn load_source_factory(connection: &Connection, id: &str) -> AppResult<Option<So
                     row.get::<_, String>(9)?,
                     row.get::<_, String>(10)?,
                     row.get::<_, String>(11)?,
-                    row.get::<_, i64>(12)?,
+                    row.get::<_, String>(12)?,
+                    row.get::<_, i64>(13)?,
                 ))
             },
         )
@@ -2073,13 +2076,14 @@ fn load_source_factory(connection: &Connection, id: &str) -> AppResult<Option<So
         phone: row.3,
         wechat: row.4,
         qq: row.5,
-        address: row.6,
-        tags: serde_json::from_str(&row.7)?,
-        shipping_notes: row.8,
-        notes: row.9,
-        created_at: row.10,
-        updated_at: row.11,
-        quote_count: row.12,
+        order_url: row.6,
+        address: row.7,
+        tags: serde_json::from_str(&row.8)?,
+        shipping_notes: row.9,
+        notes: row.10,
+        created_at: row.11,
+        updated_at: row.12,
+        quote_count: row.13,
     }))
 }
 

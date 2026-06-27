@@ -45,6 +45,12 @@ function normalizeSourceSnapshot(item: OrderItemInput) {
   };
 }
 
+function normalizeExternalUrl(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+}
+
 function demoImageDataUrl(path: string) {
   const name = path.split(/[\\/]/).pop() ?? "图片";
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="320" height="220" viewBox="0 0 320 220"><defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#dff5ee"/><stop offset="1" stop-color="#fff0d4"/></linearGradient></defs><rect width="320" height="220" rx="26" fill="url(#g)"/><circle cx="74" cy="68" r="24" fill="#23a98f" opacity=".78"/><path d="M40 176l78-78 52 52 32-32 78 58z" fill="#8270c9" opacity=".58"/><text x="160" y="203" text-anchor="middle" font-family="Microsoft YaHei, Segoe UI, sans-serif" font-size="18" fill="#425154">${name}</text></svg>`;
@@ -113,6 +119,7 @@ let demoSourceFactories: SourceFactory[] = [
     phone: "020-8888 6012",
     wechat: "huacai-print",
     qq: "285001234",
+    orderUrl: "https://huacai-print.example.com/order",
     address: "广州市白云区印刷产业园 8 栋",
     tags: ["名片", "单页", "铜版纸"],
     shippingNotes: "广东省内小件 8 元起，外省按件报价。",
@@ -128,6 +135,7 @@ let demoSourceFactories: SourceFactory[] = [
     phone: "0571-6688 0920",
     wechat: "xz-display",
     qq: "16880920",
+    orderUrl: "https://xz-display.example.com/order",
     address: "杭州市余杭区广告材料市场 3 区",
     tags: ["写真", "易拉宝", "展板"],
     shippingNotes: "写真类按尺寸和包装计费，易拉宝默认纸箱发货。",
@@ -638,5 +646,12 @@ export const api = {
   restoreBackup: (source: string) => (isTauri ? call<string>("restore_backup", { source }) : Promise.resolve(source)),
   exportCloudReadModel: (destination: string) => (isTauri ? call<string>("export_cloud_read_model", { destination }) : Promise.resolve(destination)),
   openInExplorer: (path: string) => (isTauri ? call<void>("open_in_explorer", { path }) : Promise.resolve()),
+  openExternalUrl: (url: string) => {
+    const target = normalizeExternalUrl(url);
+    if (!target) return Promise.resolve();
+    if (isTauri) return call<void>("open_external_url", { url });
+    window.open(target, "_blank", "noopener,noreferrer");
+    return Promise.resolve();
+  },
   restartApp: () => (isTauri ? call<void>("restart_app") : Promise.resolve()),
 };

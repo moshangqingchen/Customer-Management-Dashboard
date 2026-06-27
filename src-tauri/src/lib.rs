@@ -69,6 +69,7 @@ pub fn run() {
             commands::restore_backup,
             commands::export_cloud_read_model,
             commands::open_in_explorer,
+            commands::open_external_url,
             commands::restart_app,
         ])
         .run(tauri::generate_context!())

@@ -56,6 +56,7 @@ export interface SourceFactoryInput {
   phone: string;
   wechat: string;
   qq: string;
+  orderUrl: string;
   address: string;
   tags: string[];
   shippingNotes: string;

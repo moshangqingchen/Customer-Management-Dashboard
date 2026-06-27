@@ -12,6 +12,7 @@ vi.mock("../lib/api", () => ({
     deleteSourceFactory: vi.fn(),
     createSourceFactoryProject: vi.fn(),
     deleteSourceFactoryProject: vi.fn(),
+    openExternalUrl: vi.fn(),
     createSourceQuote: vi.fn(),
     updateSourceQuote: vi.fn(),
     deleteSourceQuote: vi.fn(),
@@ -25,6 +26,7 @@ const factory: SourceFactory = {
   phone: "020-88886012",
   wechat: "huacai-print",
   qq: "285001234",
+  orderUrl: "https://huacai.example.com/order",
   address: "广州市白云区印刷产业园",
   tags: ["名片", "铜版纸"],
   shippingNotes: "小件 8 元起",
@@ -41,6 +43,7 @@ const displayFactory: SourceFactory = {
   phone: "0571-66880920",
   wechat: "xz-display",
   qq: "16880920",
+  orderUrl: "",
   address: "杭州市广告材料市场",
   tags: ["写真", "展板"],
   shippingNotes: "按尺寸计费",
@@ -200,6 +203,8 @@ describe("FactoriesPage", () => {
     vi.mocked(api.deleteSourceFactory).mockReset();
     vi.mocked(api.createSourceFactoryProject).mockReset();
     vi.mocked(api.deleteSourceFactoryProject).mockReset();
+    vi.mocked(api.openExternalUrl).mockReset();
+    vi.mocked(api.openExternalUrl).mockResolvedValue(undefined);
     vi.mocked(api.createSourceFactoryProject).mockImplementation(async (input) => ({
       id: `project-${input.categoryName}-${input.projectName || "category"}`,
       factoryId: input.factoryId,
@@ -211,7 +216,7 @@ describe("FactoriesPage", () => {
     vi.mocked(api.deleteSourceFactoryProject).mockResolvedValue(undefined);
   });
 
-  it("saves the factory QQ number with the factory profile", async () => {
+  it("saves the factory QQ number and order URL with the factory profile", async () => {
     const onChanged = vi.fn();
     vi.mocked(api.createSourceFactory).mockResolvedValue({ ...factory, id: "factory-new", qq: "123456789" });
     render(<FactoriesPage factories={[]} quotes={[]} onSelect={vi.fn()} onChanged={onChanged} />);
@@ -222,6 +227,7 @@ describe("FactoriesPage", () => {
     fireEvent.change(screen.getByLabelText("电话"), { target: { value: "13800138000" } });
     fireEvent.change(screen.getByLabelText("微信"), { target: { value: "bobo-print" } });
     fireEvent.change(screen.getByLabelText("QQ号"), { target: { value: "123456789" } });
+    fireEvent.change(screen.getByLabelText("下单网址"), { target: { value: "bobo.example.com/order" } });
     const submitButtons = screen.getAllByRole("button", { name: "添加厂家" });
     fireEvent.click(submitButtons[submitButtons.length - 1]);
 
@@ -231,8 +237,27 @@ describe("FactoriesPage", () => {
       phone: "13800138000",
       wechat: "bobo-print",
       qq: "123456789",
+      orderUrl: "bobo.example.com/order",
     })));
     expect(onChanged).toHaveBeenCalled();
+  });
+
+  it("opens the saved factory order URL from the factory workspace", async () => {
+    renderFactories();
+
+    fireEvent.click(screen.getByRole("button", { name: "进入华彩印刷源头厂" }));
+    fireEvent.click(screen.getByRole("button", { name: "打开下单网址" }));
+
+    await waitFor(() => expect(api.openExternalUrl).toHaveBeenCalledWith("https://huacai.example.com/order"));
+  });
+
+  it("shows the order URL shortcut on factory cards", async () => {
+    renderFactories();
+
+    fireEvent.click(screen.getByRole("button", { name: "下单网址" }));
+
+    await waitFor(() => expect(api.openExternalUrl).toHaveBeenCalledWith("https://huacai.example.com/order"));
+    expect(screen.getByRole("heading", { name: "源头厂家" })).toBeInTheDocument();
   });
 
   it("starts at the factory layer and enters the selected factory workspace", () => {
