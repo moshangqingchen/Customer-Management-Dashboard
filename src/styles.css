@@ -284,6 +284,7 @@ input,select { height: 38px; }
 .source-quote-suggest-button { align-self: end; height: 30px; border: 1px solid #b9dbd2; border-radius: 9px; padding: 0 9px; color: var(--teal-dark); background: #fff; cursor: pointer; font-size: 10px; font-weight: 800; white-space: nowrap; }
 .source-quote-empty { grid-column: 1 / -1; padding: 10px 11px; border: 1px dashed #d9e4df; border-radius: 11px; color: var(--muted); background: #fbfaf5; font-size: 11px; }
 .profit-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; margin: -3px 0 12px; }
+.profit-strip.with-shipping { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .profit-strip span { min-width: 0; padding: 10px 11px; border: 1px solid #e6ece5; border-radius: 13px; background: rgba(255,253,248,.94); }
 .profit-strip b,.profit-strip strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .profit-strip b { color: var(--muted); font-size: 11px; margin-bottom: 4px; }
@@ -396,6 +397,28 @@ input,select { height: 38px; }
 .quote-editor-summary strong { font-size: 24px; letter-spacing: 0; line-height: 1.2; }
 .quote-editor-summary span:first-child { color: #a85d45; font-weight: 850; }
 .quote-editor-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }
+.settings-card-actions { grid-template-columns: 45px minmax(0,1fr) auto; }
+.settings-action-stack { display: flex; justify-content: flex-end; align-items: center; gap: 8px; flex-wrap: wrap; }
+.copy-info-list span { position: relative; padding-right: 42px; }
+.copy-info-list button,.copy-mini-button { width: 28px; height: 28px; display: grid; place-items: center; border: 1px solid #dfe8e2; border-radius: 8px; color: var(--teal-dark); background: #fff; cursor: pointer; }
+.copy-info-list button { position: absolute; right: 9px; bottom: 9px; }
+.copy-info-list button:hover,.copy-mini-button:hover { border-color: #a8d7cb; background: #eef8f4; }
+.status-shortcuts { display: flex; flex-wrap: wrap; gap: 7px; margin: -2px 0 10px; }
+.status-shortcuts button { min-height: 32px; display: inline-flex; align-items: center; gap: 5px; border: 1px solid #dfe8e2; border-radius: 999px; padding: 0 10px; color: #526166; background: #fffdf8; cursor: pointer; font-size: 12px; font-weight: 800; }
+.status-shortcuts button:hover:not(:disabled) { color: var(--teal-dark); border-color: #a8d7cb; background: #eef8f4; }
+.status-shortcuts button:disabled { opacity: .55; cursor: not-allowed; }
+.address-preview .copy-mini-button { margin-left: auto; flex: 0 0 auto; }
+.inline-copy-action { width: fit-content; margin: -2px 0 10px; }
+.bulk-price-panel { margin-top: 12px; padding: 12px; border: 1px solid #e5ece7; border-radius: 16px; background: #fbfaf5; }
+.bulk-price-head { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 10px; }
+.bulk-price-head strong { font-size: 14px; }
+.bulk-price-head span { color: var(--muted); font-size: 12px; }
+.bulk-price-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; margin-bottom: 10px; }
+.bulk-price-row { min-width: 0; display: grid; grid-template-columns: 82px minmax(0,1fr) minmax(0,1fr); gap: 8px; align-items: end; padding: 9px; border: 1px solid #ece8df; border-radius: 12px; background: #fffdf8; }
+.bulk-price-row b { align-self: center; color: var(--teal-dark); font-size: 13px; }
+.bulk-price-row label { min-width: 0; gap: 3px; }
+.bulk-price-row label span { color: #6d7d7d; font-size: 11px; font-weight: 800; }
+.bulk-price-row input { height: 34px; font-size: 12px; }
 
 @media (max-width: 1180px) {
   .customers-split { grid-template-columns: 1fr; }
@@ -405,6 +428,9 @@ input,select { height: 38px; }
   .project-list { max-height: none; }
   .factory-contact-strip { grid-template-columns: repeat(2, minmax(0,1fr)); }
   .source-quote-row { grid-template-columns: 1fr; }
+  .settings-card-actions { grid-template-columns: 45px minmax(0,1fr); }
+  .settings-action-stack { grid-column: 2; justify-content: flex-start; }
+  .bulk-price-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 1280px) {

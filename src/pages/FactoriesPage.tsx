@@ -374,6 +374,8 @@ function PriceConfigurator({
   const [customPaperWeightMode, setCustomPaperWeightMode] = useState(false);
   const [customSizeMode, setCustomSizeMode] = useState(false);
   const [customFinishMode, setCustomFinishMode] = useState(false);
+  const [bulkPrices, setBulkPrices] = useState<Record<number, { production: string; shipping: string }>>({});
+  const [bulkOpen, setBulkOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const editingExisting = Boolean(editingQuote);
@@ -393,6 +395,8 @@ function PriceConfigurator({
         ? ungroupedPrintFinish(nextForm.itemName, nextForm.finish)
         : nextForm.finish && !finishOptionsForProject(nextForm.itemName).includes(nextForm.finish)
     ));
+    setBulkOpen(false);
+    setBulkPrices({});
   }, [draftKey, factory.id, project?.projectName, selectedQuote?.id]);
 
   const setMoney = (field: "productionCostCents" | "shippingCostCents", value: string) => {
@@ -418,6 +422,60 @@ function PriceConfigurator({
     if (match) return formatCents(match.productionCostCents);
     if (form.quantity === quantity && form.productionCostCents > 0) return formatCents(form.productionCostCents);
     return "点击报价";
+  };
+
+  const bulkPriceValue = (quantity: number, field: "production" | "shipping") => {
+    const draft = bulkPrices[quantity]?.[field];
+    if (draft !== undefined) return draft;
+    const match = findMatchingQuote(projectQuotes, form, quantity);
+    const cents = field === "production" ? match?.productionCostCents : match?.shippingCostCents;
+    return cents ? (cents / 100).toString() : "";
+  };
+
+  const setBulkPrice = (quantity: number, field: "production" | "shipping", value: string) => {
+    setBulkPrices((current) => ({
+      ...current,
+      [quantity]: {
+        production: field === "production" ? value : current[quantity]?.production ?? bulkPriceValue(quantity, "production"),
+        shipping: field === "shipping" ? value : current[quantity]?.shipping ?? bulkPriceValue(quantity, "shipping"),
+      },
+    }));
+  };
+
+  const saveBulkPrices = async () => {
+    if (!form.itemName.trim()) return setError("请先选择或填写项目名称");
+    setSaving(true);
+    setError("");
+    try {
+      let lastSaved: SourceQuote | undefined;
+      for (const quantity of quantityPresetsForProject(projectName)) {
+        const productionValue = bulkPriceValue(quantity, "production").trim();
+        const shippingValue = bulkPriceValue(quantity, "shipping").trim();
+        if (!productionValue && !shippingValue) continue;
+        const input: SourceQuoteInput = {
+          ...form,
+          factoryId: factory.id,
+          itemName: canonicalPrintProjectName(form.itemName),
+          itemType: form.itemType.trim() || "印刷",
+          size: formatPrintSize(form.size),
+          quantity,
+          productionCostCents: Math.round(Number(productionValue || "0") * 100),
+          shippingCostCents: Math.round(Number(shippingValue || "0") * 100),
+        };
+        if (!Number.isFinite(input.productionCostCents) || !Number.isFinite(input.shippingCostCents)) throw new Error("批量价格只能填写数字");
+        if (input.productionCostCents < 0 || input.shippingCostCents < 0) throw new Error("厂家价格和运费不能为负数");
+        const existing = findMatchingQuote(projectQuotes, input, quantity);
+        lastSaved = existing ? await api.updateSourceQuote(existing.id, input) : await api.createSourceQuote(input);
+      }
+      if (!lastSaved) return setError("请至少填写一个数量的价格或运费");
+      setBulkPrices({});
+      setBulkOpen(false);
+      onSaved(lastSaved);
+    } catch (reason) {
+      setError(String(reason));
+    } finally {
+      setSaving(false);
+    }
   };
 
   const projectName = form.itemName || project?.projectName || "";
@@ -523,7 +581,7 @@ function PriceConfigurator({
 
   const deleteCurrent = async () => {
     if (!editingQuote) return;
-    if (!window.confirm(`确定删除报价「${editingQuote.itemName} ${editingQuote.quantity}」吗？历史订单中的成本快照不会受影响。`)) return;
+    if (!window.confirm(`确定删除报价「${editingQuote.itemName} ${editingQuote.quantity}」吗？\n\n只删除当前数量价格，历史订单中的成本快照不会受影响。`)) return;
     await api.deleteSourceQuote(editingQuote.id);
     setEditingQuote(undefined);
     setForm((current) => ({ ...current, productionCostCents: 0, shippingCostCents: 0 }));
@@ -691,9 +749,25 @@ function PriceConfigurator({
         <span>运费 {formatCents(form.shippingCostCents)}</span>
         {form.quantity > 0 && form.productionCostCents > 0 && <span>约 {formatCents(Math.round(form.productionCostCents / form.quantity))} / {quantityUnit}</span>}
       </div>
+      {bulkOpen && (
+        <div className="bulk-price-panel">
+          <div className="bulk-price-head"><strong>批量维护数量报价</strong><span>空着的数量不会保存；已有报价会直接更新。</span></div>
+          <div className="bulk-price-grid">
+            {quantityPresets.map((quantity) => (
+              <div className="bulk-price-row" key={quantity}>
+                <b>{quantity} {quantityUnit}</b>
+                <label><span>成本</span><input type="number" min="0" step="0.01" value={bulkPriceValue(quantity, "production")} onChange={(event) => setBulkPrice(quantity, "production", event.target.value)} /></label>
+                <label><span>运费</span><input type="number" min="0" step="0.01" value={bulkPriceValue(quantity, "shipping")} onChange={(event) => setBulkPrice(quantity, "shipping", event.target.value)} /></label>
+              </div>
+            ))}
+          </div>
+          <div className="button-row"><Button variant="secondary" onClick={() => setBulkOpen(false)}>收起</Button><Button onClick={saveBulkPrices} disabled={saving}>{saving ? "保存中…" : "批量保存价格"}</Button></div>
+        </div>
+      )}
       {error && <div className="form-error">{error}</div>}
       <div className="quote-editor-actions">
         {editingExisting && <Button variant="danger" onClick={deleteCurrent} disabled={saving}><Trash2 size={16} />删除这个数量价格</Button>}
+        <Button variant="secondary" onClick={() => setBulkOpen((value) => !value)} disabled={saving}>{bulkOpen ? "收起批量" : "批量价格"}</Button>
         <Button onClick={submit} disabled={saving}>{saving ? "保存中…" : editingExisting ? "保存这个数量价格" : "保存新价格"}</Button>
       </div>
     </section>
@@ -897,6 +971,7 @@ export function FactoriesPage({
 
   const deleteProjectRecord = async (project: FactoryProjectGroup) => {
     if (!project.projectRecordId || project.quotes.length > 0) return;
+    if (!window.confirm(`确定删除小类「${project.projectName}」吗？\n\n只有没有报价的小类才能删除。`)) return;
     try {
       setProjectError("");
       await api.deleteSourceFactoryProject(project.projectRecordId);
@@ -914,6 +989,7 @@ export function FactoriesPage({
 
   const deleteCategoryRecord = async (category: FactoryProjectCategory) => {
     if (!category.categoryRecordId) return;
+    if (!window.confirm(`确定删除大类「${category.categoryName}」吗？\n\n只有大类下没有报价时才能删除。`)) return;
     try {
       setProjectError("");
       await api.deleteSourceFactoryProject(category.categoryRecordId);
@@ -943,7 +1019,7 @@ export function FactoriesPage({
   const menuTop = projectContextMenu ? Math.min(projectContextMenu.y, Math.max(8, window.innerHeight - 118)) : 0;
 
   const deleteFactory = async (factory: SourceFactory) => {
-    if (!window.confirm(`确定删除厂家「${factory.name}」吗？历史订单中的成本快照不会受影响。`)) return;
+    if (!window.confirm(`确定删除厂家「${factory.name}」吗？\n\n该厂家的报价会一起从当前报价库移除，历史订单中的成本快照不会受影响。`)) return;
     await api.deleteSourceFactory(factory.id);
     setActiveFactoryId(null);
     onChanged();

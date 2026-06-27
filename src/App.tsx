@@ -7,6 +7,7 @@ import { Sidebar } from "./components/Sidebar";
 import { UpdateDialog, type UpdateInstallStatus } from "./components/UpdateDialog";
 import { Button, Modal } from "./components/ui";
 import { api } from "./lib/api";
+import { orderProjectNames } from "./lib/orders";
 import { checkForAppUpdate, closePendingUpdate, installAppUpdate, type PendingUpdate } from "./lib/updater";
 import type {
   AppSettings,
@@ -196,14 +197,14 @@ export default function App() {
   };
 
   const deleteOrder = async (order: Order) => {
-    if (!window.confirm(`确定删除订单「${order.externalOrderNo || order.customerName}」吗？删除后不会在订单列表显示。`)) return;
+    if (!window.confirm(`确定删除订单「${order.externalOrderNo || orderProjectNames(order)}」吗？\n\n删除后不会在订单列表显示，相关文件不会被直接清空。`)) return;
     await api.deleteOrder(order.id);
     if (selectedOrderId === order.id) setSelectedOrderId(null);
     await load();
   };
 
   const deleteCustomer = async (customer: Customer) => {
-    if (!window.confirm(`确定删除客户「${customer.name}」吗？该客户的订单也会从当前列表隐藏。`)) return;
+    if (!window.confirm(`确定删除客户「${customer.name}」吗？\n\n该客户的订单也会从当前列表隐藏，建议删除前先确认已备份。`)) return;
     await api.deleteCustomer(customer.id);
     if (selectedCustomerId === customer.id) setSelectedCustomerId(null);
     if (orders.some((order) => order.customerId === customer.id && order.id === selectedOrderId)) setSelectedOrderId(null);

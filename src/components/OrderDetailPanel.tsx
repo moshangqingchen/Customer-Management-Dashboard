@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Edit3, ExternalLink, FilePlus2, FolderOpen, MapPin, RefreshCw, Trash2, Truck, UserRound, WalletCards } from "lucide-react";
+import { CheckCircle2, Copy, Edit3, ExternalLink, FilePlus2, FolderOpen, MapPin, RefreshCw, Trash2, Truck, UserRound, WalletCards } from "lucide-react";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 
 import { api } from "../lib/api";
@@ -40,6 +40,12 @@ function mergeOrderFiles(folderFiles: FileRecord[], databaseFiles: FileRecord[])
   return merged.sort((left, right) =>
     right.createdAt.localeCompare(left.createdAt) || left.name.localeCompare(right.name, "zh-Hans-CN"),
   );
+}
+
+async function copyText(value: string) {
+  if (!value.trim()) return false;
+  await navigator.clipboard?.writeText(value);
+  return true;
 }
 
 function editableOrderInput(order: Order, patch: Partial<NewOrder>): NewOrder {
@@ -103,13 +109,19 @@ export function OrderDetailPanel({
   const [payment, setPayment] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [copied, setCopied] = useState("");
   const [folderFiles, setFolderFiles] = useState<FileRecord[]>([]);
   const databaseOrderFiles = useMemo(() => files.filter((file) => file.orderId === order?.id), [files, order?.id]);
   const orderFiles = useMemo(() => mergeOrderFiles(folderFiles, databaseOrderFiles), [folderFiles, databaseOrderFiles]);
-  const sourceCost = useMemo(
-    () => order?.items.reduce((sum, item) => sum + item.sourceProductionCostCents + item.sourceShippingCostCents, 0) ?? 0,
+  const sourceProductionCost = useMemo(
+    () => order?.items.reduce((sum, item) => sum + item.sourceProductionCostCents, 0) ?? 0,
     [order?.items],
   );
+  const sourceShippingCost = useMemo(
+    () => order?.items.reduce((sum, item) => sum + item.sourceShippingCostCents, 0) ?? 0,
+    [order?.items],
+  );
+  const sourceCost = sourceProductionCost + sourceShippingCost;
 
   useEffect(() => {
     setDesignStatus(order?.designStatus ?? "待设计");
@@ -120,6 +132,7 @@ export function OrderDetailPanel({
     setAddressChoice(findAddressChoice(customer, order?.shippingAddress));
     setPayment("");
     setMessage("");
+    setCopied("");
   }, [order?.id]);
 
   useEffect(() => {
@@ -197,6 +210,47 @@ export function OrderDetailPanel({
     }
   };
 
+  const copy = async (label: string, value: string) => {
+    if (await copyText(value)) {
+      setCopied(`已复制${label}`);
+      window.setTimeout(() => setCopied((current) => current === `已复制${label}` ? "" : current), 1400);
+    }
+  };
+
+  const applyStatusPreset = async (nextDesignStatus: string, nextFulfillmentStatus: string) => {
+    if (!order) return;
+    setBusy(true);
+    setMessage("");
+    try {
+      await api.updateOrderStatus(order.id, nextDesignStatus, nextFulfillmentStatus);
+      setDesignStatus(nextDesignStatus);
+      setFulfillmentStatus(nextFulfillmentStatus);
+      setMessage("订单状态已更新");
+      onChanged();
+    } catch (reason) {
+      setMessage(String(reason));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const settleRemainingPayment = async () => {
+    if (!order) return;
+    const remainingCents = Math.max(0, order.totalCents - order.receivedCents);
+    if (!remainingCents) return;
+    setBusy(true);
+    setMessage("");
+    try {
+      await api.addPayment(order.id, { amountCents: remainingCents, paidAt: new Date().toISOString().slice(0, 10), method: "结清尾款", notes: "" });
+      setMessage("尾款已结清");
+      onChanged();
+    } catch (reason) {
+      setMessage(String(reason));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   if (!order) {
     return (
       <aside className="order-detail-panel empty">
@@ -224,19 +278,20 @@ export function OrderDetailPanel({
         <div className="payment-meter"><span style={{ width: `${paymentProgress(order.totalCents, order.receivedCents)}%` }} /></div>
         <StatusBadge value={order.paymentStatus} />
       </div>
-      <div className="profit-strip">
-        <span><b>厂家成本</b><strong>{formatCents(sourceCost)}</strong></span>
+      <div className={`profit-strip ${sourceShippingCost > 0 ? "with-shipping" : ""}`}>
+        <span><b>生产成本</b><strong>{formatCents(sourceProductionCost)}</strong></span>
+        {sourceShippingCost > 0 && <span><b>运费</b><strong>{formatCents(sourceShippingCost)}</strong></span>}
         <span><b>预估毛利</b><strong className={order.totalCents - sourceCost < 0 ? "negative" : ""}>{formatCents(order.totalCents - sourceCost)}</strong></span>
         <span><b>成本口径</b><strong>生产价 + 运费</strong></span>
       </div>
 
       <section className="detail-card">
         <h3><UserRound size={16} /> 客户与平台</h3>
-        <div className="info-list">
-          <span><b>客户</b><strong>{order.customerName}</strong></span>
-          <span><b>电话</b><strong>{order.customerPhone || customer?.phone || "未填写"}</strong></span>
-          <span><b>微信</b><strong>{order.customerWechat || customer?.wechat || "未填写"}</strong></span>
-          <span><b>网名</b><strong>{order.platformAccount || "未填写"}</strong></span>
+        <div className="info-list copy-info-list">
+          <span><b>客户</b><strong>{order.customerName}</strong><button type="button" onClick={() => copy("客户", order.customerName)} aria-label="复制客户"><Copy size={13} /></button></span>
+          <span><b>电话</b><strong>{order.customerPhone || customer?.phone || "未填写"}</strong>{(order.customerPhone || customer?.phone) && <button type="button" onClick={() => copy("电话", order.customerPhone || customer?.phone || "")} aria-label="复制电话"><Copy size={13} /></button>}</span>
+          <span><b>微信</b><strong>{order.customerWechat || customer?.wechat || "未填写"}</strong>{(order.customerWechat || customer?.wechat) && <button type="button" onClick={() => copy("微信", order.customerWechat || customer?.wechat || "")} aria-label="复制微信"><Copy size={13} /></button>}</span>
+          <span><b>网名</b><strong>{order.platformAccount || "未填写"}</strong>{order.platformAccount && <button type="button" onClick={() => copy("网名", order.platformAccount)} aria-label="复制网名"><Copy size={13} /></button>}</span>
         </div>
       </section>
 
@@ -246,16 +301,23 @@ export function OrderDetailPanel({
           <label><span>设计状态</span><select value={designStatus} onChange={(event) => setDesignStatus(event.target.value)}>{["无需设计", "待设计", "设计中", "待确认", "设计完成"].map((status) => <option key={status}>{status}</option>)}</select></label>
           <label><span>履约状态</span><select value={fulfillmentStatus} onChange={(event) => setFulfillmentStatus(event.target.value)}>{["待处理", "待发货", "已发货", "已签收", "已取消"].map((status) => <option key={status}>{status}</option>)}</select></label>
         </div>
+        <div className="status-shortcuts">
+          <button type="button" onClick={() => applyStatusPreset("待设计", "待处理")} disabled={busy}><CheckCircle2 size={14} />待设计</button>
+          <button type="button" onClick={() => applyStatusPreset("设计完成", "待发货")} disabled={busy}><CheckCircle2 size={14} />设计完成</button>
+          <button type="button" onClick={() => applyStatusPreset(designStatus, "已发货")} disabled={busy}><CheckCircle2 size={14} />已发货</button>
+          <button type="button" onClick={() => applyStatusPreset(designStatus, "已签收")} disabled={busy}><CheckCircle2 size={14} />已签收</button>
+        </div>
         <label><span>收货地址</span><select value={addressChoice} onChange={(event) => selectAddress(event.target.value)}>
           <option value="">不选择地址</option>
           {customer?.addresses.map((address, index) => <option value={String(index)} key={`${address.label}-${index}`}>{addressLabel(address)}</option>)}
           {shippingAddress && addressChoice === "custom" && <option value="custom">{addressLabel(shippingAddress)}</option>}
         </select></label>
-        {shippingAddress ? <div className="address-preview"><MapPin size={15} /><div><strong>{shippingAddress.recipient || "未填收件人"} {shippingAddress.phone}</strong><span>{shippingAddress.address}</span></div></div> : <p className="form-hint">这笔订单暂未选择收货地址。</p>}
+        {shippingAddress ? <div className="address-preview"><MapPin size={15} /><div><strong>{shippingAddress.recipient || "未填收件人"} {shippingAddress.phone}</strong><span>{shippingAddress.address}</span></div><button type="button" className="copy-mini-button" onClick={() => copy("地址", addressLabel(shippingAddress))} aria-label="复制地址"><Copy size={13} /></button></div> : <p className="form-hint">这笔订单暂未选择收货地址。</p>}
         <div className="form-grid two">
           <label><span>快递公司</span><input value={shipmentCompany} onChange={(event) => setShipmentCompany(event.target.value)} /></label>
           <label><span>快递单号</span><input value={shipmentTrackingNo} onChange={(event) => setShipmentTrackingNo(event.target.value)} /></label>
         </div>
+        {shipmentTrackingNo && <button type="button" className="text-button inline-copy-action" onClick={() => copy("快递单号", shipmentTrackingNo)}><Copy size={14} />复制快递单号</button>}
         <div className="date-pair"><span>设计截止 <b>{shortDate(order.designDueAt)}</b></span><span>交付截止 <b>{shortDate(order.deliveryDueAt)}</b></span></div>
         <Button onClick={saveQuickEdits} disabled={busy}>保存详情</Button>
       </section>
@@ -305,12 +367,12 @@ export function OrderDetailPanel({
           await api.addPayment(order.id, { amountCents, paidAt: new Date().toISOString().slice(0, 10), method: "手动记录", notes: "" });
           setPayment("");
           onChanged();
-        }}><WalletCards size={16} />记录</Button></div>
+        }}><WalletCards size={16} />记录</Button>{order.totalCents > order.receivedCents && <Button variant="secondary" onClick={settleRemainingPayment} disabled={busy}>结清尾款</Button>}</div>
         <div className="mini-list">{order.payments.length === 0 ? <p className="form-hint">暂无收款记录</p> : order.payments.map((item) => <div key={item.id}><span><b>{item.method}</b><small>{shortDate(item.paidAt)}</small></span><strong>{formatCents(item.amountCents)}</strong></div>)}</div>
       </section>
 
       {order.notes && <section className="detail-card"><h3>备注</h3><p className="detail-note">{order.notes}</p></section>}
-      {message && <div className="inline-message">{message}</div>}
+      {(message || copied) && <div className="inline-message">{message || copied}</div>}
     </aside>
   );
 }

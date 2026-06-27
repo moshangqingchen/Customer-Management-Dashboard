@@ -644,6 +644,11 @@ export const api = {
       : Promise.resolve({ imported: rows.filter((row) => row.name).length, skipped: rows.filter((row) => !row.name).length, errors: [], duplicateWarnings: [] }),
   exportFull: (destination: string) => (isTauri ? call<string>("export_full", { destination }) : Promise.resolve(destination)),
   restoreBackup: (source: string) => (isTauri ? call<string>("restore_backup", { source }) : Promise.resolve(source)),
+  runBackup: (defaultDir: string) => (
+    isTauri
+      ? call<string>("run_backup", { defaultDir })
+      : Promise.resolve(`${defaultDir || "D:\\创业客户备份（演示）"}\\startup-customer-workbench-demo.sqlite3`)
+  ),
   exportCloudReadModel: (destination: string) => (isTauri ? call<string>("export_cloud_read_model", { destination }) : Promise.resolve(destination)),
   openInExplorer: (path: string) => (isTauri ? call<void>("open_in_explorer", { path }) : Promise.resolve()),
   openExternalUrl: (url: string) => {
