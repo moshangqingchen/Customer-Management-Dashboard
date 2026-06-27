@@ -16,6 +16,7 @@ export function OrdersPage({
   folderRefreshKey = 0,
   onNew,
   onSelect,
+  onClearSelection,
   onEdit,
   onDelete,
   onChanged,
@@ -28,6 +29,7 @@ export function OrdersPage({
   folderRefreshKey?: number;
   onNew: () => void;
   onSelect: (order: Order) => void;
+  onClearSelection?: () => void;
   onEdit: (order: Order) => void;
   onDelete: (order: Order) => void;
   onChanged: () => void;
@@ -152,7 +154,16 @@ export function OrdersPage({
           ) : (
             <>
               <div className="order-layer-header">
-                <Button variant="secondary" className="return-customer-button" onClick={() => setActiveCustomerId(null)}><ChevronLeft size={16} />返回客户列表</Button>
+                <Button
+                  variant="secondary"
+                  className="return-customer-button"
+                  onClick={() => {
+                    setActiveCustomerId(null);
+                    onClearSelection?.();
+                  }}
+                >
+                  <ChevronLeft size={16} />返回客户列表
+                </Button>
                 <span><UsersRound size={15} />{activeGroup.customerName} 的订单</span>
               </div>
               <div className="order-table compact-table">

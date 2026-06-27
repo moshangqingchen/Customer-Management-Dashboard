@@ -136,6 +136,8 @@ describe("OrdersPage", () => {
   });
 
   it("shows customers first and opens that customer's orders as the second layer", () => {
+    const onClearSelection = vi.fn();
+
     render(
       <OrdersPage
         orders={[order, paidOrder]}
@@ -143,6 +145,7 @@ describe("OrdersPage", () => {
         selectedOrderId={null}
         onNew={vi.fn()}
         onSelect={vi.fn()}
+        onClearSelection={onClearSelection}
         onEdit={vi.fn()}
         onDelete={vi.fn()}
         onChanged={vi.fn()}
@@ -162,6 +165,7 @@ describe("OrdersPage", () => {
 
     expect(screen.getByRole("button", { name: /林女士 2 笔订单/ })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /宣传单设计 闲鱼 · XY-ADDR-001/ })).not.toBeInTheDocument();
+    expect(onClearSelection).toHaveBeenCalledTimes(1);
   });
 
   it("shows every related order file in the right-side detail panel", () => {
