@@ -3,6 +3,20 @@ import { Box, Plus, ReceiptText, Trash2, Truck } from "lucide-react";
 
 import { api } from "../lib/api";
 import { formatCents } from "../lib/format";
+import {
+  canonicalPrintProjectName,
+  childPrintProjectNames,
+  defaultPrintProjectForCategory,
+  defaultPrintProjectName,
+  fallbackPrintPreset,
+  matchingPrintPresetValue,
+  printCategoryName,
+  printProjectSuggestions,
+  printPresetForProject,
+  printSpecValue,
+  printTopLevelCategories,
+  uniquePrintValues,
+} from "../lib/printPresets";
 import type { AddressInput, Customer, NewOrder, Order, OrderItemInput, SourceQuote } from "../lib/types";
 import { Button } from "./ui";
 
@@ -17,118 +31,12 @@ const emptySourceSnapshot = {
 
 const emptyItem = (): OrderItemInput => ({ itemType: "设计", name: "", quantity: 1, unitPriceCents: 0, printSpec: null, ...emptySourceSnapshot });
 const customTemplateStorageKey = "startup-customer-workbench.order-item-templates";
-const printQuantityPresets = [500, 1000, 2000, 3000, 5000, 10000];
 
 type PrintSpecPart = "size" | "material" | "sides" | "color" | "finish";
-type PrintPreset = {
-  materials: string[];
-  paperWeights: string[];
-  sizes: string[];
-  finishes: string[];
-  quantities: number[];
-  quantityUnit: string;
-  paperWeightLabel?: string;
-};
 type OrderItemTemplate = {
   label: string;
   description: string;
   item: OrderItemInput;
-};
-
-const printCategoryPresets: Record<string, PrintPreset> = {
-  名片: {
-    materials: ["铜版纸", "特种纸", "珠光纸", "PVC", "牛皮纸"],
-    paperWeights: ["250g", "300g", "350g", "400g"],
-    sizes: ["90×54mm", "90×50mm", "85×54mm"],
-    finishes: ["不选工艺", "覆膜", "哑膜", "亮膜", "圆角", "覆膜 / 圆角", "烫金", "烫银", "UV", "击凸", "模切"],
-    quantities: [100, 200, 500, 1000, 2000, 5000, 10000],
-    quantityUnit: "张",
-  },
-  不干胶: {
-    materials: ["铜版不干胶", "透明不干胶", "牛皮纸不干胶", "PVC不干胶", "易碎纸"],
-    paperWeights: ["80g", "120g", "157g"],
-    sizes: ["50×30mm", "60×40mm", "70×50mm", "A4 210×297mm"],
-    finishes: ["不选工艺", "覆膜", "哑膜", "亮膜", "模切", "异形模切", "覆膜 / 模切"],
-    quantities: [100, 200, 500, 1000, 2000, 5000],
-    quantityUnit: "张",
-  },
-  宣传单: {
-    materials: ["铜版纸", "哑粉纸", "双胶纸", "书纸"],
-    paperWeights: ["128g", "157g", "200g", "250g"],
-    sizes: ["A4 210×297mm", "A5 148×210mm", "16开 210×285mm", "210×285mm"],
-    finishes: ["不选工艺", "覆膜", "哑膜", "亮膜", "折页", "压痕", "裁切"],
-    quantities: [100, 200, 500, 1000, 2000, 5000, 10000],
-    quantityUnit: "张",
-  },
-  扇子: {
-    materials: ["PP塑料", "PVC", "纸质", "竹柄纸扇", "无纺布"],
-    paperWeights: ["单层", "双层", "0.35mm", "0.5mm", "0.8mm"],
-    sizes: ["17×17cm", "19×19cm", "21×21cm", "七寸", "八寸"],
-    finishes: ["不选工艺", "模切", "异形模切", "装柄", "覆膜", "UV", "烫金"],
-    quantities: [100, 300, 500, 1000, 2000, 5000],
-    quantityUnit: "把",
-    paperWeightLabel: "厚度/规格",
-  },
-  联单: {
-    materials: ["无碳复写纸", "双胶纸", "收据纸", "牛皮纸封面", "白红黄三联纸"],
-    paperWeights: ["二联", "三联", "四联", "50组/本", "100组/本"],
-    sizes: ["大32开 130×190mm", "A5 148×210mm", "16开 185×260mm", "A4 210×297mm"],
-    finishes: ["不选工艺", "胶头", "包本", "打码", "撕线", "打孔", "封面", "垫板"],
-    quantities: [10, 20, 50, 100, 200, 500],
-    quantityUnit: "本",
-    paperWeightLabel: "联数/每本",
-  },
-  海报: {
-    materials: ["铜版纸", "哑粉纸", "相纸", "PP背胶", "PVC"],
-    paperWeights: ["157g", "200g", "250g", "背胶", "户外背胶"],
-    sizes: ["A4 210×297mm", "A3 297×420mm", "A2 420×594mm", "50×70cm", "60×90cm"],
-    finishes: ["不选工艺", "覆膜", "哑膜", "亮膜", "裁切", "裱板"],
-    quantities: [1, 5, 10, 20, 50, 100],
-    quantityUnit: "张",
-  },
-  易拉宝: {
-    materials: ["PVC画面 + 铝合金架", "PP画面 + 铝合金架", "加厚架", "经济架"],
-    paperWeights: ["80×200cm", "85×200cm", "加厚画面", "普通画面"],
-    sizes: ["80×200cm", "85×200cm", "100×200cm"],
-    finishes: ["不选工艺", "含架", "纸箱包装", "换画面", "覆膜"],
-    quantities: [1, 2, 5, 10, 20, 50],
-    quantityUnit: "套",
-    paperWeightLabel: "画面/架子",
-  },
-  画册: {
-    materials: ["铜版纸", "哑粉纸", "双胶纸", "封面特种纸"],
-    paperWeights: ["封面250g/内页157g", "封面300g/内页157g", "封面250g/内页128g"],
-    sizes: ["A4 210×297mm", "A5 148×210mm", "方形 210×210mm"],
-    finishes: ["不选工艺", "骑马钉", "胶装", "覆膜", "压痕", "UV"],
-    quantities: [10, 20, 50, 100, 200, 500],
-    quantityUnit: "本",
-    paperWeightLabel: "纸张搭配",
-  },
-  其他印刷: {
-    materials: ["铜版纸", "PVC", "PP", "特种纸", "牛皮纸"],
-    paperWeights: ["128g", "157g", "250g", "300g", "0.5mm"],
-    sizes: ["A4 210×297mm", "A5 148×210mm", "90×54mm", "自定义尺寸"],
-    finishes: ["不选工艺", "覆膜", "哑膜", "亮膜", "模切", "压痕", "UV"],
-    quantities: [100, 200, 500, 1000, 2000, 5000, 10000],
-    quantityUnit: "张",
-  },
-};
-
-const printCategoryAliases = [
-  { presetName: "扇子", keywords: ["扇子", "广告扇", "团扇", "pp扇", "pvc扇", "纸扇"] },
-  { presetName: "联单", keywords: ["联单", "无碳联单", "收据联单", "送货单", "销货单", "二联", "三联", "四联"] },
-  { presetName: "不干胶", keywords: ["不干胶", "贴纸", "标签", "包装贴纸"] },
-  { presetName: "宣传单", keywords: ["宣传单", "传单", "单页", "折页"] },
-  { presetName: "易拉宝", keywords: ["易拉宝", "展架"] },
-];
-
-const fallbackPrintPreset: PrintPreset = {
-  materials: ["铜版纸", "PVC", "PP", "特种纸", "牛皮纸"],
-  paperWeights: ["128g", "157g", "250g", "300g", "0.5mm"],
-  sizes: ["A4 210×297mm", "A5 148×210mm", "90×54mm"],
-  finishes: ["不选工艺", "覆膜", "哑膜", "亮膜", "模切", "压痕", "UV"],
-  quantities: [100, 200, 500, 1000, 2000, 5000, 10000],
-  quantityUnit: "张",
 };
 
 const orderItemTemplates: OrderItemTemplate[] = [
@@ -149,10 +57,10 @@ const orderItemTemplates: OrderItemTemplate[] = [
     description: "1000 张 / ¥100",
     item: {
       itemType: "印刷品",
-      name: "名片",
+      name: "普通名片",
       quantity: 1000,
       unitPriceCents: 10,
-      printSpec: "90×54mm | 铜版纸 300g | 双面 | 彩色 | 覆膜 / 圆角",
+      printSpec: "90×54毫米 | 铜版纸 300g | 双面 | 彩色 | 覆膜 / 圆角",
       ...emptySourceSnapshot,
     },
   },
@@ -217,7 +125,7 @@ const designProjectPresets = [
   "品牌视觉套装",
 ];
 
-const printProjectPresets = Object.keys(printCategoryPresets);
+const printProjectPresets = printProjectSuggestions;
 
 const sizePresetGroups = {
   poster: ["A4 210×297mm", "A3 297×420mm", "A2 420×594mm", "A1 594×841mm", "海报 50×70cm", "海报 60×90cm"],
@@ -258,29 +166,16 @@ const printStarterSizePresets = [
 ];
 
 function unique(values: string[]) {
-  return Array.from(new Set(values.filter(Boolean)));
+  return uniquePrintValues(values);
 }
 
-function printQuantityOrDefault(quantity: number) {
-  return printQuantityPresets.includes(quantity) ? quantity : printQuantityPresets[0] ?? 1;
+function printQuantityOrDefault(projectName: string, quantity: number) {
+  const quantities = printPresetForProject(projectName).quantities;
+  return quantities.includes(quantity) ? quantity : quantities[0] ?? 1;
 }
 
 function isPrintItem(itemType: string) {
   return itemType === "印刷品" || ["打印", "印刷", "写真", "展具"].includes(itemType);
-}
-
-function normalizePrintCategory(value: string) {
-  return value.trim().replace(/\s+/g, "").toLowerCase();
-}
-
-function printPresetForCategory(category: string) {
-  const directPreset = printCategoryPresets[category.trim()];
-  if (directPreset) return directPreset;
-  const normalized = normalizePrintCategory(category);
-  const alias = printCategoryAliases.find((item) =>
-    item.keywords.some((keyword) => normalized.includes(normalizePrintCategory(keyword)))
-  );
-  return alias ? printCategoryPresets[alias.presetName] : fallbackPrintPreset;
 }
 
 function itemTypeToUiType(itemType: string) {
@@ -327,7 +222,7 @@ function designSizePresets(name: string) {
 }
 
 function printSizePresets(name: string) {
-  return printPresetForCategory(name).sizes;
+  return printPresetForProject(name).sizes;
 }
 
 function sizePresets(itemType: string, name: string) {
@@ -354,11 +249,7 @@ function buildPrintSpec(parts: Record<PrintSpecPart, string>) {
 }
 
 function specValue(value?: string | number | null) {
-  return String(value ?? "")
-    .trim()
-    .replace(/(\d)\s*[xX*]\s*(\d)/g, "$1×$2")
-    .replace(/\s+/g, "")
-    .toLowerCase();
+  return printSpecValue(value);
 }
 
 function finishSpecValue(value?: string | number | null) {
@@ -366,44 +257,33 @@ function finishSpecValue(value?: string | number | null) {
   return normalized === specValue("不选工艺") ? "" : normalized;
 }
 
-function printCategoryName(value: string) {
-  const trimmed = value.trim();
-  if (!trimmed) return printProjectPresets[0] ?? "";
-  if (printCategoryPresets[trimmed]) return trimmed;
-  const normalized = normalizePrintCategory(trimmed);
-  const alias = printCategoryAliases.find((item) =>
-    item.keywords.some((keyword) => normalized.includes(normalizePrintCategory(keyword)))
-  );
-  return alias?.presetName ?? "其他印刷";
-}
-
 function buildPrintMaterial(material: string, paperWeight: string) {
   return [material, paperWeight].filter(Boolean).join(" ");
 }
 
-function defaultPrintSpec(category: string) {
-  const preset = printPresetForCategory(category);
-  const normalizedCategory = printCategoryName(category);
+function defaultPrintSpec(projectName: string) {
+  const preset = printPresetForProject(projectName);
+  const canonicalProjectName = canonicalPrintProjectName(projectName);
   return buildPrintSpec({
     size: preset.sizes[0] ?? "",
     material: buildPrintMaterial(preset.materials[0] ?? "", preset.paperWeights[0] ?? ""),
-    sides: ["联单", "易拉宝"].includes(normalizedCategory) ? "单面" : "双面",
-    color: normalizedCategory === "联单" ? "黑白" : "彩色",
+    sides: ["联单", "易拉宝"].includes(canonicalProjectName) ? "单面" : "双面",
+    color: canonicalProjectName === "联单" ? "黑白" : "彩色",
     finish: "",
   });
 }
 
 function matchingPresetValue(value: string, options: string[]) {
-  return options.find((option) => value.includes(option)) ?? "";
+  return matchingPrintPresetValue(value, options);
 }
 
-function printMaterialValue(category: string, materialSpec: string) {
-  const preset = printPresetForCategory(category);
+function printMaterialValue(projectName: string, materialSpec: string) {
+  const preset = printPresetForProject(projectName);
   return matchingPresetValue(materialSpec, preset.materials) || preset.materials[0] || "";
 }
 
-function printPaperWeightValue(category: string, materialSpec: string) {
-  const preset = printPresetForCategory(category);
+function printPaperWeightValue(projectName: string, materialSpec: string) {
+  const preset = printPresetForProject(projectName);
   return matchingPresetValue(materialSpec, preset.paperWeights) || preset.paperWeights[0] || "";
 }
 
@@ -421,7 +301,7 @@ function sourceQuoteSnapshot(quote: SourceQuote) {
 function sourceQuoteToItemPatch(quote: SourceQuote): Partial<OrderItemInput> {
   return {
     itemType: "印刷品",
-    name: quote.itemName,
+    name: canonicalPrintProjectName(quote.itemName),
     quantity: quote.quantity,
     printSpec: buildPrintSpec({
       size: quote.size,
@@ -435,7 +315,7 @@ function sourceQuoteToItemPatch(quote: SourceQuote): Partial<OrderItemInput> {
 }
 
 function sourceQuoteCategoryMatches(quote: SourceQuote, item: OrderItemInput) {
-  return printCategoryName(quote.itemName) === printCategoryName(item.name);
+  return canonicalPrintProjectName(quote.itemName) === canonicalPrintProjectName(item.name);
 }
 
 function sourceQuoteFullSpecMatches(quote: SourceQuote, item: OrderItemInput) {
@@ -503,7 +383,7 @@ function copyOrderItem(item: OrderItemInput): OrderItemInput {
 }
 
 function templateDescription(item: OrderItemInput) {
-  const unit = isPrintItem(item.itemType) ? printPresetForCategory(printCategoryName(item.name)).quantityUnit : "项";
+  const unit = isPrintItem(item.itemType) ? printPresetForProject(item.name).quantityUnit : "项";
   return `${item.quantity} ${unit} / ${formatCents(orderItemTotalCents(item))}`;
 }
 
@@ -797,13 +677,15 @@ export function OrderForm({ customers, sourceQuotes = [], order, onSaved, onCanc
             const uiItemType = itemTypeToUiType(item.itemType);
             const isPrint = uiItemType === "印刷品";
             const printCategory = isPrint ? printCategoryName(item.name) : "";
-            const printPreset = isPrint ? printPresetForCategory(printCategory) : fallbackPrintPreset;
+            const printProject = isPrint ? canonicalPrintProjectName(item.name) : "";
+            const printProjectOptions = isPrint ? childPrintProjectNames(printCategory) : [];
+            const printPreset = isPrint ? printPresetForProject(printProject) : fallbackPrintPreset;
             const projectOptions = projectPresets(uiItemType);
             const sizeOptions = isPrint ? printPreset.sizes : sizePresets(uiItemType, item.name);
-            const quantityOptions = isPrint ? printQuantityPresets : [1, 2, 3, 5, 10];
+            const quantityOptions = isPrint ? printPreset.quantities : [1, 2, 3, 5, 10];
             const quantityUnit = isPrint ? printPreset.quantityUnit : "项";
-            const materialValue = isPrint ? printMaterialValue(printCategory, spec.material) : "";
-            const paperWeightValue = isPrint ? printPaperWeightValue(printCategory, spec.material) : "";
+            const materialValue = isPrint ? printMaterialValue(printProject, spec.material) : "";
+            const paperWeightValue = isPrint ? printPaperWeightValue(printProject, spec.material) : "";
             const suggestedTotal = suggestedSaleTotalCents(item);
             const quoteOptions = sourceQuoteOptionsForItem(sourceQuotes, item);
             const customQuantityOption = isPrint && item.quantity > 0 && !quantityOptions.includes(item.quantity);
@@ -812,14 +694,14 @@ export function OrderForm({ customers, sourceQuotes = [], order, onSaved, onCanc
             const currentTotalPriceCents = () => totalPriceDraft === undefined ? orderItemTotalCents(item) : totalCentsFromPriceInput(totalPriceDraft);
             const switchItemType = (value: string) => {
               if (value === "印刷品") {
-                const category = printCategoryName(item.name);
-                const quantity = printQuantityOrDefault(item.quantity);
+                const projectName = canonicalPrintProjectName(item.name || defaultPrintProjectName);
+                const quantity = printQuantityOrDefault(projectName, item.quantity);
                 setItem(index, {
                   itemType: "印刷品",
-                  name: category,
+                  name: projectName,
                   quantity,
                   unitPriceCents: unitPriceCentsFromTotal(currentTotalPriceCents(), quantity),
-                  printSpec: defaultPrintSpec(category),
+                  printSpec: defaultPrintSpec(projectName),
                   ...emptySourceSnapshot,
                 }, { autoMatchSource: true });
                 return;
@@ -827,13 +709,17 @@ export function OrderForm({ customers, sourceQuotes = [], order, onSaved, onCanc
               setItem(index, { itemType: "设计", name: isPrint ? "" : item.name, printSpec: null, ...emptySourceSnapshot });
             };
             const selectPrintCategory = (category: string) => {
-              const quantity = printQuantityOrDefault(item.quantity);
+              selectPrintProject(defaultPrintProjectForCategory(category));
+            };
+            const selectPrintProject = (projectName: string) => {
+              const canonicalProject = canonicalPrintProjectName(projectName);
+              const quantity = printQuantityOrDefault(canonicalProject, item.quantity);
               setItem(index, {
                 itemType: "印刷品",
-                name: category,
+                name: canonicalProject,
                 quantity,
                 unitPriceCents: unitPriceCentsFromTotal(currentTotalPriceCents(), quantity),
-                printSpec: defaultPrintSpec(category),
+                printSpec: defaultPrintSpec(canonicalProject),
                 ...emptySourceSnapshot,
               }, { autoMatchSource: true });
             };
@@ -863,12 +749,17 @@ export function OrderForm({ customers, sourceQuotes = [], order, onSaved, onCanc
                     <option>印刷品</option>
                   </select>
                   {isPrint ? (
-                    <select aria-label="印刷类目" value={printCategory} onChange={(event) => selectPrintCategory(event.target.value)}>
-                      {printProjectPresets.map((option) => <option value={option} key={option}>{option}</option>)}
-                    </select>
+                    <>
+                      <select aria-label="印刷类目" value={printCategory} onChange={(event) => selectPrintCategory(event.target.value)}>
+                        {printTopLevelCategories.map((option) => <option value={option} key={option}>{option}</option>)}
+                      </select>
+                      <select aria-label="印刷小类" value={printProject} onChange={(event) => selectPrintProject(event.target.value)}>
+                        {printProjectOptions.map((option) => <option value={option} key={option}>{option}</option>)}
+                      </select>
+                    </>
                   ) : (
                     <>
-                      <input aria-label="项目名称" list={projectListId} value={item.name} onChange={(event) => setItem(index, { name: event.target.value, printSpec: null, ...emptySourceSnapshot })} placeholder="订单名，如 Logo / 淘宝主图" />
+                      <input className="item-name-field" aria-label="项目名称" list={projectListId} value={item.name} onChange={(event) => setItem(index, { name: event.target.value, printSpec: null, ...emptySourceSnapshot })} placeholder="订单名，如 Logo / 淘宝主图" />
                       <datalist id={projectListId}>{projectOptions.map((option) => <option value={option} key={option}>{option}</option>)}</datalist>
                     </>
                   )}
@@ -890,7 +781,7 @@ export function OrderForm({ customers, sourceQuotes = [], order, onSaved, onCanc
                       {customSizeOption && <option value={spec.size}>{spec.size}</option>}
                       {sizeOptions.map((option) => <option value={option} key={option}>{option}</option>)}
                     </select></label>
-                    <label><span>纸张/材质</span><select value={materialValue} onChange={(event) => setPrintMaterialSpec(event.target.value, paperWeightValue)}>
+                    <label><span>{printPreset.materialLabel ?? "纸张/材质"}</span><select value={materialValue} onChange={(event) => setPrintMaterialSpec(event.target.value, paperWeightValue)}>
                       {printPreset.materials.map((option) => <option value={option} key={option}>{option}</option>)}
                     </select></label>
                     <label><span>{printPreset.paperWeightLabel ?? "克重/厚度"}</span><select value={paperWeightValue} onChange={(event) => setPrintMaterialSpec(materialValue, event.target.value)}>

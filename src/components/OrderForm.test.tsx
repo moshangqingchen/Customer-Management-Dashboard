@@ -130,6 +130,7 @@ describe("OrderForm", () => {
     fireEvent.change(itemTypeSelect!, { target: { value: "印刷品" } });
 
     expect(screen.getByLabelText("印刷类目")).toHaveDisplayValue("名片");
+    expect(screen.getByLabelText("印刷小类")).toHaveDisplayValue("普通名片");
     expect(screen.getByLabelText("尺寸")).toBeInTheDocument();
   });
 
@@ -153,7 +154,7 @@ describe("OrderForm", () => {
     const printCategory = screen.getByLabelText("印刷类目");
     fireEvent.change(printCategory, { target: { value: "海报" } });
 
-    expect(selectOptions(printCategory)).toEqual(expect.arrayContaining(["海报", "名片", "易拉宝", "扇子", "联单"]));
+    expect(selectOptions(printCategory)).toEqual(expect.arrayContaining(["海报", "名片", "易拉宝", "扇子", "联单", "写真"]));
     expect(selectOptions(screen.getByLabelText("尺寸"))).toEqual(expect.arrayContaining(["A3 297×420mm", "A4 210×297mm", "50×70cm"]));
   });
 
@@ -186,7 +187,9 @@ describe("OrderForm", () => {
 
     fireEvent.change(projectName, { target: { value: "名片" } });
     let options = selectOptions(size);
-    expect(options).toEqual(expect.arrayContaining(["90×54mm", "90×50mm"]));
+    expect(screen.getByLabelText("印刷小类")).toHaveDisplayValue("普通名片");
+    expect(selectOptions(screen.getByLabelText("印刷小类"))).toEqual(["普通名片", "PVC卡", "特种纸名片"]);
+    expect(options).toEqual(expect.arrayContaining(["90×54毫米", "90×50毫米", "180×54毫米", "110×90毫米", "140×100毫米", "160×54毫米"]));
     expect(options).not.toEqual(expect.arrayContaining(["A3 297×420mm", "淘宝主图 800×800px", "易拉宝 80×200cm"]));
 
     fireEvent.change(projectName, { target: { value: "海报" } });
@@ -217,6 +220,45 @@ describe("OrderForm", () => {
     expect(selectOptions(screen.getByLabelText("数量"))).toEqual(["500", "1000", "2000", "3000", "5000", "10000"]);
   });
 
+  it("switches photo-print standards between indoor, outdoor, and mounting subgroups", () => {
+    const { container } = render(<OrderForm customers={[customer]} onSaved={vi.fn()} onCancel={vi.fn()} />);
+
+    const itemTypeSelect = container.querySelector(".item-row select");
+    expect(itemTypeSelect).not.toBeNull();
+    fireEvent.change(itemTypeSelect!, { target: { value: "印刷品" } });
+
+    fireEvent.change(screen.getByLabelText("印刷类目"), { target: { value: "写真" } });
+    expect(screen.getByLabelText("印刷小类")).toHaveDisplayValue("室内写真");
+    expect(selectOptions(screen.getByLabelText("印刷小类"))).toEqual(["室内写真", "室外写真", "写真裱板"]);
+    expect(selectOptions(screen.getByLabelText("材质/产品种类"))).toEqual(expect.arrayContaining(["室内PP背胶", "室内相纸", "室内灯片", "油画布"]));
+    expect(selectOptions(screen.getByLabelText("覆膜工艺"))).toEqual(expect.arrayContaining(["不覆膜", "亮膜", "哑膜", "磨砂地板膜", "斜纹地板膜"]));
+    expect(selectOptions(screen.getByLabelText("数量"))).toEqual(["1", "2", "5", "10", "20", "50", "100"]);
+
+    fireEvent.change(screen.getByLabelText("印刷小类"), { target: { value: "室外写真" } });
+
+    expect(screen.getByLabelText("印刷小类")).toHaveDisplayValue("室外写真");
+    expect(selectOptions(screen.getByLabelText("材质/产品种类"))).toEqual(expect.arrayContaining([
+      "户外pp背胶",
+      "白胶车贴",
+      "黑胶车贴",
+      "灰胶可移车贴",
+      "黑胶可移车贴",
+      "白胶可移车贴",
+      "透明车贴",
+      "磁性车贴面磁",
+      "户外晶彩格反光贴",
+      "户外平面反光贴",
+      "户外PVC硬片",
+      "户外单透",
+      "户外PP合成纸",
+      "户外灯片",
+    ]));
+    expect(selectOptions(screen.getByLabelText("尺寸"))).toEqual(expect.arrayContaining(["自定义宽高", "60×90cm", "120×240cm"]));
+
+    fireEvent.change(screen.getByLabelText("印刷小类"), { target: { value: "写真裱板" } });
+    expect(selectOptions(screen.getByLabelText("材质/产品种类"))).toEqual(expect.arrayContaining(["KT板写真", "冷裱板写真", "PVC板写真", "雪弗板写真"]));
+  });
+
   it("clears the previous size when the project name changes", () => {
     render(<OrderForm customers={[customer]} onSaved={vi.fn()} onCancel={vi.fn()} />);
 
@@ -242,6 +284,7 @@ describe("OrderForm", () => {
 
     expect(screen.getByLabelText("项目类型")).toHaveDisplayValue("印刷品");
     expect(screen.getByLabelText("印刷类目")).toHaveDisplayValue("名片");
+    expect(screen.getByLabelText("印刷小类")).toHaveDisplayValue("普通名片");
     expect(screen.getByLabelText("数量")).toHaveDisplayValue("1000");
     expect(screen.getByLabelText("个人报价")).toHaveDisplayValue("0");
     expect(screen.getByText("华彩印刷源头厂")).toBeInTheDocument();
@@ -276,6 +319,28 @@ describe("OrderForm", () => {
 
     expect(screen.getByLabelText("源头厂家报价")).toHaveDisplayValue("华彩印刷源头厂 · 宣传单 · 500 · ¥70.00 + 运费 ¥10.00");
     expect(screen.getByText("合计 ¥80.00")).toBeInTheDocument();
+  });
+
+  it("auto-matches a legacy business-card quote under the new normal-card subgroup", () => {
+    const legacyCardQuote: SourceQuote = {
+      ...sourceQuote,
+      id: "quote-legacy-card-500",
+      itemName: "名片",
+      quantity: 500,
+      size: "90×54mm",
+      paperWeight: "250g",
+      finish: "",
+    };
+    const { container } = render(<OrderForm customers={[customer]} sourceQuotes={[legacyCardQuote]} onSaved={vi.fn()} onCancel={vi.fn()} />);
+
+    const itemTypeSelect = container.querySelector(".item-row select");
+    expect(itemTypeSelect).not.toBeNull();
+    fireEvent.change(itemTypeSelect!, { target: { value: "印刷品" } });
+
+    expect(screen.getByLabelText("印刷类目")).toHaveDisplayValue("名片");
+    expect(screen.getByLabelText("印刷小类")).toHaveDisplayValue("普通名片");
+    expect(screen.getByLabelText("源头厂家报价")).toHaveDisplayValue("华彩印刷源头厂 · 名片 · 500 · ¥45.00 + 运费 ¥8.00");
+    expect(screen.getByText("合计 ¥53.00")).toBeInTheDocument();
   });
 
   it("does not auto-select a source quote when only category and quantity match", () => {

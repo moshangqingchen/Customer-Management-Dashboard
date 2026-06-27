@@ -167,11 +167,14 @@ describe("FactoriesPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "进入华彩印刷源头厂" }));
     const projectCard = screen.getByRole("button", { name: "名片" });
     expect(within(projectCard).getByText("名片")).toBeInTheDocument();
-    expect(within(projectCard).queryByText(/组价格|待录价|尚未录价|最近更新/)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "普通名片" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "PVC卡" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "特种纸名片" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "不干胶" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "宣传单" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "画册" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "联单" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "画册" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "联单" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "写真" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "宣传单" }));
 
@@ -197,7 +200,7 @@ describe("FactoriesPage", () => {
 
     await waitFor(() => expect(api.updateSourceQuote).toHaveBeenCalledWith("quote-card-1000", expect.objectContaining({
       factoryId: factory.id,
-      itemName: "名片",
+      itemName: "普通名片",
       quantity: 1000,
       productionCostCents: 9900,
       shippingCostCents: 1500,
@@ -218,7 +221,7 @@ describe("FactoriesPage", () => {
 
     await waitFor(() => expect(api.createSourceQuote).toHaveBeenCalledWith(expect.objectContaining({
       factoryId: factory.id,
-      itemName: "名片",
+      itemName: "普通名片",
       quantity: 2000,
       productionCostCents: 6400,
     })));
@@ -246,14 +249,35 @@ describe("FactoriesPage", () => {
     expect(onChanged).toHaveBeenCalled();
   });
 
+  it("groups legacy A4 color-print quotes under flyers instead of a standalone project", () => {
+    const colorPrintQuote: SourceQuote = {
+      ...quote,
+      id: "quote-a4-color",
+      itemName: "A4 双面彩印",
+      quantity: 200,
+      size: "A4 210×297mm",
+      material: "铜版纸",
+      paperWeight: "157g",
+      finish: "裁切",
+    };
+    render(<FactoriesPage factories={[factory]} quotes={[colorPrintQuote]} selectedFactoryId={factory.id} onSelect={vi.fn()} onChanged={vi.fn()} />);
+
+    expect(screen.queryByRole("button", { name: "A4 双面彩印" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "宣传单" }));
+
+    expect(screen.getByRole("heading", { name: "宣传单" })).toBeInTheDocument();
+    expect(screen.getByLabelText("数量")).toHaveValue(200);
+    expect(screen.getByLabelText("厂家整批价")).toHaveValue(45);
+  });
+
   it("offers quantity, finish, and project-specific material/size presets", () => {
     renderFactories([quote]);
 
     fireEvent.click(screen.getByRole("button", { name: "进入华彩印刷源头厂" }));
 
     expect(datalistOptions(screen.getByLabelText("数量"))).toEqual(expect.arrayContaining(["500", "1000", "5000"]));
-    expect(selectOptions("材质")).toEqual(expect.arrayContaining(["铜版纸", "特种纸", "珠光纸", "PVC", "牛皮纸", "自定义"]));
-    expect(selectOptions("尺寸")).toEqual(["90×54mm", "90×50mm", "85×54mm", "自定义"]);
+    expect(selectOptions("材质")).toEqual(expect.arrayContaining(["铜版纸", "哑粉纸", "白卡纸", "自定义"]));
+    expect(selectOptions("尺寸")).toEqual(["90×54毫米", "90×50毫米", "180×54毫米", "110×90毫米", "140×100毫米", "160×54毫米", "自定义"]);
     expect(screen.queryByText("A4 210×297mm")).not.toBeInTheDocument();
     expect(selectOptions("工艺")).toEqual(expect.arrayContaining(["不选工艺", "覆膜", "圆角", "覆膜 / 圆角", "烫金", "UV", "自定义"]));
     expect(selectOptions("工艺")).not.toEqual(expect.arrayContaining(["折页", "骑马钉", "胶装"]));
@@ -280,8 +304,8 @@ describe("FactoriesPage", () => {
     expect(selectOptions("工艺")).toEqual(expect.arrayContaining(["模切", "异形模切", "覆膜 / 模切", "自定义"]));
     expect(selectOptions("工艺")).not.toEqual(expect.arrayContaining(["圆角", "覆膜 / 圆角"]));
 
-    fireEvent.click(screen.getByRole("button", { name: "名片" }));
-    expect(selectOptions("尺寸")).toEqual(["90×54mm", "90×50mm", "85×54mm", "自定义"]);
+    fireEvent.click(screen.getByRole("button", { name: "普通名片" }));
+    expect(selectOptions("尺寸")).toEqual(["90×54毫米", "90×50毫米", "180×54毫米", "110×90毫米", "140×100毫米", "160×54毫米", "自定义"]);
     chooseSelectOption("尺寸", "自定义");
     expect(screen.getByLabelText("自定义尺寸")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("自定义尺寸长"), { target: { value: "100" } });
@@ -292,12 +316,70 @@ describe("FactoriesPage", () => {
 
     await waitFor(() => expect(api.createSourceQuote).toHaveBeenCalledWith(expect.objectContaining({
       factoryId: factory.id,
-      itemName: "名片",
+      itemName: "普通名片",
       size: "100×60mm",
       quantity: 500,
       productionCostCents: 5200,
     })));
     expect(onChanged).toHaveBeenCalled();
+  });
+
+  it("opens photo-print subgroups with indoor, outdoor, and mounting presets", () => {
+    render(<FactoriesPage factories={[factory]} quotes={[quote]} selectedFactoryId={factory.id} onSelect={vi.fn()} onChanged={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "写真" }));
+    expect(screen.getByRole("button", { name: "室内写真" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "室外写真" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "写真裱板" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "室外写真" }));
+
+    expect(screen.getByRole("heading", { name: "室外写真" })).toBeInTheDocument();
+    expect(selectOptions("材质/产品种类")).toEqual(expect.arrayContaining([
+      "户外pp背胶",
+      "白胶车贴",
+      "黑胶车贴",
+      "灰胶可移车贴",
+      "黑胶可移车贴",
+      "白胶可移车贴",
+      "透明车贴",
+      "磁性车贴面磁",
+      "户外晶彩格反光贴",
+      "户外平面反光贴",
+      "户外PVC硬片",
+      "户外单透",
+      "户外PP合成纸",
+      "户外灯片",
+      "自定义",
+    ]));
+    expect(selectOptions("覆膜工艺")).toEqual(["不覆膜", "亮膜", "哑膜", "磨砂地板膜", "斜纹地板膜", "自定义"]);
+    expect(selectOptions("尺寸")).toEqual(expect.arrayContaining(["自定义宽高", "60×90cm", "120×240cm", "自定义"]));
+    expect(selectOptions("工艺")).toEqual(expect.arrayContaining(["不裁切", "裁单张", "异型裁切（不拼大张裁小块）", "打扣", "自定义"]));
+    expect(screen.getByRole("button", { name: /1 块/ })).toBeInTheDocument();
+
+    chooseSelectOption("尺寸", "自定义");
+    fireEvent.change(screen.getByLabelText("自定义尺寸长"), { target: { value: "120" } });
+    fireEvent.change(screen.getByLabelText("自定义尺寸宽"), { target: { value: "80" } });
+    expect(screen.getByLabelText("尺寸")).toHaveValue("__custom_size__");
+
+    fireEvent.click(screen.getByRole("button", { name: "室内写真" }));
+    expect(selectOptions("材质/产品种类")).toEqual(expect.arrayContaining(["室内PP背胶", "室内相纸", "室内灯片", "油画布", "KT板写真", "自定义"]));
+
+    fireEvent.click(screen.getByRole("button", { name: "写真裱板" }));
+    expect(selectOptions("材质/产品种类")).toEqual(expect.arrayContaining(["KT板写真", "冷裱板写真", "PVC板写真", "雪弗板写真", "自定义"]));
+  });
+
+  it("removes a wrongly added draft project before any quote is saved", () => {
+    render(<FactoriesPage factories={[factory]} quotes={[quote]} selectedFactoryId={factory.id} onSelect={vi.fn()} onChanged={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "添加项目" }));
+    fireEvent.change(screen.getByLabelText("新增项目名称"), { target: { value: "错的类目" } });
+    fireEvent.click(screen.getByRole("button", { name: "确认添加项目" }));
+
+    expect(screen.getByRole("button", { name: "错的类目" })).toHaveClass("active");
+    fireEvent.click(screen.getByRole("button", { name: "删除错的类目" }));
+
+    expect(screen.queryByRole("button", { name: "错的类目" })).not.toBeInTheDocument();
   });
 
   it("adds a fan project and immediately uses fan-specific print presets", () => {
@@ -312,8 +394,8 @@ describe("FactoriesPage", () => {
     expect(selectOptions("材质")).toEqual(expect.arrayContaining(["PP塑料", "PVC", "竹柄纸扇", "无纺布", "自定义"]));
     expect(selectOptions("尺寸")).toEqual(["17×17cm", "19×19cm", "21×21cm", "七寸", "八寸", "自定义"]);
     expect(selectOptions("工艺")).toEqual(expect.arrayContaining(["不选工艺", "装柄", "异形模切", "烫金", "自定义"]));
-    expect(screen.getByRole("button", { name: /100 把/ })).toBeInTheDocument();
-    expect(datalistOptions(screen.getByLabelText("数量"))).toEqual(expect.arrayContaining(["100", "300", "500", "1000"]));
+    expect(screen.getByRole("button", { name: /500 把/ })).toBeInTheDocument();
+    expect(datalistOptions(screen.getByLabelText("数量"))).toEqual(["500", "1000", "2000", "3000", "5000", "10000"]);
   });
 
   it("maps alias project names like delivery forms to carbonless form presets", () => {
@@ -323,12 +405,12 @@ describe("FactoriesPage", () => {
     fireEvent.change(screen.getByLabelText("新增项目名称"), { target: { value: "送货单" } });
     fireEvent.click(screen.getByRole("button", { name: "确认添加项目" }));
 
-    expect(screen.getByRole("button", { name: "送货单" })).toHaveClass("active");
-    expect(screen.getByRole("heading", { name: "送货单" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "联单" })).toHaveClass("active");
+    expect(screen.getByRole("heading", { name: "联单" })).toBeInTheDocument();
     expect(selectOptions("材质")).toEqual(expect.arrayContaining(["无碳复写纸", "双胶纸", "收据纸", "自定义"]));
     expect(selectOptions("克重/厚度")).toEqual(expect.arrayContaining(["二联", "三联", "四联", "100组/本", "自定义"]));
     expect(selectOptions("尺寸")).toEqual(expect.arrayContaining(["大32开 130×190mm", "A5 148×210mm", "A4 210×297mm", "自定义"]));
     expect(selectOptions("工艺")).toEqual(expect.arrayContaining(["不选工艺", "胶头", "包本", "打码", "撕线", "自定义"]));
-    expect(screen.getByRole("button", { name: /10 本/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /500 本/ })).toBeInTheDocument();
   });
 });

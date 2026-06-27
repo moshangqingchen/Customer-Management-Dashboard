@@ -3,83 +3,26 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { api } from "../lib/api";
 import { formatCents, shortDate } from "../lib/format";
+import {
+  canonicalPrintProjectName,
+  childPrintProjectNames,
+  defaultPrintProjectForCategory,
+  printCategoryName,
+  printProjectGroups,
+  printProjectHasSubcategories,
+  printProjectNames,
+  printProjectSuggestions,
+  printPresetForProject,
+  printSpecValue,
+  uniquePrintValues,
+} from "../lib/printPresets";
 import type { SourceFactory, SourceFactoryInput, SourceQuote, SourceQuoteInput } from "../lib/types";
 import { Button, EmptyState, Modal, PageHeader } from "../components/ui";
 
-const itemPresets = ["名片", "不干胶", "宣传单"];
-const defaultQuantityPresets = [100, 200, 500, 1000, 2000, 3000, 5000, 10000];
 const CUSTOM_SIZE_VALUE = "__custom_size__";
 const CUSTOM_MATERIAL_VALUE = "__custom_material__";
 const CUSTOM_PAPER_WEIGHT_VALUE = "__custom_paper_weight__";
 const CUSTOM_FINISH_VALUE = "__custom_finish__";
-
-type ProjectSpecPreset = {
-  materials: string[];
-  paperWeights: string[];
-  sizes: string[];
-  finishes: string[];
-  quantities?: number[];
-  quantityUnit?: string;
-  paperWeightLabel?: string;
-};
-
-const projectSpecPresets: Record<string, ProjectSpecPreset> = {
-  名片: {
-    materials: ["铜版纸", "特种纸", "珠光纸", "PVC", "牛皮纸"],
-    paperWeights: ["250g", "300g", "350g", "400g"],
-    sizes: ["90×54mm", "90×50mm", "85×54mm"],
-    finishes: ["覆膜", "哑膜", "亮膜", "圆角", "覆膜 / 圆角", "烫金", "烫银", "UV", "击凸", "模切"],
-  },
-  不干胶: {
-    materials: ["铜版不干胶", "透明不干胶", "牛皮纸不干胶", "PVC不干胶", "易碎纸"],
-    paperWeights: ["80g", "120g", "157g"],
-    sizes: ["50×30mm", "60×40mm", "70×50mm", "A4 210×297mm"],
-    finishes: ["覆膜", "哑膜", "亮膜", "模切", "异形模切", "覆膜 / 模切"],
-  },
-  宣传单: {
-    materials: ["铜版纸", "哑粉纸", "双胶纸", "书纸"],
-    paperWeights: ["128g", "157g", "200g", "250g"],
-    sizes: ["A4 210×297mm", "A5 148×210mm", "16开 210×285mm", "210×285mm"],
-    finishes: ["覆膜", "哑膜", "亮膜", "折页", "压痕", "裁切"],
-  },
-  扇子: {
-    materials: ["PP塑料", "PVC", "纸质", "竹柄纸扇", "无纺布"],
-    paperWeights: ["单层", "双层", "0.35mm", "0.5mm", "0.8mm"],
-    sizes: ["17×17cm", "19×19cm", "21×21cm", "七寸", "八寸"],
-    finishes: ["模切", "异形模切", "装柄", "覆膜", "UV", "烫金"],
-    quantities: [100, 300, 500, 1000, 2000, 5000],
-    quantityUnit: "把",
-    paperWeightLabel: "厚度/规格",
-  },
-  联单: {
-    materials: ["无碳复写纸", "双胶纸", "收据纸", "牛皮纸封面", "白红黄三联纸"],
-    paperWeights: ["二联", "三联", "四联", "50组/本", "100组/本"],
-    sizes: ["大32开 130×190mm", "A5 148×210mm", "16开 185×260mm", "A4 210×297mm"],
-    finishes: ["胶头", "包本", "打码", "撕线", "打孔", "封面", "垫板"],
-    quantities: [10, 20, 50, 100, 200, 500],
-    quantityUnit: "本",
-    paperWeightLabel: "联数/每本",
-  },
-};
-
-const projectPresetAliases = [
-  { presetName: "扇子", keywords: ["扇子", "广告扇", "团扇", "pp扇", "pvc扇", "纸扇"] },
-  { presetName: "联单", keywords: ["联单", "无碳联单", "收据联单", "送货单", "销货单", "二联", "三联", "四联"] },
-];
-
-const projectNameSuggestions = unique([
-  ...Object.keys(projectSpecPresets),
-  "广告扇",
-  "无碳联单",
-  "送货单",
-]);
-
-const fallbackProjectSpecPreset: ProjectSpecPreset = {
-  materials: ["铜版纸", "PVC", "PP", "特种纸", "牛皮纸"],
-  paperWeights: ["128g", "157g", "250g", "300g", "0.5mm"],
-  sizes: ["A4 210×297mm", "A5 148×210mm", "90×54mm"],
-  finishes: ["覆膜", "哑膜", "亮膜", "模切", "压痕", "UV"],
-};
 
 const emptyFactory: SourceFactoryInput = {
   name: "",
@@ -95,20 +38,27 @@ const emptyFactory: SourceFactoryInput = {
 
 type FactoryProjectGroup = {
   projectName: string;
+  categoryName: string;
   itemType: string;
   quotes: SourceQuote[];
   updatedAt: string;
 };
 
+type FactoryProjectCategory = {
+  categoryName: string;
+  projects: FactoryProjectGroup[];
+};
+
 function emptyQuote(factoryId: string, itemName = ""): SourceQuoteInput {
+  const projectName = canonicalPrintProjectName(itemName);
   return {
     factoryId,
     itemType: "印刷",
-    itemName,
-    quantity: quantityPresetsForProject(itemName)[0] ?? 1000,
-    size: sizeOptionsForProject(itemName)[0] ?? "",
-    material: materialOptionsForProject(itemName)[0] ?? "",
-    paperWeight: paperWeightOptionsForProject(itemName)[0] ?? "",
+    itemName: projectName,
+    quantity: quantityPresetsForProject(projectName)[0] ?? 1000,
+    size: sizeOptionsForProject(projectName)[0] ?? "",
+    material: materialOptionsForProject(projectName)[0] ?? "",
+    paperWeight: paperWeightOptionsForProject(projectName)[0] ?? "",
     sides: "双面",
     color: "彩色",
     finish: "",
@@ -137,7 +87,7 @@ function quoteToInput(quote: SourceQuote): SourceQuoteInput {
   return {
     factoryId: quote.factoryId,
     itemType: quote.itemType,
-    itemName: quote.itemName,
+    itemName: canonicalPrintProjectName(quote.itemName),
     quantity: quote.quantity,
     size: quote.size,
     material: quote.material,
@@ -159,7 +109,7 @@ function quoteSpec(quote: SourceQuote | SourceQuoteInput) {
 }
 
 function unique(values: string[]) {
-  return Array.from(new Set(values.filter(Boolean)));
+  return uniquePrintValues(values);
 }
 
 function compareUpdatedAt(left?: string, right?: string) {
@@ -169,14 +119,14 @@ function compareUpdatedAt(left?: string, right?: string) {
 function groupQuotesByProject(quotes: SourceQuote[], extraProjectNames: string[] = []): FactoryProjectGroup[] {
   const groups = new Map<string, SourceQuote[]>();
   for (const quote of quotes) {
-    const projectName = quote.itemName.trim() || "未命名项目";
+    const projectName = canonicalPrintProjectName(quote.itemName.trim() || "未命名项目");
     groups.set(projectName, [...(groups.get(projectName) ?? []), quote]);
   }
 
   const projectNames = unique([
-    ...itemPresets,
+    ...printProjectNames,
     ...extraProjectNames,
-    ...quotes.map((quote) => quote.itemName.trim() || "未命名项目"),
+    ...quotes.map((quote) => canonicalPrintProjectName(quote.itemName.trim() || "未命名项目")),
   ]);
 
   return projectNames
@@ -186,6 +136,7 @@ function groupQuotesByProject(quotes: SourceQuote[], extraProjectNames: string[]
       const latestQuote = sortedQuotes[0];
       return {
         projectName,
+        categoryName: printCategoryName(projectName),
         itemType: latestQuote?.itemType || "印刷",
         quotes: sortedQuotes,
         updatedAt: latestQuote?.updatedAt ?? "",
@@ -193,25 +144,31 @@ function groupQuotesByProject(quotes: SourceQuote[], extraProjectNames: string[]
     });
 }
 
+function groupProjectsByCategory(projects: FactoryProjectGroup[]): FactoryProjectCategory[] {
+  const presetCategories = printProjectGroups
+    .map((group) => ({
+      categoryName: group.categoryName,
+      projects: projects.filter((project) => project.categoryName === group.categoryName),
+    }))
+    .filter((group) => group.projects.length > 0);
+  const presetCategoryNames = new Set(printProjectGroups.map((group) => group.categoryName));
+  const customCategories = unique(projects.map((project) => project.categoryName).filter((categoryName) => !presetCategoryNames.has(categoryName)))
+    .map((categoryName) => ({
+      categoryName,
+      projects: projects.filter((project) => project.categoryName === categoryName),
+    }))
+    .filter((group) => group.projects.length > 0);
+  return [...presetCategories, ...customCategories];
+}
+
 function quoteSearchText(quote: SourceQuote) {
-  return [quote.itemType, quote.itemName, quote.quantity, quoteSpec(quote), quote.productionCostCents, quote.shippingCostCents, quote.leadTime, quote.notes]
+  return [quote.itemType, quote.itemName, canonicalPrintProjectName(quote.itemName), printCategoryName(quote.itemName), quote.quantity, quoteSpec(quote), quote.productionCostCents, quote.shippingCostCents, quote.leadTime, quote.notes]
     .join(" ")
     .toLowerCase();
 }
 
-function normalizeProjectName(projectName: string) {
-  return projectName.trim().replace(/\s+/g, "").toLowerCase();
-}
-
 function specPresetForProject(projectName: string) {
-  const directPreset = projectSpecPresets[projectName.trim()];
-  if (directPreset) return directPreset;
-
-  const normalized = normalizeProjectName(projectName);
-  const alias = projectPresetAliases.find((item) =>
-    item.keywords.some((keyword) => normalized.includes(normalizeProjectName(keyword)))
-  );
-  return alias ? projectSpecPresets[alias.presetName] : fallbackProjectSpecPreset;
+  return printPresetForProject(projectName);
 }
 
 function materialOptionsForProject(projectName: string) {
@@ -231,7 +188,7 @@ function finishOptionsForProject(projectName: string) {
 }
 
 function quantityPresetsForProject(projectName: string) {
-  return specPresetForProject(projectName).quantities ?? defaultQuantityPresets;
+  return specPresetForProject(projectName).quantities;
 }
 
 function quantityUnitForProject(projectName: string) {
@@ -240,6 +197,14 @@ function quantityUnitForProject(projectName: string) {
 
 function paperWeightLabelForProject(projectName: string) {
   return specPresetForProject(projectName).paperWeightLabel ?? "克重/厚度";
+}
+
+function materialLabelForProject(projectName: string) {
+  return specPresetForProject(projectName).materialLabel ?? "材质";
+}
+
+function sizeUnitForProject(projectName: string) {
+  return specPresetForProject(projectName).sizeUnit ?? "mm";
 }
 
 function optionsWithCurrent(options: string[], current: string) {
@@ -251,18 +216,18 @@ function parseSize(value: string) {
   return { width: match?.[1] ?? "", height: match?.[2] ?? "" };
 }
 
-function formatCustomSize(width: string, height: string) {
-  return width || height ? `${width || ""}×${height || ""}mm` : "";
+function formatCustomSize(width: string, height: string, unit = "mm") {
+  return width || height ? `${width || ""}×${height || ""}${unit}` : "";
 }
 
 function specValue(value: string) {
-  return value.trim().replace(/\s+/g, " ").toLowerCase();
+  return printSpecValue(value);
 }
 
 function quoteSpecKey(quote: SourceQuote | SourceQuoteInput) {
   return [
     quote.itemType,
-    quote.itemName,
+    canonicalPrintProjectName(quote.itemName),
     quote.size,
     quote.material,
     quote.paperWeight,
@@ -394,6 +359,8 @@ function PriceConfigurator({
   const quantityPresets = quantityPresetsForProject(projectName);
   const quantityUnit = quantityUnitForProject(projectName);
   const paperWeightLabel = paperWeightLabelForProject(projectName);
+  const materialLabel = materialLabelForProject(projectName);
+  const sizeUnit = sizeUnitForProject(projectName);
   const materialSelectOptions = optionsWithCurrent(materialOptions, form.material);
   const paperWeightSelectOptions = optionsWithCurrent(paperWeightOptions, form.paperWeight);
   const finishSelectOptions = finishOptions;
@@ -441,6 +408,7 @@ function PriceConfigurator({
     const nextSize = formatCustomSize(
       part === "width" ? value : parsedCustomSize.width,
       part === "height" ? value : parsedCustomSize.height,
+      sizeUnit,
     );
     applySpecPatch({ size: nextSize });
   };
@@ -452,7 +420,7 @@ function PriceConfigurator({
     setSaving(true);
     setError("");
     try {
-      const input = { ...form, factoryId: factory.id, itemName: form.itemName.trim(), itemType: form.itemType.trim() || "印刷" };
+      const input = { ...form, factoryId: factory.id, itemName: canonicalPrintProjectName(form.itemName), itemType: form.itemType.trim() || "印刷" };
       const saved = editingQuote ? await api.updateSourceQuote(editingQuote.id, input) : await api.createSourceQuote(input);
       setEditingQuote(saved);
       setForm(quoteToInput(saved));
@@ -485,16 +453,16 @@ function PriceConfigurator({
 
       <div className="quote-config-card">
         <div className="quote-config-row">
-          <div className="config-label">材质</div>
+          <div className="config-label">{materialLabel}</div>
           <div className="config-control field-pair">
             <label>
-              <span>材质</span>
-              <select aria-label="材质" value={customMaterialMode ? CUSTOM_MATERIAL_VALUE : form.material} onChange={(event) => selectMaterial(event.target.value)}>
+              <span>{materialLabel}</span>
+              <select aria-label={materialLabel} value={customMaterialMode ? CUSTOM_MATERIAL_VALUE : form.material} onChange={(event) => selectMaterial(event.target.value)}>
                 {materialSelectOptions.map((material) => <option value={material} key={material}>{material}</option>)}
                 <option value={CUSTOM_MATERIAL_VALUE}>自定义</option>
               </select>
             </label>
-            {customMaterialMode && <label><span>自定义材质</span><input aria-label="自定义材质" value={form.material} onChange={(event) => applySpecPatch({ material: event.target.value })} placeholder="输入厂家实际材质" /></label>}
+            {customMaterialMode && <label><span>自定义{materialLabel}</span><input aria-label={`自定义${materialLabel}`} value={form.material} onChange={(event) => applySpecPatch({ material: event.target.value })} placeholder="输入厂家实际材质" /></label>}
             <label>
               <span>{paperWeightLabel}</span>
               <select aria-label="克重/厚度" value={customPaperWeightMode ? CUSTOM_PAPER_WEIGHT_VALUE : form.paperWeight} onChange={(event) => selectPaperWeight(event.target.value)}>
@@ -518,9 +486,9 @@ function PriceConfigurator({
             </label>
             {isCustomSize && (
               <div className="custom-size-fields" aria-label="自定义尺寸">
-                <label><span>长（mm）</span><input aria-label="自定义尺寸长" type="number" min="0" step="0.1" value={parsedCustomSize.width} onChange={(event) => setCustomSizePart("width", event.target.value)} /></label>
+                <label><span>长（{sizeUnit}）</span><input aria-label="自定义尺寸长" type="number" min="0" step="0.1" value={parsedCustomSize.width} onChange={(event) => setCustomSizePart("width", event.target.value)} /></label>
                 <b>×</b>
-                <label><span>宽（mm）</span><input aria-label="自定义尺寸宽" type="number" min="0" step="0.1" value={parsedCustomSize.height} onChange={(event) => setCustomSizePart("height", event.target.value)} /></label>
+                <label><span>宽（{sizeUnit}）</span><input aria-label="自定义尺寸宽" type="number" min="0" step="0.1" value={parsedCustomSize.height} onChange={(event) => setCustomSizePart("height", event.target.value)} /></label>
               </div>
             )}
           </div>
@@ -629,6 +597,7 @@ export function FactoriesPage({
   const [activeFactoryId, setActiveFactoryId] = useState<string | null>(() => selectedFactoryId ?? null);
   const [activeProjectName, setActiveProjectName] = useState<string | null>(null);
   const [activeQuoteId, setActiveQuoteId] = useState<string | null>(null);
+  const [expandedProjectCategories, setExpandedProjectCategories] = useState<Record<string, boolean>>({ 名片: true });
   const [draftProjectNamesByFactory, setDraftProjectNamesByFactory] = useState<Record<string, string[]>>({});
   const [addingProject, setAddingProject] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
@@ -665,8 +634,9 @@ export function FactoriesPage({
   const projectGroups = useMemo(() => groupQuotesByProject(activeFactoryQuotes, activeDraftProjectNames), [activeFactoryQuotes, activeDraftProjectNames]);
   const filteredProjectGroups = useMemo(() => projectGroups.filter((project) => {
     const search = projectQuery.toLowerCase();
-    return !search || project.projectName.toLowerCase().includes(search) || project.itemType.toLowerCase().includes(search) || project.quotes.some((quote) => quoteSearchText(quote).includes(search));
+    return !search || project.projectName.toLowerCase().includes(search) || project.categoryName.toLowerCase().includes(search) || project.itemType.toLowerCase().includes(search) || project.quotes.some((quote) => quoteSearchText(quote).includes(search));
   }), [projectGroups, projectQuery]);
+  const filteredProjectCategories = useMemo(() => groupProjectsByCategory(filteredProjectGroups), [filteredProjectGroups]);
   const activeProject = projectGroups.find((project) => project.projectName === activeProjectName);
   const selectedQuote = activeFactoryQuotes.find((quote) => quote.id === activeQuoteId);
 
@@ -702,13 +672,23 @@ export function FactoriesPage({
   const selectProject = (project: FactoryProjectGroup) => {
     setActiveProjectName(project.projectName);
     setActiveQuoteId(project.quotes[0]?.id ?? null);
+    setExpandedProjectCategories((current) => ({ ...current, [project.categoryName]: true }));
     setAddingProject(false);
     setDraftKey((value) => value + 1);
   };
 
+  const toggleProjectCategory = (categoryName: string) => {
+    if (!printProjectHasSubcategories(categoryName)) {
+      const project = projectGroups.find((item) => item.projectName === defaultPrintProjectForCategory(categoryName));
+      if (project) selectProject(project);
+      return;
+    }
+    setExpandedProjectCategories((current) => ({ ...current, [categoryName]: !current[categoryName] }));
+  };
+
   const addProject = () => {
     if (!activeFactory) return;
-    const projectName = newProjectName.trim();
+    const projectName = canonicalPrintProjectName(newProjectName.trim());
     if (!projectName) return;
     setDraftProjectNamesByFactory((current) => ({
       ...current,
@@ -719,6 +699,20 @@ export function FactoriesPage({
     setActiveQuoteId(null);
     setNewProjectName("");
     setAddingProject(false);
+    setDraftKey((value) => value + 1);
+  };
+
+  const deleteDraftProject = (project: FactoryProjectGroup) => {
+    if (!activeFactory || project.quotes.length > 0) return;
+    setDraftProjectNamesByFactory((current) => {
+      const nextNames = (current[activeFactory.id] ?? []).filter((name) => name !== project.projectName);
+      return { ...current, [activeFactory.id]: nextNames };
+    });
+    if (activeProjectName === project.projectName) {
+      const fallbackProject = projectGroups.find((item) => item.projectName !== project.projectName);
+      setActiveProjectName(fallbackProject?.projectName ?? null);
+      setActiveQuoteId(fallbackProject?.quotes[0]?.id ?? null);
+    }
     setDraftKey((value) => value + 1);
   };
 
@@ -735,15 +729,16 @@ export function FactoriesPage({
   };
 
   const onQuoteSaved = (quote: SourceQuote) => {
-    setActiveProjectName(quote.itemName);
+    setActiveProjectName(canonicalPrintProjectName(quote.itemName));
     setActiveQuoteId(quote.id);
     onChanged();
   };
 
   const onQuoteDeleted = (quote: SourceQuote) => {
-    const remaining = activeFactoryQuotes.filter((item) => item.id !== quote.id && item.itemName === quote.itemName);
+    const deletedProjectName = canonicalPrintProjectName(quote.itemName);
+    const remaining = activeFactoryQuotes.filter((item) => item.id !== quote.id && canonicalPrintProjectName(item.itemName) === deletedProjectName);
     setActiveQuoteId(remaining[0]?.id ?? null);
-    setActiveProjectName(quote.itemName);
+    setActiveProjectName(deletedProjectName);
     setDraftKey((value) => value + 1);
     onChanged();
   };
@@ -796,26 +791,91 @@ export function FactoriesPage({
                 <button type="button" className="icon-button" onClick={addProject} aria-label="确认添加项目" disabled={!newProjectName.trim()}><Check size={16} /></button>
                 <button type="button" className="icon-button" onClick={cancelAddProject} aria-label="取消添加项目"><X size={16} /></button>
                 <datalist id={`project-name-suggestions-${activeFactory.id}`}>
-                  {projectNameSuggestions.map((name) => <option value={name} key={name} />)}
+                  {printProjectSuggestions.map((name) => <option value={name} key={name} />)}
                 </datalist>
               </div>
             )}
             <label className="search-field project-search"><Search size={17} /><input value={projectQuery} onChange={(event) => setProjectQuery(event.target.value)} placeholder="搜索项目、材质、数量或工艺…" /></label>
-            {filteredProjectGroups.length === 0 ? (
-              <EmptyState icon={<PackagePlus size={25} />} title="没有匹配的项目" description="当前只保留名片、不干胶、宣传单三个大类；清空搜索后可继续录价。" />
+            {filteredProjectCategories.length === 0 ? (
+              <EmptyState icon={<PackagePlus size={25} />} title="没有匹配的项目" description="清空搜索后可继续录价，或添加一个新的印刷项目。" />
             ) : (
-              <div className="project-list">
-                {filteredProjectGroups.map((project) => (
-                  <button
-                    type="button"
-                    className={`project-card ${activeProjectName === project.projectName ? "active" : ""}`}
-                    key={project.projectName}
-                    aria-label={project.projectName}
-                    onClick={() => selectProject(project)}
-                  >
-                    <div><strong>{project.projectName}</strong></div>
-                  </button>
-                ))}
+              <div className="project-list project-category-list">
+                {filteredProjectCategories.map((category) => {
+                  const hasChildren = printProjectHasSubcategories(category.categoryName);
+                  const expanded = hasChildren && (projectQuery ? true : Boolean(expandedProjectCategories[category.categoryName]));
+                  const activeInCategory = category.projects.some((project) => project.projectName === activeProjectName);
+                  const defaultProject = category.projects[0];
+                  const canDeleteCategoryProject = !hasChildren && defaultProject && activeDraftProjectNames.includes(defaultProject.projectName) && defaultProject.quotes.length === 0;
+                  return (
+                    <div className={`project-category ${expanded ? "expanded" : ""}`} key={category.categoryName}>
+                      <button
+                        type="button"
+                        className={`project-card project-category-card ${activeInCategory ? (hasChildren ? "active-parent" : "active") : ""}`}
+                        aria-expanded={hasChildren ? expanded : undefined}
+                        aria-label={category.categoryName}
+                        onClick={() => toggleProjectCategory(category.categoryName)}
+                      >
+                        <div><strong>{category.categoryName}</strong></div>
+                        {hasChildren && <small>{expanded ? "收起" : "展开"}</small>}
+                        {canDeleteCategoryProject && (
+                          <span
+                            className="project-delete-action"
+                            role="button"
+                            tabIndex={0}
+                            aria-label={`删除${defaultProject.projectName}`}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              deleteDraftProject(defaultProject);
+                            }}
+                            onKeyDown={(event) => {
+                              if (event.key !== "Enter" && event.key !== " ") return;
+                              event.preventDefault();
+                              event.stopPropagation();
+                              deleteDraftProject(defaultProject);
+                            }}
+                          >
+                            <Trash2 size={14} />
+                          </span>
+                        )}
+                      </button>
+                      {expanded && (
+                        <div className="project-sub-list">
+                          {category.projects.map((project) => (
+                            <button
+                              type="button"
+                              className={`project-card project-sub-card ${activeProjectName === project.projectName ? "active" : ""}`}
+                              key={project.projectName}
+                              aria-label={project.projectName}
+                              onClick={() => selectProject(project)}
+                            >
+                              <div><strong>{project.projectName}</strong></div>
+                              {activeDraftProjectNames.includes(project.projectName) && project.quotes.length === 0 && (
+                                <span
+                                  className="project-delete-action"
+                                  role="button"
+                                  tabIndex={0}
+                                  aria-label={`删除${project.projectName}`}
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    deleteDraftProject(project);
+                                  }}
+                                  onKeyDown={(event) => {
+                                    if (event.key !== "Enter" && event.key !== " ") return;
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    deleteDraftProject(project);
+                                  }}
+                                >
+                                  <Trash2 size={14} />
+                                </span>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </aside>
