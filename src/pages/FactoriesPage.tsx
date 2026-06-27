@@ -10,7 +10,6 @@ import {
   printCategoryName,
   printProjectGroups,
   printProjectHasSubcategories,
-  printProjectNames,
   printProjectSuggestions,
   printPresetForProject,
   printSpecValue,
@@ -124,7 +123,6 @@ function groupQuotesByProject(quotes: SourceQuote[], extraProjectNames: string[]
   }
 
   const projectNames = unique([
-    ...printProjectNames,
     ...extraProjectNames,
     ...quotes.map((quote) => canonicalPrintProjectName(quote.itemName.trim() || "未命名项目")),
   ]);
@@ -688,15 +686,19 @@ export function FactoriesPage({
 
   const addProject = () => {
     if (!activeFactory) return;
-    const projectName = canonicalPrintProjectName(newProjectName.trim());
+    const rawProjectName = newProjectName.trim();
+    const directCategory = printProjectGroups.find((group) => group.categoryName === rawProjectName);
+    const projectNames = directCategory ? childPrintProjectNames(directCategory.categoryName) : [canonicalPrintProjectName(rawProjectName)];
+    const projectName = projectNames[0];
     if (!projectName) return;
     setDraftProjectNamesByFactory((current) => ({
       ...current,
-      [activeFactory.id]: unique([...(current[activeFactory.id] ?? []), projectName]),
+      [activeFactory.id]: unique([...(current[activeFactory.id] ?? []), ...projectNames]),
     }));
     setProjectQuery("");
     setActiveProjectName(projectName);
     setActiveQuoteId(null);
+    setExpandedProjectCategories((current) => ({ ...current, [printCategoryName(projectName)]: true }));
     setNewProjectName("");
     setAddingProject(false);
     setDraftKey((value) => value + 1);
@@ -797,7 +799,11 @@ export function FactoriesPage({
             )}
             <label className="search-field project-search"><Search size={17} /><input value={projectQuery} onChange={(event) => setProjectQuery(event.target.value)} placeholder="搜索项目、材质、数量或工艺…" /></label>
             {filteredProjectCategories.length === 0 ? (
-              <EmptyState icon={<PackagePlus size={25} />} title="没有匹配的项目" description="清空搜索后可继续录价，或添加一个新的印刷项目。" />
+              <EmptyState
+                icon={<PackagePlus size={25} />}
+                title={projectGroups.length === 0 ? "还没有项目" : "没有匹配的项目"}
+                description={projectGroups.length === 0 ? "点击上方加号添加厂家要报价的项目。" : "清空搜索后可继续录价，或添加一个新的印刷项目。"}
+              />
             ) : (
               <div className="project-list project-category-list">
                 {filteredProjectCategories.map((category) => {
@@ -880,14 +886,20 @@ export function FactoriesPage({
             )}
           </aside>
 
-          <PriceConfigurator
-            factory={activeFactory}
-            project={activeProject}
-            selectedQuote={selectedQuote}
-            draftKey={draftKey}
-            onSaved={onQuoteSaved}
-            onDeleted={onQuoteDeleted}
-          />
+          {activeProject ? (
+            <PriceConfigurator
+              factory={activeFactory}
+              project={activeProject}
+              selectedQuote={selectedQuote}
+              draftKey={draftKey}
+              onSaved={onQuoteSaved}
+              onDeleted={onQuoteDeleted}
+            />
+          ) : (
+            <section className="project-detail-panel empty-project-panel" aria-label="规格价格详情">
+              <EmptyState icon={<PackagePlus size={28} />} title="先添加项目" description="这个厂家还没有项目。添加名片、宣传单、写真等项目后，再录入对应规格和价格。" />
+            </section>
+          )}
         </div>
 
         {factoryModal && <Modal title={factoryModal === "new" ? "添加源头厂家" : "编辑源头厂家"} subtitle="厂家资料用于查价和订单成本记录。" onClose={() => setFactoryModal(null)} wide>

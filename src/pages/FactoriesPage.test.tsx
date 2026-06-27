@@ -113,6 +113,12 @@ function chooseSelectOption(label: string, text: string) {
   fireEvent.change(select, { target: { value: option?.value } });
 }
 
+function addDraftProject(name: string) {
+  fireEvent.click(screen.getByRole("button", { name: "添加项目" }));
+  fireEvent.change(screen.getByLabelText("新增项目名称"), { target: { value: name } });
+  fireEvent.click(screen.getByRole("button", { name: "确认添加项目" }));
+}
+
 describe("FactoriesPage", () => {
   beforeEach(() => {
     vi.mocked(api.createSourceFactory).mockReset();
@@ -168,13 +174,9 @@ describe("FactoriesPage", () => {
     const projectCard = screen.getByRole("button", { name: "名片" });
     expect(within(projectCard).getByText("名片")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "普通名片" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "PVC卡" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "特种纸名片" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "不干胶" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "宣传单" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "画册" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "联单" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "写真" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "不干胶" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "写真" })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "宣传单" }));
 
@@ -185,6 +187,20 @@ describe("FactoriesPage", () => {
     expect(selectOptions("工艺")).toEqual(expect.arrayContaining(["不选工艺", "折页", "压痕", "裁切", "自定义"]));
     expect(selectOptions("工艺")).not.toEqual(expect.arrayContaining(["圆角", "覆膜 / 圆角"]));
     expect(screen.getByRole("button", { name: /2000 张/ })).toHaveTextContent("¥168.00");
+  });
+
+  it("does not prefill project presets for a new factory workspace", () => {
+    render(<FactoriesPage factories={[factory]} quotes={[]} selectedFactoryId={factory.id} onSelect={vi.fn()} onChanged={vi.fn()} />);
+
+    expect(screen.getByText("还没有项目")).toBeInTheDocument();
+    expect(screen.getByText("先添加项目")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "名片" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "宣传单" })).not.toBeInTheDocument();
+
+    addDraftProject("名片");
+
+    expect(screen.getByRole("button", { name: "名片" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "普通名片" })).toBeInTheDocument();
   });
 
   it("loads an existing quantity price and saves edits back to that quote", async () => {
@@ -234,7 +250,7 @@ describe("FactoriesPage", () => {
     vi.mocked(api.createSourceQuote).mockResolvedValue(savedQuote);
     render(<FactoriesPage factories={[factory]} quotes={[quote]} selectedFactoryId={factory.id} onSelect={vi.fn()} onChanged={onChanged} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "不干胶" }));
+    addDraftProject("不干胶");
     expect(screen.getByRole("heading", { name: "不干胶" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /500 张/ }));
     fireEvent.change(screen.getByLabelText("厂家整批价"), { target: { value: "88" } });
@@ -298,7 +314,7 @@ describe("FactoriesPage", () => {
     vi.mocked(api.createSourceQuote).mockResolvedValue(savedQuote);
     render(<FactoriesPage factories={[factory]} quotes={[quote]} selectedFactoryId={factory.id} onSelect={vi.fn()} onChanged={onChanged} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "不干胶" }));
+    addDraftProject("不干胶");
     expect(selectOptions("材质")).toEqual(expect.arrayContaining(["铜版不干胶", "透明不干胶", "PVC不干胶", "自定义"]));
     expect(selectOptions("尺寸")).toEqual(["50×30mm", "60×40mm", "70×50mm", "A4 210×297mm", "自定义"]);
     expect(selectOptions("工艺")).toEqual(expect.arrayContaining(["模切", "异形模切", "覆膜 / 模切", "自定义"]));
@@ -327,7 +343,7 @@ describe("FactoriesPage", () => {
   it("opens photo-print subgroups with indoor, outdoor, and mounting presets", () => {
     render(<FactoriesPage factories={[factory]} quotes={[quote]} selectedFactoryId={factory.id} onSelect={vi.fn()} onChanged={vi.fn()} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "写真" }));
+    addDraftProject("写真");
     expect(screen.getByRole("button", { name: "室内写真" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "室外写真" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "写真裱板" })).toBeInTheDocument();
@@ -372,9 +388,7 @@ describe("FactoriesPage", () => {
   it("removes a wrongly added draft project before any quote is saved", () => {
     render(<FactoriesPage factories={[factory]} quotes={[quote]} selectedFactoryId={factory.id} onSelect={vi.fn()} onChanged={vi.fn()} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "添加项目" }));
-    fireEvent.change(screen.getByLabelText("新增项目名称"), { target: { value: "错的类目" } });
-    fireEvent.click(screen.getByRole("button", { name: "确认添加项目" }));
+    addDraftProject("错的类目");
 
     expect(screen.getByRole("button", { name: "错的类目" })).toHaveClass("active");
     fireEvent.click(screen.getByRole("button", { name: "删除错的类目" }));
@@ -385,9 +399,7 @@ describe("FactoriesPage", () => {
   it("adds a fan project and immediately uses fan-specific print presets", () => {
     render(<FactoriesPage factories={[factory]} quotes={[quote]} selectedFactoryId={factory.id} onSelect={vi.fn()} onChanged={vi.fn()} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "添加项目" }));
-    fireEvent.change(screen.getByLabelText("新增项目名称"), { target: { value: "扇子" } });
-    fireEvent.click(screen.getByRole("button", { name: "确认添加项目" }));
+    addDraftProject("扇子");
 
     expect(screen.getByRole("button", { name: "扇子" })).toHaveClass("active");
     expect(screen.getByRole("heading", { name: "扇子" })).toBeInTheDocument();
@@ -401,9 +413,7 @@ describe("FactoriesPage", () => {
   it("maps alias project names like delivery forms to carbonless form presets", () => {
     render(<FactoriesPage factories={[factory]} quotes={[quote]} selectedFactoryId={factory.id} onSelect={vi.fn()} onChanged={vi.fn()} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "添加项目" }));
-    fireEvent.change(screen.getByLabelText("新增项目名称"), { target: { value: "送货单" } });
-    fireEvent.click(screen.getByRole("button", { name: "确认添加项目" }));
+    addDraftProject("送货单");
 
     expect(screen.getByRole("button", { name: "联单" })).toHaveClass("active");
     expect(screen.getByRole("heading", { name: "联单" })).toBeInTheDocument();
