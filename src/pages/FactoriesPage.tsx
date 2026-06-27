@@ -1,4 +1,4 @@
-import { ArrowLeft, Check, ClipboardList, Edit3, ExternalLink, Factory, PackagePlus, Plus, Search, Tag, Trash2, Truck, X } from "lucide-react";
+import { ArrowLeft, Check, ClipboardList, Copy, Edit3, ExternalLink, Factory, PackagePlus, Plus, Search, Tag, Trash2, Truck, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { api } from "../lib/api";
@@ -40,6 +40,12 @@ const emptyFactory: SourceFactoryInput = {
   shippingNotes: "",
   notes: "",
 };
+
+async function copyText(value: string) {
+  if (!value.trim()) return false;
+  await navigator.clipboard?.writeText(value);
+  return true;
+}
 
 type FactoryProjectGroup = {
   projectName: string;
@@ -725,6 +731,7 @@ export function FactoriesPage({
   const [localFactoryProjects, setLocalFactoryProjects] = useState<SourceFactoryProject[]>([]);
   const [draftKey, setDraftKey] = useState(0);
   const [factoryModal, setFactoryModal] = useState<SourceFactory | "new" | null>(null);
+  const [copiedFactoryField, setCopiedFactoryField] = useState("");
   const lastSelectedFactoryId = useRef<string | null | undefined>(undefined);
 
   useEffect(() => {
@@ -786,6 +793,7 @@ export function FactoriesPage({
     setNewCategoryName("");
     setNewProjectName("");
     setProjectError("");
+    setCopiedFactoryField("");
     setDraftKey((value) => value + 1);
   }, [activeFactoryId]);
 
@@ -949,6 +957,13 @@ export function FactoriesPage({
     }
   };
 
+  const copyFactoryField = async (label: string, value: string) => {
+    if (await copyText(value)) {
+      setCopiedFactoryField(label);
+      window.setTimeout(() => setCopiedFactoryField((current) => current === label ? "" : current), 1400);
+    }
+  };
+
   const onQuoteSaved = (quote: SourceQuote) => {
     setActiveProjectName(canonicalPrintProjectName(quote.itemName));
     setActiveQuoteId(quote.id);
@@ -981,12 +996,37 @@ export function FactoriesPage({
         </div>
 
         <section className="factory-contact-strip">
-          <div><Truck size={16} /><span>电话</span><strong>{activeFactory.phone || "未填写"}</strong></div>
-          <div><span>微信</span><strong>{activeFactory.wechat || "未填写"}</strong></div>
-          <div><span>QQ号</span><strong>{activeFactory.qq || "未填写"}</strong></div>
-          <div><span>下单网址</span>{activeFactory.orderUrl ? <button type="button" className="factory-url-button" onClick={() => void openFactoryOrderUrl(activeFactory.orderUrl)}><span>打开下单网址</span><ExternalLink size={14} /></button> : <strong>未填写</strong>}</div>
-          <div><span>地址</span><strong>{activeFactory.address || "未填写"}</strong></div>
+          <div>
+            <Truck size={16} /><span>电话</span>
+            <strong>{activeFactory.phone || "未填写"}</strong>
+            {activeFactory.phone && <button type="button" className="factory-copy-button" onClick={() => void copyFactoryField("电话", activeFactory.phone)} aria-label="复制电话"><Copy size={13} /></button>}
+          </div>
+          <div>
+            <span>微信</span>
+            <strong>{activeFactory.wechat || "未填写"}</strong>
+            {activeFactory.wechat && <button type="button" className="factory-copy-button" onClick={() => void copyFactoryField("微信", activeFactory.wechat)} aria-label="复制微信"><Copy size={13} /></button>}
+          </div>
+          <div>
+            <span>QQ号</span>
+            <strong>{activeFactory.qq || "未填写"}</strong>
+            {activeFactory.qq && <button type="button" className="factory-copy-button" onClick={() => void copyFactoryField("QQ号", activeFactory.qq)} aria-label="复制QQ号"><Copy size={13} /></button>}
+          </div>
+          <div>
+            <span>下单网址</span>
+            {activeFactory.orderUrl ? (
+              <div className="factory-url-actions">
+                <button type="button" className="factory-url-button" onClick={() => void openFactoryOrderUrl(activeFactory.orderUrl)}><span>打开下单网址</span><ExternalLink size={14} /></button>
+                <button type="button" className="factory-copy-button" onClick={() => void copyFactoryField("下单网址", activeFactory.orderUrl)} aria-label="复制下单网址"><Copy size={13} /></button>
+              </div>
+            ) : <strong>未填写</strong>}
+          </div>
+          <div>
+            <span>地址</span>
+            <strong>{activeFactory.address || "未填写"}</strong>
+            {activeFactory.address && <button type="button" className="factory-copy-button" onClick={() => void copyFactoryField("地址", activeFactory.address)} aria-label="复制地址"><Copy size={13} /></button>}
+          </div>
           <div><span>更新</span><strong>{shortDate(activeFactory.updatedAt)}</strong></div>
+          {copiedFactoryField && <small className="factory-copy-toast">已复制{copiedFactoryField}</small>}
           {(activeFactory.shippingNotes || activeFactory.notes) && <p>{activeFactory.shippingNotes || activeFactory.notes}</p>}
         </section>
 
