@@ -22,7 +22,7 @@ use crate::{
         AddressInput, AppSettings, Customer, DashboardSummary, FileRecord, ImportCustomerRow,
         ImportResult, NewCustomer, NewOrder, Order, OrderItem, OrderItemInput, Payment,
         PaymentInput, PlatformIdentityInput, SearchHit, SourceFactory, SourceFactoryInput,
-        SourceQuote, SourceQuoteInput,
+        SourceFactoryProject, SourceFactoryProjectInput, SourceQuote, SourceQuoteInput,
     },
 };
 
@@ -262,6 +262,11 @@ impl AppService {
             params![id, timestamp],
         )?;
         transaction.execute(
+            "UPDATE source_factory_projects SET deleted_at=?2, updated_at=?2, version=version+1
+             WHERE factory_id=?1 AND deleted_at IS NULL",
+            params![id, timestamp],
+        )?;
+        transaction.execute(
             "DELETE FROM search_index WHERE entity_type='factory' AND entity_id=?1",
             params![id],
         )?;
@@ -285,6 +290,150 @@ impl AppService {
         ids.iter()
             .filter_map(|id| load_source_factory(&connection, id).transpose())
             .collect()
+    }
+
+    pub fn list_source_factory_projects(
+        &self,
+        factory_id: Option<&str>,
+    ) -> AppResult<Vec<SourceFactoryProject>> {
+        let connection = self.connection()?;
+        let query = "SELECT id, factory_id, category_name, project_name, created_at, updated_at
+             FROM source_factory_projects
+             WHERE deleted_at IS NULL";
+        let projects = if let Some(factory_id) = factory_id {
+            connection
+                .prepare(&format!(
+                    "{query} AND factory_id=?1 ORDER BY category_name ASC, created_at ASC"
+                ))?
+                .query_map(params![factory_id], map_source_factory_project)?
+                .collect::<Result<Vec<_>, _>>()?
+        } else {
+            connection
+                .prepare(&format!(
+                    "{query} ORDER BY factory_id ASC, category_name ASC, created_at ASC"
+                ))?
+                .query_map([], map_source_factory_project)?
+                .collect::<Result<Vec<_>, _>>()?
+        };
+        Ok(projects)
+    }
+
+    pub fn create_source_factory_project(
+        &self,
+        input: SourceFactoryProjectInput,
+    ) -> AppResult<SourceFactoryProject> {
+        self.validate_source_factory_project_input(&input)?;
+        let mut connection = self.connection()?;
+        let existing = connection
+            .query_row(
+                "SELECT id FROM source_factory_projects
+                 WHERE factory_id=?1 AND category_name=?2 AND project_name=?3 AND deleted_at IS NULL",
+                params![
+                    input.factory_id.trim(),
+                    input.category_name.trim(),
+                    input.project_name.trim()
+                ],
+                |row| row.get::<_, String>(0),
+            )
+            .optional()?;
+        if let Some(id) = existing {
+            return self
+                .get_source_factory_project(&id)?
+                .ok_or_else(|| AppError::Message("厂家项目不存在".to_string()));
+        }
+
+        let transaction = connection.transaction()?;
+        let id = Uuid::new_v4().to_string();
+        let now = now();
+        transaction.execute(
+            "INSERT INTO source_factory_projects(
+                id, factory_id, category_name, project_name, created_at, updated_at
+             ) VALUES (?1, ?2, ?3, ?4, ?5, ?5)",
+            params![
+                id,
+                input.factory_id.trim(),
+                input.category_name.trim(),
+                input.project_name.trim(),
+                now,
+            ],
+        )?;
+        index_source_factory(&transaction, input.factory_id.trim())?;
+        transaction.commit()?;
+        self.get_source_factory_project(&id)?
+            .ok_or_else(|| AppError::Message("创建厂家项目后无法读取记录".to_string()))
+    }
+
+    pub fn delete_source_factory_project(&self, id: &str) -> AppResult<()> {
+        let mut connection = self.connection()?;
+        let project = self
+            .get_source_factory_project(id)?
+            .ok_or_else(|| AppError::Message("厂家项目不存在".to_string()))?;
+        let quote_count = if project.project_name.trim().is_empty() {
+            connection.query_row(
+                "SELECT COUNT(*) FROM source_factory_quotes q
+                 WHERE q.factory_id=?1 AND q.deleted_at IS NULL
+                 AND q.item_name IN (
+                    SELECT p.project_name FROM source_factory_projects p
+                    WHERE p.factory_id=?1 AND p.category_name=?2
+                    AND p.project_name <> '' AND p.deleted_at IS NULL
+                 )",
+                params![project.factory_id, project.category_name],
+                |row| row.get::<_, i64>(0),
+            )?
+        } else {
+            connection.query_row(
+                "SELECT COUNT(*) FROM source_factory_quotes
+                 WHERE factory_id=?1 AND item_name=?2 AND deleted_at IS NULL",
+                params![project.factory_id, project.project_name],
+                |row| row.get::<_, i64>(0),
+            )?
+        };
+        if quote_count > 0 {
+            return Err(AppError::Message(
+                if project.project_name.trim().is_empty() {
+                    "该大类下已有报价，不能直接删除"
+                } else {
+                    "该小类已有报价，不能直接删除"
+                }
+                .to_string(),
+            ));
+        }
+
+        let transaction = connection.transaction()?;
+        let timestamp = now();
+        if project.project_name.trim().is_empty() {
+            transaction.execute(
+                "UPDATE source_factory_projects SET deleted_at=?3, updated_at=?3, version=version+1
+                 WHERE factory_id=?1 AND category_name=?2 AND deleted_at IS NULL",
+                params![project.factory_id, project.category_name, timestamp],
+            )?;
+        } else {
+            transaction.execute(
+                "UPDATE source_factory_projects SET deleted_at=?2, updated_at=?2, version=version+1
+                 WHERE id=?1 AND deleted_at IS NULL",
+                params![id, timestamp],
+            )?;
+        }
+        index_source_factory(&transaction, &project.factory_id)?;
+        transaction.commit()?;
+        Ok(())
+    }
+
+    pub fn get_source_factory_project(
+        &self,
+        id: &str,
+    ) -> AppResult<Option<SourceFactoryProject>> {
+        let connection = self.connection()?;
+        connection
+            .query_row(
+                "SELECT id, factory_id, category_name, project_name, created_at, updated_at
+                 FROM source_factory_projects
+                 WHERE id=?1 AND deleted_at IS NULL",
+                params![id],
+                map_source_factory_project,
+            )
+            .optional()
+            .map_err(AppError::from)
     }
 
     pub fn create_source_quote(&self, input: SourceQuoteInput) -> AppResult<SourceQuote> {
@@ -449,6 +598,19 @@ impl AppService {
         }
         if input.production_cost_cents < 0 || input.shipping_cost_cents < 0 {
             return Err(AppError::Message("厂家价格和运费不能为负数".to_string()));
+        }
+        Ok(())
+    }
+
+    fn validate_source_factory_project_input(
+        &self,
+        input: &SourceFactoryProjectInput,
+    ) -> AppResult<()> {
+        if self.get_source_factory(input.factory_id.trim())?.is_none() {
+            return Err(AppError::Message("厂家不存在".to_string()));
+        }
+        if input.category_name.trim().is_empty() {
+            return Err(AppError::Message("大类名称不能为空".to_string()));
         }
         Ok(())
     }
@@ -1786,18 +1948,23 @@ fn index_source_factory(transaction: &Transaction<'_>, factory_id: &str) -> AppR
          SELECT 'factory', f.id, f.name,
          f.name || ' ' || f.contact_name || ' ' || f.phone || ' ' || f.wechat || ' ' || f.qq || ' ' ||
          f.address || ' ' || f.shipping_notes || ' ' || f.notes || ' ' || f.tags_json || ' ' ||
-         COALESCE((
-             SELECT group_concat(
-                q.item_type || ' ' || q.item_name || ' ' || q.quantity || ' ' ||
+          COALESCE((
+              SELECT group_concat(
+                 q.item_type || ' ' || q.item_name || ' ' || q.quantity || ' ' ||
                 q.size || ' ' || q.material || ' ' || q.paper_weight || ' ' ||
                 q.sides || ' ' || q.color || ' ' || q.finish || ' ' ||
                 q.lead_time || ' ' || q.notes,
                 ' '
              )
-             FROM source_factory_quotes q
-             WHERE q.factory_id=f.id AND q.deleted_at IS NULL
-         ), '')
-         FROM source_factories f WHERE f.id=?1 AND f.deleted_at IS NULL",
+              FROM source_factory_quotes q
+              WHERE q.factory_id=f.id AND q.deleted_at IS NULL
+          ), '') || ' ' ||
+          COALESCE((
+              SELECT group_concat(p.category_name || ' ' || p.project_name, ' ')
+              FROM source_factory_projects p
+              WHERE p.factory_id=f.id AND p.deleted_at IS NULL
+          ), '')
+          FROM source_factories f WHERE f.id=?1 AND f.deleted_at IS NULL",
         params![factory_id],
     )?;
     Ok(())
@@ -1936,6 +2103,17 @@ fn map_source_quote(row: &rusqlite::Row<'_>) -> rusqlite::Result<SourceQuote> {
         notes: row.get(15)?,
         created_at: row.get(16)?,
         updated_at: row.get(17)?,
+    })
+}
+
+fn map_source_factory_project(row: &rusqlite::Row<'_>) -> rusqlite::Result<SourceFactoryProject> {
+    Ok(SourceFactoryProject {
+        id: row.get(0)?,
+        factory_id: row.get(1)?,
+        category_name: row.get(2)?,
+        project_name: row.get(3)?,
+        created_at: row.get(4)?,
+        updated_at: row.get(5)?,
     })
 }
 

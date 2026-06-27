@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Bell, Command, DownloadCloud, Plus, RefreshCw, Search, Sparkles, X } from "lucide-react";
+import { Bell, Command, DownloadCloud, RefreshCw, Search, Sparkles, X } from "lucide-react";
 
 import { CustomerForm } from "./components/CustomerForm";
 import { OrderForm } from "./components/OrderForm";
@@ -17,6 +17,7 @@ import type {
   PageId,
   SearchHit,
   SourceFactory,
+  SourceFactoryProject,
   SourceQuote,
 } from "./lib/types";
 import { CustomersPage } from "./pages/CustomersPage";
@@ -52,6 +53,7 @@ export default function App() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [files, setFiles] = useState<FileRecord[]>([]);
   const [sourceFactories, setSourceFactories] = useState<SourceFactory[]>([]);
+  const [sourceFactoryProjects, setSourceFactoryProjects] = useState<SourceFactoryProject[]>([]);
   const [sourceQuotes, setSourceQuotes] = useState<SourceQuote[]>([]);
   const [dashboard, setDashboard] = useState<DashboardSummary>(emptyDashboard);
   const [loading, setLoading] = useState(true);
@@ -78,13 +80,14 @@ export default function App() {
     if (initial) setLoading(true);
     setError("");
     try {
-      const [nextSettings, nextCustomers, nextOrders, nextFiles, nextDashboard, nextFactories, nextQuotes] = await Promise.all([
+      const [nextSettings, nextCustomers, nextOrders, nextFiles, nextDashboard, nextFactories, nextFactoryProjects, nextQuotes] = await Promise.all([
         api.getSettings(),
         api.listCustomers(),
         api.listOrders(),
         api.listFiles(),
         api.dashboard(),
         api.listSourceFactories(),
+        api.listSourceFactoryProjects(),
         api.listSourceQuotes(),
       ]);
       setSettings(nextSettings);
@@ -93,6 +96,7 @@ export default function App() {
       setFiles(nextFiles);
       setDashboard(nextDashboard);
       setSourceFactories(nextFactories);
+      setSourceFactoryProjects(nextFactoryProjects);
       setSourceQuotes(nextQuotes);
     } catch (reason) {
       setError(String(reason));
@@ -248,16 +252,15 @@ export default function App() {
               <RefreshCw size={16} className={refreshing ? "spin" : ""} />{refreshing ? "刷新中" : "刷新"}
             </Button>
             <button className="icon-button notification"><Bell size={18} />{dashboard.overdue > 0 && <i>{dashboard.overdue}</i>}</button>
-            <Button onClick={newOrder}><Plus size={17} />新建订单</Button>
           </div>
         </header>
         {updateSurface}
         {error && <div className="fatal-banner">{error}<button onClick={() => load()}>重试</button></div>}
-        {page === "dashboard" && <DashboardPage summary={dashboard} onNewOrder={newOrder} onNewCustomer={() => setCustomerModal("new")} onNavigate={setPage} onSelectOrder={(order) => { setSelectedOrderId(order.id); setPage("orders"); }} />}
+        {page === "dashboard" && <DashboardPage summary={dashboard} onNewCustomer={() => setCustomerModal("new")} onNavigate={setPage} onSelectOrder={(order) => { setSelectedOrderId(order.id); setPage("orders"); }} />}
         {page === "customers" && <CustomersPage customers={customers} orders={orders} selectedCustomerId={selectedCustomerId} onSelect={(customer) => setSelectedCustomerId(customer.id)} onSelectOrder={(order) => { setSelectedCustomerId(order.customerId); setSelectedOrderId(order.id); setPage("orders"); }} onNew={() => setCustomerModal("new")} onEdit={setCustomerModal} onDelete={deleteCustomer} />}
         {page === "vip" && <CustomersPage customers={customers} orders={orders} selectedCustomerId={selectedCustomerId} vipOnly onSelect={(customer) => setSelectedCustomerId(customer.id)} onSelectOrder={(order) => { setSelectedCustomerId(order.customerId); setSelectedOrderId(order.id); setPage("orders"); }} onNew={() => setCustomerModal("new")} onEdit={setCustomerModal} onDelete={deleteCustomer} />}
         {page === "orders" && <OrdersPage orders={orders} customers={customers} files={files} libraryRoot={settings.libraryRoot} selectedOrderId={selectedOrderId} folderRefreshKey={fileRefreshKey} onNew={newOrder} onSelect={(order) => setSelectedOrderId(order.id)} onEdit={setOrderModal} onDelete={deleteOrder} onChanged={() => load()} />}
-        {page === "factories" && <FactoriesPage factories={sourceFactories} quotes={sourceQuotes} selectedFactoryId={selectedFactoryId} onSelect={(factory) => setSelectedFactoryId(factory.id)} onChanged={() => load()} />}
+        {page === "factories" && <FactoriesPage factories={sourceFactories} factoryProjects={sourceFactoryProjects} quotes={sourceQuotes} selectedFactoryId={selectedFactoryId} onSelect={(factory) => setSelectedFactoryId(factory.id)} onChanged={() => load()} />}
         {page === "files" && <FilesPage files={files} libraryRoot={settings.libraryRoot} onChanged={() => load()} />}
         {page === "import" && <ImportExportPage onChanged={() => load()} />}
         {page === "settings" && <SettingsPage settings={settings} onChanged={() => load()} />}

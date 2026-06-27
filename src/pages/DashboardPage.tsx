@@ -7,7 +7,6 @@ import {
   FileClock,
   PackageOpen,
   Palette,
-  Plus,
   Sparkles,
   UserPlus,
 } from "lucide-react";
@@ -50,13 +49,11 @@ function todoLabel(order: Order, today = todayString()) {
 
 export function DashboardPage({
   summary,
-  onNewOrder,
   onNewCustomer,
   onNavigate,
   onSelectOrder,
 }: {
   summary: DashboardSummary;
-  onNewOrder: () => void;
   onNewCustomer: () => void;
   onNavigate: (page: PageId) => void;
   onSelectOrder: (order: Order) => void;
@@ -74,7 +71,7 @@ export function DashboardPage({
         eyebrow="今日工作概览"
         title="早上好，今天也要有条理"
         description="把需要设计、发货和收款的事情集中处理。"
-        actions={<><Button variant="secondary" onClick={onNewCustomer}><UserPlus size={17} />新建客户</Button><Button onClick={onNewOrder}><Plus size={17} />新建订单</Button></>}
+        actions={<Button variant="secondary" onClick={onNewCustomer}><UserPlus size={17} />新建客户</Button>}
       />
       {summary.overdue > 0 && <div className="alert-banner"><AlertTriangle size={18} /><strong>有 {summary.overdue} 个订单已经逾期</strong><span>现在检查一下，避免遗漏交付。</span><button onClick={() => onNavigate("orders")}>查看订单 <ArrowRight size={15} /></button></div>}
       <div className="stat-grid">

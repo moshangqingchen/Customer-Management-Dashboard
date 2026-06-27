@@ -9,7 +9,8 @@ use crate::{
     models::{
         AppSettings, Customer, DashboardSummary, FileRecord, ImportCustomerRow, ImportResult,
         NewCustomer, NewOrder, Order, PaymentInput, SearchHit, SourceFactory, SourceFactoryInput,
-        SourceQuote, SourceQuoteInput, SpreadsheetPreview,
+        SourceFactoryProject, SourceFactoryProjectInput, SourceQuote, SourceQuoteInput,
+        SpreadsheetPreview,
     },
     service::AppService,
 };
@@ -129,6 +130,36 @@ pub fn update_source_factory(
 #[tauri::command]
 pub fn delete_source_factory(service: State<'_, AppService>, id: String) -> CommandResult<()> {
     service.delete_source_factory(&id).map_err(command_error)
+}
+
+#[tauri::command]
+pub fn list_source_factory_projects(
+    service: State<'_, AppService>,
+    factory_id: Option<String>,
+) -> CommandResult<Vec<SourceFactoryProject>> {
+    service
+        .list_source_factory_projects(factory_id.as_deref())
+        .map_err(command_error)
+}
+
+#[tauri::command]
+pub fn create_source_factory_project(
+    service: State<'_, AppService>,
+    input: SourceFactoryProjectInput,
+) -> CommandResult<SourceFactoryProject> {
+    service
+        .create_source_factory_project(input)
+        .map_err(command_error)
+}
+
+#[tauri::command]
+pub fn delete_source_factory_project(
+    service: State<'_, AppService>,
+    id: String,
+) -> CommandResult<()> {
+    service
+        .delete_source_factory_project(&id)
+        .map_err(command_error)
 }
 
 #[tauri::command]

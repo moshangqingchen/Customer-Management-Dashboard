@@ -126,6 +126,25 @@ pub struct SourceFactory {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct SourceFactoryProjectInput {
+    pub factory_id: String,
+    pub category_name: String,
+    pub project_name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SourceFactoryProject {
+    pub id: String,
+    pub factory_id: String,
+    pub category_name: String,
+    pub project_name: String,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SourceQuoteInput {
     pub factory_id: String,
     pub item_type: String,

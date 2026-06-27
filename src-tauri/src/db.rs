@@ -143,6 +143,17 @@ fn migrate(connection: &Connection) -> Result<()> {
             deleted_at TEXT
         );
 
+        CREATE TABLE IF NOT EXISTS source_factory_projects (
+            id TEXT PRIMARY KEY,
+            factory_id TEXT NOT NULL REFERENCES source_factories(id),
+            category_name TEXT NOT NULL,
+            project_name TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            version INTEGER NOT NULL DEFAULT 1,
+            deleted_at TEXT
+        );
+
         CREATE TABLE IF NOT EXISTS payments (
             id TEXT PRIMARY KEY,
             order_id TEXT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
@@ -178,6 +189,10 @@ fn migrate(connection: &Connection) -> Result<()> {
         CREATE INDEX IF NOT EXISTS idx_files_created ON files(created_at DESC);
         CREATE INDEX IF NOT EXISTS idx_source_quotes_factory ON source_factory_quotes(factory_id);
         CREATE INDEX IF NOT EXISTS idx_source_quotes_item ON source_factory_quotes(item_name, item_type);
+        CREATE INDEX IF NOT EXISTS idx_source_projects_factory ON source_factory_projects(factory_id);
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_source_projects_unique_active
+            ON source_factory_projects(factory_id, category_name, project_name)
+            WHERE deleted_at IS NULL;
 
         INSERT OR IGNORE INTO schema_migrations(version, applied_at)
         VALUES (1, datetime('now'));

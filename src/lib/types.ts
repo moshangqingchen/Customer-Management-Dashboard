@@ -69,6 +69,18 @@ export interface SourceFactory extends SourceFactoryInput {
   updatedAt: string;
 }
 
+export interface SourceFactoryProjectInput {
+  factoryId: string;
+  categoryName: string;
+  projectName: string;
+}
+
+export interface SourceFactoryProject extends SourceFactoryProjectInput {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface SourceQuoteInput {
   factoryId: string;
   itemType: string;

@@ -15,6 +15,8 @@ import type {
   SearchHit,
   SourceFactory,
   SourceFactoryInput,
+  SourceFactoryProject,
+  SourceFactoryProjectInput,
   SourceQuote,
   SourceQuoteInput,
   SpreadsheetPreview,
@@ -219,6 +221,8 @@ let demoSourceQuotes: SourceQuote[] = [
   },
 ];
 
+let demoSourceFactoryProjects: SourceFactoryProject[] = [];
+
 function demoFactoriesWithCounts() {
   return demoSourceFactories.map((factory) => ({
     ...factory,
@@ -416,6 +420,51 @@ export const api = {
     if (isTauri) return call<void>("delete_source_factory", { id });
     demoSourceFactories = demoSourceFactories.filter((factory) => factory.id !== id);
     demoSourceQuotes = demoSourceQuotes.filter((quote) => quote.factoryId !== id);
+    demoSourceFactoryProjects = demoSourceFactoryProjects.filter((project) => project.factoryId !== id);
+  },
+  listSourceFactoryProjects: (factoryId?: string | null) =>
+    isTauri
+      ? call<SourceFactoryProject[]>("list_source_factory_projects", { factoryId: factoryId ?? null })
+      : Promise.resolve(demoSourceFactoryProjects.filter((project) => !factoryId || project.factoryId === factoryId)),
+  createSourceFactoryProject: async (input: SourceFactoryProjectInput) => {
+    if (isTauri) return call<SourceFactoryProject>("create_source_factory_project", { input });
+    if (!demoSourceFactories.some((factory) => factory.id === input.factoryId)) throw new Error("厂家不存在");
+    if (!input.categoryName.trim()) throw new Error("大类名称不能为空");
+    const existing = demoSourceFactoryProjects.find((project) =>
+      project.factoryId === input.factoryId &&
+      project.categoryName === input.categoryName.trim() &&
+      project.projectName === input.projectName.trim()
+    );
+    if (existing) return existing;
+    const project: SourceFactoryProject = {
+      ...input,
+      categoryName: input.categoryName.trim(),
+      projectName: input.projectName.trim(),
+      id: crypto.randomUUID(),
+      createdAt: now,
+      updatedAt: now,
+    };
+    demoSourceFactoryProjects = [...demoSourceFactoryProjects, project];
+    return project;
+  },
+  deleteSourceFactoryProject: async (id: string) => {
+    if (isTauri) return call<void>("delete_source_factory_project", { id });
+    const project = demoSourceFactoryProjects.find((item) => item.id === id);
+    if (!project) throw new Error("厂家项目不存在");
+    const hasQuotes = project.projectName
+      ? demoSourceQuotes.some((quote) => quote.factoryId === project.factoryId && quote.itemName === project.projectName)
+      : demoSourceQuotes.some((quote) =>
+          quote.factoryId === project.factoryId &&
+          demoSourceFactoryProjects.some((item) =>
+            item.factoryId === project.factoryId &&
+            item.categoryName === project.categoryName &&
+            item.projectName === quote.itemName
+          )
+        );
+    if (hasQuotes) throw new Error(project.projectName ? "该小类已有报价，不能直接删除" : "该大类下已有报价，不能直接删除");
+    demoSourceFactoryProjects = project.projectName
+      ? demoSourceFactoryProjects.filter((item) => item.id !== id)
+      : demoSourceFactoryProjects.filter((item) => item.factoryId !== project.factoryId || item.categoryName !== project.categoryName);
   },
   listSourceQuotes: (factoryId?: string | null) =>
     isTauri

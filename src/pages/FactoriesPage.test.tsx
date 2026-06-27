@@ -3,13 +3,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { FactoriesPage } from "./FactoriesPage";
 import { api } from "../lib/api";
-import type { SourceFactory, SourceQuote } from "../lib/types";
+import type { SourceFactory, SourceFactoryProject, SourceQuote } from "../lib/types";
 
 vi.mock("../lib/api", () => ({
   api: {
     createSourceFactory: vi.fn(),
     updateSourceFactory: vi.fn(),
     deleteSourceFactory: vi.fn(),
+    createSourceFactoryProject: vi.fn(),
+    deleteSourceFactoryProject: vi.fn(),
     createSourceQuote: vi.fn(),
     updateSourceQuote: vi.fn(),
     deleteSourceQuote: vi.fn(),
@@ -92,8 +94,15 @@ const flyerQuote: SourceQuote = {
   updatedAt: "2026-06-05T00:00:00Z",
 };
 
-function renderFactories(quotes: SourceQuote[] = [quote, quoteSmallBatch, flyerQuote]) {
-  return render(<FactoriesPage factories={[factory, displayFactory]} quotes={quotes} onSelect={vi.fn()} onChanged={vi.fn()} />);
+const defaultFactoryProjects: SourceFactoryProject[] = [
+  { id: "project-card-category", factoryId: factory.id, categoryName: "名片", projectName: "", createdAt: "2026-06-06T00:00:00Z", updatedAt: "2026-06-06T00:00:00Z" },
+  { id: "project-card-normal", factoryId: factory.id, categoryName: "名片", projectName: "普通名片", createdAt: "2026-06-06T00:00:00Z", updatedAt: "2026-06-06T00:00:00Z" },
+  { id: "project-flyer-category", factoryId: factory.id, categoryName: "宣传单", projectName: "", createdAt: "2026-06-06T00:00:00Z", updatedAt: "2026-06-06T00:00:00Z" },
+  { id: "project-flyer", factoryId: factory.id, categoryName: "宣传单", projectName: "宣传单", createdAt: "2026-06-06T00:00:00Z", updatedAt: "2026-06-06T00:00:00Z" },
+];
+
+function renderFactories(quotes: SourceQuote[] = [quote, quoteSmallBatch, flyerQuote], factoryProjects = defaultFactoryProjects) {
+  return render(<FactoriesPage factories={[factory, displayFactory]} factoryProjects={factoryProjects} quotes={quotes} onSelect={vi.fn()} onChanged={vi.fn()} />);
 }
 
 function datalistOptions(input: HTMLElement) {
@@ -113,10 +122,59 @@ function chooseSelectOption(label: string, text: string) {
   fireEvent.change(select, { target: { value: option?.value } });
 }
 
-function addDraftProject(name: string) {
-  fireEvent.click(screen.getByRole("button", { name: "添加项目" }));
-  fireEvent.change(screen.getByLabelText("新增项目名称"), { target: { value: name } });
-  fireEvent.click(screen.getByRole("button", { name: "确认添加项目" }));
+function projectButton(name: string, className: string) {
+  const button = screen.queryAllByRole("button", { name }).find((item) => item.classList.contains(className));
+  expect(button).toBeTruthy();
+  return button as HTMLElement;
+}
+
+async function findProjectButton(name: string, className: string) {
+  await waitFor(() => {
+    expect(screen.queryAllByRole("button", { name }).some((item) => item.classList.contains(className))).toBe(true);
+  });
+  return projectButton(name, className);
+}
+
+function categoryButton(name: string) {
+  return projectButton(name, "project-category-card");
+}
+
+function subProjectButton(name: string) {
+  return projectButton(name, "project-sub-card");
+}
+
+function expandCategory(name: string) {
+  const category = categoryButton(name);
+  if (category.getAttribute("aria-expanded") !== "true") fireEvent.click(category);
+}
+
+async function findCategoryButton(name: string) {
+  return findProjectButton(name, "project-category-card");
+}
+
+async function findSubProjectButton(name: string) {
+  return findProjectButton(name, "project-sub-card");
+}
+
+async function addCategory(name: string) {
+  fireEvent.click(screen.getByRole("button", { name: "添加大类" }));
+  fireEvent.change(screen.getByLabelText("新增大类名称"), { target: { value: name } });
+  fireEvent.click(screen.getByRole("button", { name: "确认添加大类" }));
+  await findCategoryButton(name);
+}
+
+async function addProject(categoryName: string, projectName = categoryName) {
+  const category = await findCategoryButton(categoryName);
+  if (category.getAttribute("aria-expanded") !== "true") fireEvent.click(category);
+  fireEvent.click(await screen.findByRole("button", { name: `添加${categoryName}小类` }));
+  fireEvent.change(screen.getByLabelText("新增小类名称"), { target: { value: projectName } });
+  fireEvent.click(screen.getByRole("button", { name: "确认添加小类" }));
+  await findSubProjectButton(projectName === "送货单" ? "联单" : projectName);
+}
+
+async function addDraftProject(name: string, categoryName = name) {
+  await addCategory(categoryName);
+  await addProject(categoryName, name);
 }
 
 describe("FactoriesPage", () => {
@@ -127,6 +185,17 @@ describe("FactoriesPage", () => {
     vi.mocked(api.updateSourceQuote).mockReset();
     vi.mocked(api.deleteSourceQuote).mockReset();
     vi.mocked(api.deleteSourceFactory).mockReset();
+    vi.mocked(api.createSourceFactoryProject).mockReset();
+    vi.mocked(api.deleteSourceFactoryProject).mockReset();
+    vi.mocked(api.createSourceFactoryProject).mockImplementation(async (input) => ({
+      id: `project-${input.categoryName}-${input.projectName || "category"}`,
+      factoryId: input.factoryId,
+      categoryName: input.categoryName,
+      projectName: input.projectName,
+      createdAt: "2026-06-08T00:00:00Z",
+      updatedAt: "2026-06-08T00:00:00Z",
+    }));
+    vi.mocked(api.deleteSourceFactoryProject).mockResolvedValue(undefined);
   });
 
   it("saves the factory QQ number with the factory profile", async () => {
@@ -171,14 +240,15 @@ describe("FactoriesPage", () => {
     renderFactories();
 
     fireEvent.click(screen.getByRole("button", { name: "进入华彩印刷源头厂" }));
-    const projectCard = screen.getByRole("button", { name: "名片" });
+    const projectCard = categoryButton("名片");
     expect(within(projectCard).getByText("名片")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "普通名片" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "宣传单" })).toBeInTheDocument();
+    expect(subProjectButton("普通名片")).toBeInTheDocument();
+    expandCategory("宣传单");
+    expect(subProjectButton("宣传单")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "不干胶" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "写真" })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "宣传单" }));
+    fireEvent.click(subProjectButton("宣传单"));
 
     expect(screen.getByLabelText("规格价格详情")).toBeInTheDocument();
     expect(screen.queryByLabelText("项目类型")).not.toBeInTheDocument();
@@ -189,18 +259,20 @@ describe("FactoriesPage", () => {
     expect(screen.getByRole("button", { name: /2000 张/ })).toHaveTextContent("¥168.00");
   });
 
-  it("does not prefill project presets for a new factory workspace", () => {
-    render(<FactoriesPage factories={[factory]} quotes={[]} selectedFactoryId={factory.id} onSelect={vi.fn()} onChanged={vi.fn()} />);
+  it("does not prefill project presets for a new factory workspace", async () => {
+    render(<FactoriesPage factories={[factory]} factoryProjects={[]} quotes={[]} selectedFactoryId={factory.id} onSelect={vi.fn()} onChanged={vi.fn()} />);
 
     expect(screen.getByText("还没有项目")).toBeInTheDocument();
     expect(screen.getByText("先添加项目")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "名片" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "宣传单" })).not.toBeInTheDocument();
 
-    addDraftProject("名片");
+    await addCategory("名片");
 
-    expect(screen.getByRole("button", { name: "名片" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "普通名片" })).toBeInTheDocument();
+    expect(categoryButton("名片")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "普通名片" })).not.toBeInTheDocument();
+    await addProject("名片", "普通名片");
+    expect(subProjectButton("普通名片")).toBeInTheDocument();
   });
 
   it("loads an existing quantity price and saves edits back to that quote", async () => {
@@ -250,8 +322,8 @@ describe("FactoriesPage", () => {
     vi.mocked(api.createSourceQuote).mockResolvedValue(savedQuote);
     render(<FactoriesPage factories={[factory]} quotes={[quote]} selectedFactoryId={factory.id} onSelect={vi.fn()} onChanged={onChanged} />);
 
-    addDraftProject("不干胶");
-    expect(screen.getByRole("heading", { name: "不干胶" })).toBeInTheDocument();
+    await addDraftProject("不干胶");
+    expect(await screen.findByRole("heading", { name: "不干胶" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /500 张/ }));
     fireEvent.change(screen.getByLabelText("厂家整批价"), { target: { value: "88" } });
     fireEvent.click(screen.getByRole("button", { name: "保存新价格" }));
@@ -265,7 +337,7 @@ describe("FactoriesPage", () => {
     expect(onChanged).toHaveBeenCalled();
   });
 
-  it("groups legacy A4 color-print quotes under flyers instead of a standalone project", () => {
+  it("groups legacy A4 color-print quotes under flyers instead of a standalone project", async () => {
     const colorPrintQuote: SourceQuote = {
       ...quote,
       id: "quote-a4-color",
@@ -279,7 +351,7 @@ describe("FactoriesPage", () => {
     render(<FactoriesPage factories={[factory]} quotes={[colorPrintQuote]} selectedFactoryId={factory.id} onSelect={vi.fn()} onChanged={vi.fn()} />);
 
     expect(screen.queryByRole("button", { name: "A4 双面彩印" })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "宣传单" }));
+    fireEvent.click(await findSubProjectButton("宣传单"));
 
     expect(screen.getByRole("heading", { name: "宣传单" })).toBeInTheDocument();
     expect(screen.getByLabelText("数量")).toHaveValue(200);
@@ -314,13 +386,14 @@ describe("FactoriesPage", () => {
     vi.mocked(api.createSourceQuote).mockResolvedValue(savedQuote);
     render(<FactoriesPage factories={[factory]} quotes={[quote]} selectedFactoryId={factory.id} onSelect={vi.fn()} onChanged={onChanged} />);
 
-    addDraftProject("不干胶");
+    await addDraftProject("不干胶");
+    expect(await screen.findByRole("heading", { name: "不干胶" })).toBeInTheDocument();
     expect(selectOptions("材质")).toEqual(expect.arrayContaining(["铜版不干胶", "透明不干胶", "PVC不干胶", "自定义"]));
     expect(selectOptions("尺寸")).toEqual(["50×30mm", "60×40mm", "70×50mm", "A4 210×297mm", "自定义"]);
     expect(selectOptions("工艺")).toEqual(expect.arrayContaining(["模切", "异形模切", "覆膜 / 模切", "自定义"]));
     expect(selectOptions("工艺")).not.toEqual(expect.arrayContaining(["圆角", "覆膜 / 圆角"]));
 
-    fireEvent.click(screen.getByRole("button", { name: "普通名片" }));
+    fireEvent.click(subProjectButton("普通名片"));
     expect(selectOptions("尺寸")).toEqual(["90×54毫米", "90×50毫米", "180×54毫米", "110×90毫米", "140×100毫米", "160×54毫米", "自定义"]);
     chooseSelectOption("尺寸", "自定义");
     expect(screen.getByLabelText("自定义尺寸")).toBeInTheDocument();
@@ -340,15 +413,18 @@ describe("FactoriesPage", () => {
     expect(onChanged).toHaveBeenCalled();
   });
 
-  it("opens photo-print subgroups with indoor, outdoor, and mounting presets", () => {
+  it("opens photo-print subgroups with indoor, outdoor, and mounting presets", async () => {
     render(<FactoriesPage factories={[factory]} quotes={[quote]} selectedFactoryId={factory.id} onSelect={vi.fn()} onChanged={vi.fn()} />);
 
-    addDraftProject("写真");
-    expect(screen.getByRole("button", { name: "室内写真" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "室外写真" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "写真裱板" })).toBeInTheDocument();
+    await addCategory("写真");
+    await addProject("写真", "室内写真");
+    await addProject("写真", "室外写真");
+    await addProject("写真", "写真裱板");
+    expect(subProjectButton("室内写真")).toBeInTheDocument();
+    expect(subProjectButton("室外写真")).toBeInTheDocument();
+    expect(subProjectButton("写真裱板")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "室外写真" }));
+    fireEvent.click(subProjectButton("室外写真"));
 
     expect(screen.getByRole("heading", { name: "室外写真" })).toBeInTheDocument();
     expect(selectOptions("材质/产品种类")).toEqual(expect.arrayContaining([
@@ -378,31 +454,31 @@ describe("FactoriesPage", () => {
     fireEvent.change(screen.getByLabelText("自定义尺寸宽"), { target: { value: "80" } });
     expect(screen.getByLabelText("尺寸")).toHaveValue("__custom_size__");
 
-    fireEvent.click(screen.getByRole("button", { name: "室内写真" }));
+    fireEvent.click(subProjectButton("室内写真"));
     expect(selectOptions("材质/产品种类")).toEqual(expect.arrayContaining(["室内PP背胶", "室内相纸", "室内灯片", "油画布", "KT板写真", "自定义"]));
 
-    fireEvent.click(screen.getByRole("button", { name: "写真裱板" }));
+    fireEvent.click(subProjectButton("写真裱板"));
     expect(selectOptions("材质/产品种类")).toEqual(expect.arrayContaining(["KT板写真", "冷裱板写真", "PVC板写真", "雪弗板写真", "自定义"]));
   });
 
-  it("removes a wrongly added draft project before any quote is saved", () => {
+  it("removes a wrongly added draft project before any quote is saved", async () => {
     render(<FactoriesPage factories={[factory]} quotes={[quote]} selectedFactoryId={factory.id} onSelect={vi.fn()} onChanged={vi.fn()} />);
 
-    addDraftProject("错的类目");
+    await addCategory("错的类目");
 
-    expect(screen.getByRole("button", { name: "错的类目" })).toHaveClass("active");
+    expect(categoryButton("错的类目")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "删除错的类目" }));
 
-    expect(screen.queryByRole("button", { name: "错的类目" })).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole("button", { name: "错的类目" })).not.toBeInTheDocument());
   });
 
-  it("adds a fan project and immediately uses fan-specific print presets", () => {
+  it("adds a fan project and immediately uses fan-specific print presets", async () => {
     render(<FactoriesPage factories={[factory]} quotes={[quote]} selectedFactoryId={factory.id} onSelect={vi.fn()} onChanged={vi.fn()} />);
 
-    addDraftProject("扇子");
+    await addDraftProject("扇子");
 
-    expect(screen.getByRole("button", { name: "扇子" })).toHaveClass("active");
-    expect(screen.getByRole("heading", { name: "扇子" })).toBeInTheDocument();
+    expect(await findSubProjectButton("扇子")).toHaveClass("active");
+    expect(await screen.findByRole("heading", { name: "扇子" })).toBeInTheDocument();
     expect(selectOptions("材质")).toEqual(expect.arrayContaining(["PP塑料", "PVC", "竹柄纸扇", "无纺布", "自定义"]));
     expect(selectOptions("尺寸")).toEqual(["17×17cm", "19×19cm", "21×21cm", "七寸", "八寸", "自定义"]);
     expect(selectOptions("工艺")).toEqual(expect.arrayContaining(["不选工艺", "装柄", "异形模切", "烫金", "自定义"]));
@@ -410,13 +486,13 @@ describe("FactoriesPage", () => {
     expect(datalistOptions(screen.getByLabelText("数量"))).toEqual(["500", "1000", "2000", "3000", "5000", "10000"]);
   });
 
-  it("maps alias project names like delivery forms to carbonless form presets", () => {
+  it("maps alias project names like delivery forms to carbonless form presets", async () => {
     render(<FactoriesPage factories={[factory]} quotes={[quote]} selectedFactoryId={factory.id} onSelect={vi.fn()} onChanged={vi.fn()} />);
 
-    addDraftProject("送货单");
+    await addDraftProject("送货单");
 
-    expect(screen.getByRole("button", { name: "联单" })).toHaveClass("active");
-    expect(screen.getByRole("heading", { name: "联单" })).toBeInTheDocument();
+    expect(await findSubProjectButton("联单")).toHaveClass("active");
+    expect(await screen.findByRole("heading", { name: "联单" })).toBeInTheDocument();
     expect(selectOptions("材质")).toEqual(expect.arrayContaining(["无碳复写纸", "双胶纸", "收据纸", "自定义"]));
     expect(selectOptions("克重/厚度")).toEqual(expect.arrayContaining(["二联", "三联", "四联", "100组/本", "自定义"]));
     expect(selectOptions("尺寸")).toEqual(expect.arrayContaining(["大32开 130×190mm", "A5 148×210mm", "A4 210×297mm", "自定义"]));

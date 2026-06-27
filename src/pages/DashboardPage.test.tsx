@@ -54,7 +54,6 @@ describe("DashboardPage", () => {
     render(
       <DashboardPage
         summary={summary}
-        onNewOrder={vi.fn()}
         onNewCustomer={vi.fn()}
         onNavigate={vi.fn()}
         onSelectOrder={vi.fn()}
@@ -82,7 +81,6 @@ describe("DashboardPage", () => {
     render(
       <DashboardPage
         summary={{ ...summary, todoOrders: [oldRecentOrder], recentOrders: [order] }}
-        onNewOrder={vi.fn()}
         onNewCustomer={vi.fn()}
         onNavigate={vi.fn()}
         onSelectOrder={vi.fn()}
