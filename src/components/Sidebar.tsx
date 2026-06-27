@@ -44,9 +44,11 @@ export function Sidebar({ page, onNavigate, libraryRoot }: { page: PageId; onNav
               key={item.id}
               className={page === item.id ? "active" : ""}
               onClick={() => onNavigate(item.id)}
+              aria-label={item.label}
+              title={item.label}
             >
               <span className={`nav-icon nav-${item.accent}`}><Icon size={18} /></span>
-              {item.label}
+              <span className="nav-label">{item.label}</span>
             </button>
           );
         })}
