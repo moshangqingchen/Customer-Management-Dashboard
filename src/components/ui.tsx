@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, PropsWithChildren, ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ButtonHTMLAttributes, type PropsWithChildren, type ReactNode } from "react";
 import { Star, X } from "lucide-react";
 
 import { getStatusTone } from "../lib/format";
@@ -18,6 +18,122 @@ export function Button({
 
 export function StatusBadge({ value }: { value: string }) {
   return <span className={`status-badge tone-${getStatusTone(value)}`}>{value}</span>;
+}
+
+export type SearchableSelectOption = string | { value: string; label: string };
+
+function searchableOption(option: SearchableSelectOption) {
+  return typeof option === "string" ? { value: option, label: option } : option;
+}
+
+export function SearchableSelect({
+  ariaLabel,
+  value,
+  options,
+  onChange,
+  placeholder = "输入关键字筛选",
+  className = "",
+  disabled = false,
+}: {
+  ariaLabel: string;
+  value: string;
+  options: SearchableSelectOption[];
+  onChange: (value: string) => void;
+  placeholder?: string;
+  className?: string;
+  disabled?: boolean;
+}) {
+  const normalizedOptions = useMemo(() => options.map(searchableOption), [options]);
+  const selectedLabel = normalizedOptions.find((option) => option.value === value)?.label ?? value;
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState(selectedLabel);
+  const closeTimer = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!open) setQuery(selectedLabel);
+  }, [open, selectedLabel]);
+
+  const trimmedQuery = query.trim().toLowerCase();
+  const filteredOptions = normalizedOptions.filter((option) => {
+    if (!trimmedQuery) return true;
+    return option.label.toLowerCase().includes(trimmedQuery) || option.value.toLowerCase().includes(trimmedQuery);
+  });
+
+  const selectOption = (nextValue: string) => {
+    const option = normalizedOptions.find((item) => item.value === nextValue);
+    onChange(nextValue);
+    setQuery(option?.label ?? nextValue);
+    setOpen(false);
+  };
+
+  const close = () => {
+    const exact = normalizedOptions.find((option) => option.label === query || option.value === query);
+    if (exact && exact.value !== value) {
+      selectOption(exact.value);
+      return;
+    }
+    setOpen(false);
+    setQuery(selectedLabel);
+  };
+
+  return (
+    <div className={`searchable-select ${className}`}>
+      <input
+        aria-label={ariaLabel}
+        aria-expanded={open}
+        aria-autocomplete="list"
+        data-options={normalizedOptions.map((option) => option.label).join("\n")}
+        disabled={disabled}
+        role="combobox"
+        value={query}
+        placeholder={selectedLabel || placeholder}
+        onFocus={(event) => {
+          if (closeTimer.current) window.clearTimeout(closeTimer.current);
+          setQuery("");
+          setOpen(true);
+          event.currentTarget.select();
+        }}
+        onBlur={() => {
+          closeTimer.current = window.setTimeout(close, 120);
+        }}
+        onChange={(event) => {
+          setQuery(event.target.value);
+          setOpen(true);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            const exact = normalizedOptions.find((option) => option.label === query || option.value === query);
+            const next = exact ?? filteredOptions[0];
+            if (next) selectOption(next.value);
+          }
+          if (event.key === "Escape") {
+            event.preventDefault();
+            setOpen(false);
+            setQuery(selectedLabel);
+          }
+        }}
+      />
+      {open && (
+        <div className="searchable-select-menu" role="listbox">
+          {filteredOptions.length ? filteredOptions.map((option) => (
+            <div
+              className={option.value === value ? "active" : ""}
+              key={option.value}
+              role="option"
+              aria-selected={option.value === value}
+              onMouseDown={(event) => {
+                event.preventDefault();
+                selectOption(option.value);
+              }}
+            >
+              {option.label}
+            </div>
+          )) : <div className="empty" role="note">没有匹配选项</div>}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function StarRating({ value, onChange, compact = false }: { value: number; onChange?: (value: number) => void; compact?: boolean }) {

@@ -4,21 +4,28 @@ import { Box, Plus, ReceiptText, Trash2, Truck } from "lucide-react";
 import { api } from "../lib/api";
 import { formatCents } from "../lib/format";
 import {
+  buildGroupedPrintFinish,
   canonicalPrintProjectName,
   childPrintProjectNames,
   defaultPrintProjectForCategory,
   defaultPrintProjectName,
+  defaultGroupedPrintFinish,
   fallbackPrintPreset,
   matchingPrintPresetValue,
   printCategoryName,
+  printFinishGroupsForProject,
+  printPaperWeightOptionsForMaterial,
   printProjectSuggestions,
   printPresetForProject,
   printSpecValue,
   printTopLevelCategories,
+  splitGroupedPrintFinish,
+  splitLegacyPrintMaterial,
   uniquePrintValues,
+  ungroupedPrintFinish,
 } from "../lib/printPresets";
 import type { AddressInput, Customer, NewOrder, Order, OrderItemInput, SourceQuote } from "../lib/types";
-import { Button } from "./ui";
+import { Button, SearchableSelect } from "./ui";
 
 const emptySourceSnapshot = {
   sourceQuoteId: null,
@@ -264,12 +271,14 @@ function buildPrintMaterial(material: string, paperWeight: string) {
 function defaultPrintSpec(projectName: string) {
   const preset = printPresetForProject(projectName);
   const canonicalProjectName = canonicalPrintProjectName(projectName);
+  const material = preset.materials[0] ?? "";
+  const paperWeight = printPaperWeightOptionsForMaterial(projectName, material)[0] ?? "";
   return buildPrintSpec({
     size: preset.sizes[0] ?? "",
-    material: buildPrintMaterial(preset.materials[0] ?? "", preset.paperWeights[0] ?? ""),
-    sides: ["联单", "易拉宝"].includes(canonicalProjectName) ? "单面" : "双面",
-    color: canonicalProjectName === "联单" ? "黑白" : "彩色",
-    finish: "",
+    material: buildPrintMaterial(material, paperWeight),
+    sides: preset.sideOptions?.[0] ?? (["联单", "易拉宝"].includes(canonicalProjectName) ? "单面" : "双面"),
+    color: preset.colors?.[0] ?? (canonicalProjectName === "联单" ? "黑白" : "彩色"),
+    finish: defaultGroupedPrintFinish(projectName),
   });
 }
 
@@ -279,12 +288,13 @@ function matchingPresetValue(value: string, options: string[]) {
 
 function printMaterialValue(projectName: string, materialSpec: string) {
   const preset = printPresetForProject(projectName);
-  return matchingPresetValue(materialSpec, preset.materials) || preset.materials[0] || "";
+  return splitLegacyPrintMaterial(projectName, materialSpec).material || matchingPresetValue(materialSpec, preset.materials) || preset.materials[0] || "";
 }
 
 function printPaperWeightValue(projectName: string, materialSpec: string) {
-  const preset = printPresetForProject(projectName);
-  return matchingPresetValue(materialSpec, preset.paperWeights) || preset.paperWeights[0] || "";
+  const material = printMaterialValue(projectName, materialSpec);
+  const options = printPaperWeightOptionsForMaterial(projectName, material);
+  return splitLegacyPrintMaterial(projectName, materialSpec).paperWeight || matchingPresetValue(materialSpec, options) || options[0] || "";
 }
 
 function sourceQuoteSnapshot(quote: SourceQuote) {
@@ -321,12 +331,14 @@ function sourceQuoteCategoryMatches(quote: SourceQuote, item: OrderItemInput) {
 function sourceQuoteFullSpecMatches(quote: SourceQuote, item: OrderItemInput) {
   const spec = parsePrintSpec(item.printSpec);
   const material = specValue(spec.material);
+  const projectName = canonicalPrintProjectName(quote.itemName);
+  const quoteMaterialParts = splitLegacyPrintMaterial(projectName, quote.material, quote.paperWeight);
   return (
     sourceQuoteCategoryMatches(quote, item) &&
     quote.quantity === item.quantity &&
     specValue(quote.size) === specValue(spec.size) &&
-    (!quote.material || material.includes(specValue(quote.material))) &&
-    (!quote.paperWeight || material.includes(specValue(quote.paperWeight))) &&
+    (!quoteMaterialParts.material || material.includes(specValue(quoteMaterialParts.material))) &&
+    (!quoteMaterialParts.paperWeight || material.includes(specValue(quoteMaterialParts.paperWeight))) &&
     specValue(quote.sides) === specValue(spec.sides) &&
     specValue(quote.color) === specValue(spec.color) &&
     finishSpecValue(quote.finish) === finishSpecValue(spec.finish)
@@ -683,9 +695,18 @@ export function OrderForm({ customers, sourceQuotes = [], order, onSaved, onCanc
             const projectOptions = projectPresets(uiItemType);
             const sizeOptions = isPrint ? printPreset.sizes : sizePresets(uiItemType, item.name);
             const quantityOptions = isPrint ? printPreset.quantities : [1, 2, 3, 5, 10];
+            const colorOptions = isPrint ? printPreset.colors ?? ["彩色", "黑白", "专色"] : [];
+            const colorLabel = isPrint ? printPreset.colorLabel ?? "颜色" : "颜色";
+            const sideOptions = isPrint ? printPreset.sideOptions ?? ["单面", "双面"] : [];
+            const sideLabel = isPrint ? printPreset.sideLabel ?? "单双面" : "单双面";
+            const finishGroups = isPrint ? printFinishGroupsForProject(printProject) : [];
+            const hasFinishGroups = finishGroups.length > 0;
+            const groupedFinishValues = isPrint ? splitGroupedPrintFinish(printProject, spec.finish) : {};
+            const customGroupedFinish = isPrint ? ungroupedPrintFinish(printProject, spec.finish) : "";
             const quantityUnit = isPrint ? printPreset.quantityUnit : "项";
             const materialValue = isPrint ? printMaterialValue(printProject, spec.material) : "";
             const paperWeightValue = isPrint ? printPaperWeightValue(printProject, spec.material) : "";
+            const paperWeightOptions = isPrint ? printPaperWeightOptionsForMaterial(printProject, materialValue) : [];
             const suggestedTotal = suggestedSaleTotalCents(item);
             const quoteOptions = sourceQuoteOptionsForItem(sourceQuotes, item);
             const customQuantityOption = isPrint && item.quantity > 0 && !quantityOptions.includes(item.quantity);
@@ -723,9 +744,18 @@ export function OrderForm({ customers, sourceQuotes = [], order, onSaved, onCanc
                 ...emptySourceSnapshot,
               }, { autoMatchSource: true });
             };
-            const setPrintMaterialSpec = (material: string, paperWeight: string) => setSpec("material", buildPrintMaterial(material, paperWeight));
+            const setPrintMaterialSpec = (material: string, paperWeight: string) => {
+              const nextPaperWeights = printPaperWeightOptionsForMaterial(printProject, material);
+              setSpec("material", buildPrintMaterial(material, nextPaperWeights.includes(paperWeight) ? paperWeight : nextPaperWeights[0] ?? paperWeight));
+            };
             const customSizeOption = spec.size && !sizeOptions.includes(spec.size);
-            const customFinishOption = spec.finish && !printPreset.finishes.includes(spec.finish);
+            const customFinishOption = spec.finish && !hasFinishGroups && !printPreset.finishes.includes(spec.finish);
+            const setGroupedFinish = (groupKey: string, value: string) => {
+              setSpec("finish", buildGroupedPrintFinish(printProject, { ...groupedFinishValues, [groupKey]: value }, customGroupedFinish));
+            };
+            const setCustomGroupedFinish = (value: string) => {
+              setSpec("finish", buildGroupedPrintFinish(printProject, groupedFinishValues, value));
+            };
             const setQuantity = (quantity: number, autoMatchSource = false) => {
               setItem(index, {
                 quantity,
@@ -776,24 +806,27 @@ export function OrderForm({ customers, sourceQuotes = [], order, onSaved, onCanc
                       <span>{quantityUnit}</span>
                     </div></label>
                     <label><span>个人报价</span><div className="money-input"><span>¥</span><input type="number" min="0" step="0.01" value={totalPriceInputValue} onChange={(event) => setTotalPrice(event.target.value)} onBlur={() => clearTotalPriceDraft(index)} aria-label="个人报价" /></div></label>
-                    <label><span>尺寸</span><select aria-label="尺寸" value={spec.size} onChange={(event) => setSpec("size", event.target.value)}>
-                      <option value="">未选择</option>
-                      {customSizeOption && <option value={spec.size}>{spec.size}</option>}
-                      {sizeOptions.map((option) => <option value={option} key={option}>{option}</option>)}
-                    </select></label>
-                    <label><span>{printPreset.materialLabel ?? "纸张/材质"}</span><select value={materialValue} onChange={(event) => setPrintMaterialSpec(event.target.value, paperWeightValue)}>
-                      {printPreset.materials.map((option) => <option value={option} key={option}>{option}</option>)}
-                    </select></label>
-                    <label><span>{printPreset.paperWeightLabel ?? "克重/厚度"}</span><select value={paperWeightValue} onChange={(event) => setPrintMaterialSpec(materialValue, event.target.value)}>
-                      {printPreset.paperWeights.map((option) => <option value={option} key={option}>{option}</option>)}
-                    </select></label>
-                    <label><span>单双面</span><select value={spec.sides} onChange={(event) => setSpec("sides", event.target.value)}><option value="">未选择</option><option>单面</option><option>双面</option></select></label>
-                    <label><span>颜色</span><select value={spec.color} onChange={(event) => setSpec("color", event.target.value)}><option value="">未选择</option><option>彩色</option><option>黑白</option><option>专色</option></select></label>
-                    <label><span>工艺</span><select value={spec.finish} onChange={(event) => setSpec("finish", event.target.value)}>
-                      <option value="">不选工艺</option>
-                      {customFinishOption && <option value={spec.finish}>{spec.finish}</option>}
-                      {printPreset.finishes.filter((option) => option !== "不选工艺").map((option) => <option value={option} key={option}>{option}</option>)}
-                    </select></label>
+                    <label><span>尺寸</span><SearchableSelect ariaLabel="尺寸" value={spec.size} options={[{ value: "", label: "未选择" }, ...(customSizeOption ? [spec.size] : []), ...sizeOptions]} onChange={(value) => setSpec("size", value)} /></label>
+                    <label><span>{printPreset.materialLabel ?? "纸张/材质"}</span><SearchableSelect ariaLabel={printPreset.materialLabel ?? "纸张/材质"} value={materialValue} options={printPreset.materials} onChange={(value) => setPrintMaterialSpec(value, paperWeightValue)} /></label>
+                    <label><span>{printPreset.paperWeightLabel ?? "克重/厚度"}</span><SearchableSelect ariaLabel={printPreset.paperWeightLabel ?? "克重/厚度"} value={paperWeightValue} options={paperWeightOptions} onChange={(value) => setPrintMaterialSpec(materialValue, value)} /></label>
+                    <label><span>{sideLabel}</span><SearchableSelect ariaLabel={sideLabel} value={spec.sides} options={[{ value: "", label: "未选择" }, ...sideOptions]} onChange={(value) => setSpec("sides", value)} /></label>
+                    <label><span>{colorLabel}</span><SearchableSelect ariaLabel={colorLabel} value={spec.color} options={[{ value: "", label: "未选择" }, ...colorOptions]} onChange={(value) => setSpec("color", value)} /></label>
+                    {hasFinishGroups ? (
+                      <>
+                        {finishGroups.map((group) => {
+                          const groupValue = groupedFinishValues[group.key] ?? group.emptyOption ?? "";
+                          return (
+                            <label key={group.key}>
+                              <span>{group.label}</span>
+                              <SearchableSelect ariaLabel={group.label} value={groupValue} options={group.options} onChange={(value) => setGroupedFinish(group.key, value)} />
+                            </label>
+                          );
+                        })}
+                        <label><span>其他工艺</span><input aria-label="其他工艺" value={customGroupedFinish} onChange={(event) => setCustomGroupedFinish(event.target.value)} placeholder="没有可留空" /></label>
+                      </>
+                    ) : (
+                      <label><span>工艺</span><SearchableSelect ariaLabel="工艺" value={spec.finish} options={[{ value: "", label: "不选工艺" }, ...(customFinishOption ? [spec.finish] : []), ...printPreset.finishes.filter((option) => option !== "不选工艺")]} onChange={(value) => setSpec("finish", value)} /></label>
+                    )}
                     <label className="source-quote-field"><span>源头厂家报价</span><select value={item.sourceQuoteId ?? ""} onChange={(event) => applySourceQuote(index, event.target.value, currentTotalPriceCents())}>
                       <option value="">不选择厂家报价</option>
                       {quoteOptions.map((quote) => <option value={quote.id} key={quote.id}>{quoteOptionLabel(quote)}</option>)}

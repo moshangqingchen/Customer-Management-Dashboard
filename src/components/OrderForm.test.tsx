@@ -81,11 +81,11 @@ const flyerSourceQuote: SourceQuote = {
   factoryId: "factory-huacai",
   factoryName: "华彩印刷源头厂",
   itemType: "印刷",
-  itemName: "宣传单",
+  itemName: "合版宣传单",
   quantity: 500,
-  size: "A4 210×297mm",
+  size: "16开210×285mm",
   material: "铜版纸",
-  paperWeight: "128g",
+  paperWeight: "行标157g",
   sides: "双面",
   color: "彩色",
   finish: "",
@@ -104,6 +104,8 @@ function datalistOptions(input: HTMLElement) {
 }
 
 function selectOptions(select: Element) {
+  const searchableOptions = select.getAttribute("data-options");
+  if (searchableOptions !== null) return searchableOptions.split("\n").filter(Boolean);
   return Array.from(select.querySelectorAll<HTMLOptionElement>("option")).map((option) => option.value || option.textContent);
 }
 
@@ -215,9 +217,14 @@ describe("OrderForm", () => {
 
     fireEvent.change(category, { target: { value: "联单" } });
 
-    expect(selectOptions(screen.getByLabelText("纸张/材质"))).toEqual(expect.arrayContaining(["无碳复写纸", "白红黄三联纸"]));
-    expect(selectOptions(screen.getByLabelText("联数/每本"))).toEqual(expect.arrayContaining(["三联", "100组/本"]));
-    expect(selectOptions(screen.getByLabelText("数量"))).toEqual(["500", "1000", "2000", "3000", "5000", "10000"]);
+    expect(selectOptions(screen.getByLabelText("印刷"))).toEqual(expect.arrayContaining(["不换版（单面单黑）", "换版（客服报价）"]));
+    expect(selectOptions(screen.getByLabelText("纸张"))).toEqual(expect.arrayContaining(["2联（50组/本）", "3联（30组/本）", "5联（20组/本）"]));
+    expect(selectOptions(screen.getByLabelText("尺寸"))).toEqual(expect.arrayContaining(["210×290mm", "210×145mm", "190×85mm"]));
+    expect(selectOptions(screen.getByLabelText("色序"))).toEqual(expect.arrayContaining(["白粉", "白黄", "白粉蓝黄绿"]));
+    expect(selectOptions(screen.getByLabelText("打码"))).toEqual(["无", "打单联号(下单备注打几号/颜色)"]);
+    expect(selectOptions(screen.getByLabelText("裹皮"))).toEqual(["无", "加裹皮"]);
+    expect(selectOptions(screen.getByLabelText("垫板"))).toEqual(["无", "加垫片"]);
+    expect(selectOptions(screen.getByLabelText("数量"))).toEqual(["100", "200", "300", "500", "1000"]);
   });
 
   it("switches photo-print standards between indoor, outdoor, and mounting subgroups", () => {
@@ -257,6 +264,33 @@ describe("OrderForm", () => {
 
     fireEvent.change(screen.getByLabelText("印刷小类"), { target: { value: "写真裱板" } });
     expect(selectOptions(screen.getByLabelText("材质/产品种类"))).toEqual(expect.arrayContaining(["KT板写真", "冷裱板写真", "PVC板写真", "雪弗板写真"]));
+  });
+
+  it("switches booklet standards between dedicated and budget subgroups", () => {
+    const { container } = render(<OrderForm customers={[customer]} onSaved={vi.fn()} onCancel={vi.fn()} />);
+
+    const itemTypeSelect = container.querySelector(".item-row select");
+    expect(itemTypeSelect).not.toBeNull();
+    fireEvent.change(itemTypeSelect!, { target: { value: "印刷品" } });
+
+    fireEvent.change(screen.getByLabelText("印刷类目"), { target: { value: "画册" } });
+    expect(screen.getByLabelText("印刷小类")).toHaveDisplayValue("专版画册");
+    expect(selectOptions(screen.getByLabelText("印刷小类"))).toEqual(["专版画册", "特惠画册"]);
+    expect(selectOptions(screen.getByLabelText("尺寸"))).toEqual(expect.arrayContaining(["大度16开(285×210)A4", "正度16开(260×185)", "大度32开(210×140)A5"]));
+    expect(selectOptions(screen.getByLabelText("封面纸张"))).toEqual(expect.arrayContaining(["铜版纸", "高档铜版纸", "珠光纸"]));
+    expect(selectOptions(screen.getByLabelText("封面克重"))).toEqual(expect.arrayContaining(["250g", "300g", "157g"]));
+    expect(selectOptions(screen.getByLabelText("内页P数"))).toEqual(expect.arrayContaining(["4P", "16P", "96P"]));
+    expect(selectOptions(screen.getByLabelText("内页纸张"))).toEqual(expect.arrayContaining(["铜版纸", "高档哑粉纸", "轻涂纸"]));
+    expect(selectOptions(screen.getByLabelText("装订方式"))).toEqual(expect.arrayContaining(["骑马钉", "无线胶装", "铁圈装"]));
+    expect(selectOptions(screen.getByLabelText("数量"))).toEqual(["500", "1000", "2000", "3000", "5000"]);
+
+    fireEvent.change(screen.getByLabelText("印刷小类"), { target: { value: "特惠画册" } });
+
+    expect(selectOptions(screen.getByLabelText("尺寸"))).toEqual(expect.arrayContaining(["210×285mm（16开）", "140×210mm（32开）"]));
+    expect(selectOptions(screen.getByLabelText("封面材质"))).toEqual(expect.arrayContaining(["双铜250克", "双铜300克", "双铜157克"]));
+    expect(selectOptions(screen.getByLabelText("内页材质"))).toEqual(["双铜157克", "双铜200克"]);
+    expect(selectOptions(screen.getByLabelText("装订方式"))).toEqual(["骑马装订", "无线胶装"]);
+    expect(selectOptions(screen.getByLabelText("封面覆膜"))).toEqual(["无", "封面覆膜"]);
   });
 
   it("clears the previous size when the project name changes", () => {
@@ -315,10 +349,38 @@ describe("OrderForm", () => {
     expect(itemTypeSelect).not.toBeNull();
     fireEvent.change(itemTypeSelect!, { target: { value: "印刷品" } });
     fireEvent.change(screen.getByLabelText("印刷类目"), { target: { value: "宣传单" } });
+    expect(screen.getByLabelText("印刷小类")).toHaveDisplayValue("合版宣传单");
+    expect(selectOptions(screen.getByLabelText("纸张"))).toEqual(expect.arrayContaining(["铜版纸", "双胶纸"]));
+    expect(selectOptions(screen.getByLabelText("克重"))).toEqual(expect.arrayContaining(["行标157g", "A级157g", "250g"]));
+    fireEvent.focus(screen.getByLabelText("纸张"));
+    fireEvent.change(screen.getByLabelText("纸张"), { target: { value: "双胶纸" } });
+    fireEvent.mouseDown(screen.getByRole("option", { name: "双胶纸" }));
+    expect(selectOptions(screen.getByLabelText("克重"))).toEqual(["100g"]);
+    fireEvent.focus(screen.getByLabelText("纸张"));
+    fireEvent.change(screen.getByLabelText("纸张"), { target: { value: "铜版纸" } });
+    fireEvent.mouseDown(screen.getByRole("option", { name: "铜版纸" }));
     fireEvent.change(screen.getByLabelText("数量"), { target: { value: "500" } });
 
-    expect(screen.getByLabelText("源头厂家报价")).toHaveDisplayValue("华彩印刷源头厂 · 宣传单 · 500 · ¥70.00 + 运费 ¥10.00");
+    expect(screen.getByLabelText("源头厂家报价")).toHaveDisplayValue("华彩印刷源头厂 · 合版宣传单 · 500 · ¥70.00 + 运费 ¥10.00");
     expect(screen.getByText("合计 ¥80.00")).toBeInTheDocument();
+  });
+
+  it("auto-matches legacy combined flyer paper names after paper and weight are split", () => {
+    const legacyFlyerQuote: SourceQuote = {
+      ...flyerSourceQuote,
+      id: "quote-flyer-legacy-paper",
+      material: "行标157g铜版纸",
+      paperWeight: "标准",
+    };
+    const { container } = render(<OrderForm customers={[customer]} sourceQuotes={[legacyFlyerQuote]} onSaved={vi.fn()} onCancel={vi.fn()} />);
+
+    const itemTypeSelect = container.querySelector(".item-row select");
+    expect(itemTypeSelect).not.toBeNull();
+    fireEvent.change(itemTypeSelect!, { target: { value: "印刷品" } });
+    fireEvent.change(screen.getByLabelText("印刷类目"), { target: { value: "宣传单" } });
+    fireEvent.change(screen.getByLabelText("数量"), { target: { value: "500" } });
+
+    expect(screen.getByLabelText("源头厂家报价")).toHaveDisplayValue("华彩印刷源头厂 · 合版宣传单 · 500 · ¥70.00 + 运费 ¥10.00");
   });
 
   it("auto-matches a legacy business-card quote under the new normal-card subgroup", () => {
