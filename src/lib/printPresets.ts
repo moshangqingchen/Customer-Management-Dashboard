@@ -48,12 +48,12 @@ export const printProjectNames = printProjectGroups.flatMap((group) => group.pro
 export const defaultPrintProjectName = printProjectGroups[0]?.projectNames[0] ?? "";
 
 const commonBusinessCardSizes = [
-  "90×54毫米",
-  "90×50毫米",
-  "180×54毫米",
-  "110×90毫米",
-  "140×100毫米",
-  "160×54毫米",
+  "90×54mm",
+  "90×50mm",
+  "180×54mm",
+  "110×90mm",
+  "140×100mm",
+  "160×54mm",
 ];
 
 const photoPrintSizes = [
@@ -78,6 +78,51 @@ const specialBusinessCardPapers = [
   "300克钢骨纸",
   "300g映画纸",
 ];
+const laminationOptions = ["无", "亮膜", "哑膜"];
+const normalBusinessCardFinishGroups: PrintFinishGroup[] = [
+  { key: "lamination", label: "覆膜", options: laminationOptions, emptyOption: "无" },
+  { key: "roundCorner", label: "圆角", options: ["无", "圆角"], emptyOption: "无" },
+  { key: "hotGold", label: "烫金", options: ["无", "烫金"], emptyOption: "无" },
+  { key: "hotSilver", label: "烫银", options: ["无", "烫银"], emptyOption: "无" },
+  { key: "uv", label: "UV", options: ["无", "UV"], emptyOption: "无" },
+  { key: "emboss", label: "击凸", options: ["无", "击凸"], emptyOption: "无" },
+  { key: "dieCut", label: "模切", options: ["无", "模切"], emptyOption: "无" },
+];
+const normalBusinessCardFinishes = uniquePrintValues([
+  "不选工艺",
+  ...normalBusinessCardFinishGroups.flatMap((group) => group.options.filter((option) => option !== group.emptyOption)),
+]);
+const pvcCardFinishGroups: PrintFinishGroup[] = [
+  { key: "roundCorner", label: "圆角", options: ["无", "圆角"], emptyOption: "无" },
+  { key: "surface", label: "卡面效果", options: ["无", "磨砂", "透明"], emptyOption: "无" },
+  { key: "lamination", label: "覆膜", options: laminationOptions, emptyOption: "无" },
+  { key: "hotGold", label: "烫金", options: ["无", "烫金"], emptyOption: "无" },
+  { key: "uv", label: "UV", options: ["无", "UV"], emptyOption: "无" },
+];
+const pvcCardFinishes = uniquePrintValues([
+  "不选工艺",
+  ...pvcCardFinishGroups.flatMap((group) => group.options.filter((option) => option !== group.emptyOption)),
+]);
+const specialBusinessCardFinishGroups: PrintFinishGroup[] = [
+  { key: "roundCorner", label: "圆角", options: ["无", "圆角"], emptyOption: "无" },
+  { key: "hotGold", label: "烫金", options: ["无", "烫金"], emptyOption: "无" },
+  { key: "hotSilver", label: "烫银", options: ["无", "烫银"], emptyOption: "无" },
+  { key: "uv", label: "UV", options: ["无", "UV"], emptyOption: "无" },
+  { key: "emboss", label: "击凸", options: ["无", "击凸"], emptyOption: "无" },
+  { key: "dieCut", label: "模切", options: ["无", "模切"], emptyOption: "无" },
+];
+const specialBusinessCardFinishes = uniquePrintValues([
+  "不选工艺",
+  ...specialBusinessCardFinishGroups.flatMap((group) => group.options.filter((option) => option !== group.emptyOption)),
+]);
+const stickerFinishGroups: PrintFinishGroup[] = [
+  { key: "lamination", label: "覆膜", options: laminationOptions, emptyOption: "无" },
+  { key: "dieCut", label: "模切", options: ["无", "模切", "异形模切"], emptyOption: "无" },
+];
+const stickerFinishes = uniquePrintValues([
+  "不选工艺",
+  ...stickerFinishGroups.flatMap((group) => group.options.filter((option) => option !== group.emptyOption)),
+]);
 const combinedFlyerPapers = ["铜版纸", "双胶纸"];
 const combinedFlyerWeightsByPaper: Record<string, string[]> = {
   铜版纸: ["行标157g", "A级157g", "行标200g", "250g", "105g"],
@@ -92,6 +137,17 @@ const combinedFlyerFinishGroups: PrintFinishGroup[] = [
   { key: "fold", label: "折页", options: flyerFoldOptions, emptyOption: "无" },
   { key: "cut", label: "通用模切", options: combinedFlyerCutOptions, emptyOption: "无" },
 ];
+const fanFinishGroups: PrintFinishGroup[] = [
+  { key: "dieCut", label: "模切", options: ["无", "模切", "异形模切"], emptyOption: "无" },
+  { key: "handle", label: "装柄", options: ["无", "装柄"], emptyOption: "无" },
+  { key: "lamination", label: "覆膜", options: laminationOptions, emptyOption: "无" },
+  { key: "uv", label: "UV", options: ["无", "UV"], emptyOption: "无" },
+  { key: "hotGold", label: "烫金", options: ["无", "烫金"], emptyOption: "无" },
+];
+const fanFinishes = uniquePrintValues([
+  "不选工艺",
+  ...fanFinishGroups.flatMap((group) => group.options.filter((option) => option !== group.emptyOption)),
+]);
 const dedicatedFlyerPapers = ["铜版纸", "高档铜版纸", "铜版卡", "哑粉纸", "高档哑粉纸", "双胶纸", "米白双胶纸", "米黄双胶纸", "白卡纸", "高白超感纸", "米白超感纸", "高阶映画纸", "珠光纸", "纯质纸", "轻型纸", "白牛皮纸", "黄牛皮纸", "白底白版纸", "灰底白版纸", "轻涂纸", "新闻纸"];
 const dedicatedFlyerWeights = ["80g", "105g", "128g", "157g", "180g", "200g", "250g", "300g", "350g"];
 const dedicatedFlyerSizes = [
@@ -198,21 +254,60 @@ const budgetBookletFinishes = uniquePrintValues([
   "不选工艺",
   ...budgetBookletFinishGroups.flatMap((group) => group.options.filter((option) => option && option !== group.emptyOption)),
 ]);
+const posterFinishGroups: PrintFinishGroup[] = [
+  { key: "lamination", label: "覆膜", options: laminationOptions, emptyOption: "无" },
+  { key: "cut", label: "裁切", options: ["无", "裁切"], emptyOption: "无" },
+  { key: "mounting", label: "裱板", options: ["无", "裱板"], emptyOption: "无" },
+];
+const posterFinishes = uniquePrintValues([
+  "不选工艺",
+  ...posterFinishGroups.flatMap((group) => group.options.filter((option) => option !== group.emptyOption)),
+]);
+const rollupFinishGroups: PrintFinishGroup[] = [
+  { key: "stand", label: "架子", options: ["无", "含架"], emptyOption: "无" },
+  { key: "package", label: "包装", options: ["无", "纸箱包装"], emptyOption: "无" },
+  { key: "replace", label: "换画面", options: ["无", "换画面"], emptyOption: "无" },
+  { key: "lamination", label: "覆膜", options: laminationOptions, emptyOption: "无" },
+];
+const rollupFinishes = uniquePrintValues([
+  "不选工艺",
+  ...rollupFinishGroups.flatMap((group) => group.options.filter((option) => option !== group.emptyOption)),
+]);
+const photoCutFinishGroups: PrintFinishGroup[] = [
+  { key: "cut", label: "裁切", options: ["不裁切", "裁单张", "异型裁切（不拼大张裁小块）"] },
+  { key: "edge", label: "边角处理", options: ["无", "包边"], emptyOption: "无" },
+  { key: "grommet", label: "打扣", options: ["无", "打扣"], emptyOption: "无" },
+];
+const photoCutFinishes = uniquePrintValues([
+  ...photoCutFinishGroups.flatMap((group) => group.options.filter((option) => option && option !== group.emptyOption)),
+]);
+const otherPrintFinishGroups: PrintFinishGroup[] = [
+  { key: "lamination", label: "覆膜", options: laminationOptions, emptyOption: "无" },
+  { key: "dieCut", label: "模切", options: ["无", "模切"], emptyOption: "无" },
+  { key: "crease", label: "压痕", options: ["无", "压痕"], emptyOption: "无" },
+  { key: "uv", label: "UV", options: ["无", "UV"], emptyOption: "无" },
+];
+const otherPrintFinishes = uniquePrintValues([
+  "不选工艺",
+  ...otherPrintFinishGroups.flatMap((group) => group.options.filter((option) => option !== group.emptyOption)),
+]);
 
 export const printProjectPresets: Record<string, PrintPreset> = {
   普通名片: {
     materials: ["铜版纸", "哑粉纸", "白卡纸"],
     paperWeights: ["250g", "300g", "350g", "400g"],
     sizes: commonBusinessCardSizes,
-    finishes: ["不选工艺", "覆膜", "哑膜", "亮膜", "圆角", "覆膜 / 圆角", "烫金", "烫银", "UV", "击凸", "模切"],
+    finishes: normalBusinessCardFinishes,
+    finishGroups: normalBusinessCardFinishGroups,
     quantities: printQuantityPresets,
     quantityUnit: "张",
   },
   PVC卡: {
     materials: ["PVC", "透明PVC", "磨砂PVC", "白卡PVC"],
     paperWeights: ["0.38mm", "0.5mm", "0.76mm"],
-    sizes: ["85.5×54毫米", "90×54毫米", "90×50毫米"],
-    finishes: ["不选工艺", "圆角", "磨砂", "透明", "哑膜", "亮膜", "烫金", "UV"],
+    sizes: ["85.5×54mm", "90×54mm", "90×50mm"],
+    finishes: pvcCardFinishes,
+    finishGroups: pvcCardFinishGroups,
     quantities: printQuantityPresets,
     quantityUnit: "张",
     paperWeightLabel: "厚度",
@@ -221,7 +316,8 @@ export const printProjectPresets: Record<string, PrintPreset> = {
     materials: specialBusinessCardPapers,
     paperWeights: ["300g"],
     sizes: commonBusinessCardSizes,
-    finishes: ["不选工艺", "圆角", "烫金", "烫银", "UV", "击凸", "模切"],
+    finishes: specialBusinessCardFinishes,
+    finishGroups: specialBusinessCardFinishGroups,
     quantities: printQuantityPresets,
     quantityUnit: "张",
     materialLabel: "纸张",
@@ -230,7 +326,8 @@ export const printProjectPresets: Record<string, PrintPreset> = {
     materials: ["铜版不干胶", "透明不干胶", "牛皮纸不干胶", "PVC不干胶", "易碎纸"],
     paperWeights: ["80g", "120g", "157g"],
     sizes: ["50×30mm", "60×40mm", "70×50mm", "A4 210×297mm"],
-    finishes: ["不选工艺", "覆膜", "哑膜", "亮膜", "模切", "异形模切", "覆膜 / 模切"],
+    finishes: stickerFinishes,
+    finishGroups: stickerFinishGroups,
     quantities: printQuantityPresets,
     quantityUnit: "张",
   },
@@ -262,7 +359,8 @@ export const printProjectPresets: Record<string, PrintPreset> = {
     materials: ["PP塑料", "PVC", "纸质", "竹柄纸扇", "无纺布"],
     paperWeights: ["单层", "双层", "0.35mm", "0.5mm", "0.8mm"],
     sizes: ["17×17cm", "19×19cm", "21×21cm", "七寸", "八寸"],
-    finishes: ["不选工艺", "模切", "异形模切", "装柄", "覆膜", "UV", "烫金"],
+    finishes: fanFinishes,
+    finishGroups: fanFinishGroups,
     quantities: printQuantityPresets,
     quantityUnit: "把",
     paperWeightLabel: "厚度/规格",
@@ -286,7 +384,8 @@ export const printProjectPresets: Record<string, PrintPreset> = {
     materials: ["铜版纸", "哑粉纸", "相纸", "PP背胶", "PVC"],
     paperWeights: ["157g", "200g", "250g", "背胶", "户外背胶"],
     sizes: ["A4 210×297mm", "A3 297×420mm", "A2 420×594mm", "50×70cm", "60×90cm"],
-    finishes: ["不选工艺", "覆膜", "哑膜", "亮膜", "裁切", "裱板"],
+    finishes: posterFinishes,
+    finishGroups: posterFinishGroups,
     quantities: [1, 5, 10, 20, 50, 100],
     quantityUnit: "张",
   },
@@ -294,7 +393,8 @@ export const printProjectPresets: Record<string, PrintPreset> = {
     materials: ["PVC画面 + 铝合金架", "PP画面 + 铝合金架", "加厚架", "经济架"],
     paperWeights: ["80×200cm", "85×200cm", "加厚画面", "普通画面"],
     sizes: ["80×200cm", "85×200cm", "100×200cm"],
-    finishes: ["不选工艺", "含架", "纸箱包装", "换画面", "覆膜"],
+    finishes: rollupFinishes,
+    finishGroups: rollupFinishGroups,
     quantities: [1, 2, 5, 10, 20, 50],
     quantityUnit: "套",
     paperWeightLabel: "画面/架子",
@@ -304,7 +404,8 @@ export const printProjectPresets: Record<string, PrintPreset> = {
     materials: ["室内PP背胶", "室内相纸", "室内灯片", "室内PP合成纸", "室内可移背胶", "透明背胶", "写真布", "油画布", "KT板写真", "冷裱板写真"],
     paperWeights: photoLaminationOptions,
     sizes: photoPrintSizes,
-    finishes: photoFinishes,
+    finishes: photoCutFinishes,
+    finishGroups: photoCutFinishGroups,
     quantities: photoQuantities,
     quantityUnit: "块",
     paperWeightLabel: "覆膜工艺",
@@ -315,7 +416,8 @@ export const printProjectPresets: Record<string, PrintPreset> = {
     materials: ["户外pp背胶", "白胶车贴", "黑胶车贴", "灰胶可移车贴", "黑胶可移车贴", "白胶可移车贴", "透明车贴", "磁性车贴面磁", "户外晶彩格反光贴", "户外平面反光贴", "户外PVC硬片", "户外单透", "户外PP合成纸", "户外灯片"],
     paperWeights: photoLaminationOptions,
     sizes: photoPrintSizes,
-    finishes: photoFinishes,
+    finishes: photoCutFinishes,
+    finishGroups: photoCutFinishGroups,
     quantities: photoQuantities,
     quantityUnit: "块",
     paperWeightLabel: "覆膜工艺",
@@ -326,7 +428,8 @@ export const printProjectPresets: Record<string, PrintPreset> = {
     materials: ["KT板写真", "冷裱板写真", "PVC板写真", "雪弗板写真", "安迪板写真", "室内PP背胶裱板", "户外背胶裱板"],
     paperWeights: ["不覆膜", "亮膜", "哑膜"],
     sizes: photoPrintSizes,
-    finishes: ["不裁切", "裁单张", "异型裁切（不拼大张裁小块）", "包边", "打扣", "裁单张 / 打扣"],
+    finishes: photoCutFinishes,
+    finishGroups: photoCutFinishGroups,
     quantities: photoQuantities,
     quantityUnit: "块",
     paperWeightLabel: "覆膜工艺",
@@ -366,7 +469,8 @@ export const printProjectPresets: Record<string, PrintPreset> = {
     materials: ["铜版纸", "PVC", "PP", "特种纸", "牛皮纸"],
     paperWeights: ["128g", "157g", "250g", "300g", "0.5mm"],
     sizes: ["A4 210×297mm", "A5 148×210mm", "90×54mm", "自定义尺寸"],
-    finishes: ["不选工艺", "覆膜", "哑膜", "亮膜", "模切", "压痕", "UV"],
+    finishes: otherPrintFinishes,
+    finishGroups: otherPrintFinishGroups,
     quantities: printQuantityPresets,
     quantityUnit: "张",
   },
@@ -406,11 +510,18 @@ export function normalizePrintName(value: string) {
   return value.trim().replace(/\s+/g, "").toLowerCase();
 }
 
-export function printSpecValue(value?: string | number | null) {
+export function formatPrintSize(value?: string | number | null) {
   return String(value ?? "")
     .trim()
     .replace(/毫米/g, "mm")
     .replace(/厘米/g, "cm")
+    .replace(/mm/gi, "mm")
+    .replace(/cm/gi, "cm");
+}
+
+export function printSpecValue(value?: string | number | null) {
+  return formatPrintSize(value)
+    .trim()
     .replace(/(\d)\s*[xX*]\s*(\d)/g, "$1×$2")
     .replace(/\s+/g, "")
     .toLowerCase();
@@ -529,7 +640,7 @@ export function defaultGroupedPrintFinish(projectName: string) {
   if (!groups.length) return "";
   return buildGroupedPrintFinish(
     projectName,
-    Object.fromEntries(groups.map((group) => [group.key, group.options[0] ?? group.emptyOption ?? ""])),
+    Object.fromEntries(groups.map((group) => [group.key, group.emptyOption ?? group.options[0] ?? ""])),
   );
 }
 

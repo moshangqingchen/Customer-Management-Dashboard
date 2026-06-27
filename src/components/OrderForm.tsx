@@ -11,6 +11,7 @@ import {
   defaultPrintProjectName,
   defaultGroupedPrintFinish,
   fallbackPrintPreset,
+  formatPrintSize,
   matchingPrintPresetValue,
   printCategoryName,
   printFinishGroupsForProject,
@@ -67,7 +68,7 @@ const orderItemTemplates: OrderItemTemplate[] = [
       name: "普通名片",
       quantity: 1000,
       unitPriceCents: 10,
-      printSpec: "90×54毫米 | 铜版纸 300g | 双面 | 彩色 | 覆膜 / 圆角",
+      printSpec: "90×54mm | 铜版纸 300g | 双面 | 彩色 | 覆膜 / 圆角",
       ...emptySourceSnapshot,
     },
   },
@@ -244,11 +245,11 @@ function parsePrintSpec(value?: string | null): Record<PrintSpecPart, string> {
   const [size = "", material = "", sides = "", color = "", ...finish] = (value ?? "")
     .split("|")
     .map((part) => part.trim());
-  return { size, material, sides, color, finish: finish.join(" | ") };
+  return { size: formatPrintSize(size), material, sides, color, finish: finish.join(" | ") };
 }
 
 function buildPrintSpec(parts: Record<PrintSpecPart, string>) {
-  const value = [parts.size, parts.material, parts.sides, parts.color, parts.finish]
+  const value = [formatPrintSize(parts.size), parts.material, parts.sides, parts.color, parts.finish]
     .map((part) => part.trim())
     .filter(Boolean)
     .join(" | ");
@@ -274,7 +275,7 @@ function defaultPrintSpec(projectName: string) {
   const material = preset.materials[0] ?? "";
   const paperWeight = printPaperWeightOptionsForMaterial(projectName, material)[0] ?? "";
   return buildPrintSpec({
-    size: preset.sizes[0] ?? "",
+    size: formatPrintSize(preset.sizes[0]),
     material: buildPrintMaterial(material, paperWeight),
     sides: preset.sideOptions?.[0] ?? (["联单", "易拉宝"].includes(canonicalProjectName) ? "单面" : "双面"),
     color: preset.colors?.[0] ?? (canonicalProjectName === "联单" ? "黑白" : "彩色"),
@@ -314,7 +315,7 @@ function sourceQuoteToItemPatch(quote: SourceQuote): Partial<OrderItemInput> {
     name: canonicalPrintProjectName(quote.itemName),
     quantity: quote.quantity,
     printSpec: buildPrintSpec({
-      size: quote.size,
+      size: formatPrintSize(quote.size),
       material: quoteMaterial(quote),
       sides: quote.sides,
       color: quote.color,
@@ -353,15 +354,19 @@ function findAutoSourceQuote(sourceQuotes: SourceQuote[], item: OrderItemInput) 
   return sameProjectAndQuantity.find((quote) => sourceQuoteFullSpecMatches(quote, item));
 }
 
+function matchingSourceQuotes(sourceQuotes: SourceQuote[], item: OrderItemInput) {
+  if (!isPrintItem(item.itemType) || !item.name.trim() || item.quantity <= 0) return [];
+  return sourceQuotes.filter((quote) => sourceQuoteFullSpecMatches(quote, item));
+}
+
 function withAutoSourceQuote(item: OrderItemInput, sourceQuotes: SourceQuote[]) {
   const quote = findAutoSourceQuote(sourceQuotes, item);
   return quote ? { ...item, ...sourceQuoteSnapshot(quote) } : { ...item, ...emptySourceSnapshot };
 }
 
 function sourceQuoteOptionsForItem(sourceQuotes: SourceQuote[], item: OrderItemInput) {
-  if (!isPrintItem(item.itemType) || !item.name.trim()) return sourceQuotes;
-  const related = sourceQuotes.filter((quote) => sourceQuoteCategoryMatches(quote, item));
-  return related.length ? related : sourceQuotes;
+  if (!isPrintItem(item.itemType) || !item.name.trim() || item.quantity <= 0) return sourceQuotes;
+  return sourceQuotes.filter((quote) => sourceQuoteFullSpecMatches(quote, item));
 }
 
 function quoteMaterial(quote: SourceQuote) {
@@ -369,7 +374,7 @@ function quoteMaterial(quote: SourceQuote) {
 }
 
 function quoteSummary(quote: SourceQuote) {
-  return [quote.itemName, String(quote.quantity), quote.size, quoteMaterial(quote), quote.sides, quote.color, quote.finish]
+  return [quote.itemName, String(quote.quantity), formatPrintSize(quote.size), quoteMaterial(quote), quote.sides, quote.color, quote.finish]
     .filter(Boolean)
     .join(" / ");
 }
@@ -442,20 +447,36 @@ function totalCentsFromPriceInput(value: string) {
   return Math.round(amount * 100);
 }
 
-function suggestedSaleTotalCents(item: OrderItemInput) {
-  const sourceCost = orderItemSourceCost(item);
+function sourceQuoteTotalCents(quote: SourceQuote, shippingOverride?: number) {
+  return quote.productionCostCents + (shippingOverride ?? quote.shippingCostCents);
+}
+
+function sourceQuoteProfitCents(quote: SourceQuote, item: OrderItemInput, shippingOverride?: number) {
+  return orderItemTotalCents(item) - sourceQuoteTotalCents(quote, shippingOverride);
+}
+
+function sourceQuoteSuggestedSaleTotalCents(quote: SourceQuote, shippingOverride?: number) {
+  const sourceCost = sourceQuoteTotalCents(quote, shippingOverride);
   if (sourceCost <= 0) return 0;
   const margin = Math.max(2_000, Math.ceil(sourceCost * 0.45));
   return Math.ceil((sourceCost + margin) / 100) * 100;
 }
 
-function suggestedSaleUnitCents(item: OrderItemInput) {
-  if (item.quantity <= 0) return 0;
-  return Math.ceil(suggestedSaleTotalCents(item) / item.quantity);
+function sourceQuoteSuggestedSaleUnitCents(quote: SourceQuote, shippingOverride?: number) {
+  if (quote.quantity <= 0) return 0;
+  return Math.ceil(sourceQuoteSuggestedSaleTotalCents(quote, shippingOverride) / quote.quantity);
+}
+
+function sourceQuoteSuggestedOrderTotalCents(quote: SourceQuote, shippingOverride?: number) {
+  return sourceQuoteSuggestedSaleUnitCents(quote, shippingOverride) * quote.quantity;
 }
 
 function totalPriceValue(item: OrderItemInput) {
   return (orderItemTotalCents(item) / 100).toString();
+}
+
+function sourceShippingOverrideKey(itemIndex: number, quoteId: string) {
+  return `${itemIndex}:${quoteId}`;
 }
 
 function addressLabel(address: AddressInput) {
@@ -527,10 +548,13 @@ export function OrderForm({ customers, sourceQuotes = [], order, onSaved, onCanc
   const [addressChoice, setAddressChoice] = useState(findAddressChoice(initialCustomer, initialAddress));
   const [customTemplates, setCustomTemplates] = useState<OrderItemTemplate[]>(readCustomTemplates);
   const [totalPriceDrafts, setTotalPriceDrafts] = useState<Record<number, string>>({});
+  const [sourceShippingOverrides, setSourceShippingOverrides] = useState<Record<string, number>>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const total = useMemo(() => form.items.reduce((sum, item) => sum + orderItemTotalCents(item), 0), [form.items]);
-  const sourceCost = useMemo(() => form.items.reduce((sum, item) => sum + item.sourceProductionCostCents + item.sourceShippingCostCents, 0), [form.items]);
+  const sourceProductionCost = useMemo(() => form.items.reduce((sum, item) => sum + item.sourceProductionCostCents, 0), [form.items]);
+  const sourceShippingCost = useMemo(() => form.items.reduce((sum, item) => sum + item.sourceShippingCostCents, 0), [form.items]);
+  const sourceCost = sourceProductionCost + sourceShippingCost;
   const selectedCustomer = customers.find((customer) => customer.id === form.customerId);
   const templates = useMemo(() => [...orderItemTemplates, ...customTemplates], [customTemplates]);
 
@@ -552,7 +576,21 @@ export function OrderForm({ customers, sourceQuotes = [], order, onSaved, onCanc
       return next;
     });
 
-  const applySourceQuote = (index: number, quoteId: string, currentTotalCents = 0) => {
+  const removeItem = (index: number) => {
+    setForm((current) => ({ ...current, items: current.items.filter((_, itemIndex) => itemIndex !== index) }));
+    setSourceShippingOverrides((current) => {
+      const next: Record<string, number> = {};
+      Object.entries(current).forEach(([key, value]) => {
+        const [itemIndexPart, quoteId] = key.split(":");
+        const itemIndex = Number(itemIndexPart);
+        if (!Number.isInteger(itemIndex) || itemIndex === index) return;
+        next[sourceShippingOverrideKey(itemIndex > index ? itemIndex - 1 : itemIndex, quoteId)] = value;
+      });
+      return next;
+    });
+  };
+
+  const applySourceQuote = (index: number, quoteId: string, currentTotalCents = 0, shippingOverride?: number) => {
     const quote = sourceQuotes.find((item) => item.id === quoteId);
     if (!quote) {
       setItem(index, emptySourceSnapshot);
@@ -560,6 +598,7 @@ export function OrderForm({ customers, sourceQuotes = [], order, onSaved, onCanc
     }
     setItem(index, {
       ...sourceQuoteToItemPatch(quote),
+      ...(shippingOverride === undefined ? {} : { sourceShippingCostCents: shippingOverride }),
       unitPriceCents: unitPriceCentsFromTotal(currentTotalCents, quote.quantity),
     });
   };
@@ -707,8 +746,13 @@ export function OrderForm({ customers, sourceQuotes = [], order, onSaved, onCanc
             const materialValue = isPrint ? printMaterialValue(printProject, spec.material) : "";
             const paperWeightValue = isPrint ? printPaperWeightValue(printProject, spec.material) : "";
             const paperWeightOptions = isPrint ? printPaperWeightOptionsForMaterial(printProject, materialValue) : [];
-            const suggestedTotal = suggestedSaleTotalCents(item);
             const quoteOptions = sourceQuoteOptionsForItem(sourceQuotes, item);
+            const exactSourceQuotes = isPrint ? matchingSourceQuotes(sourceQuotes, item) : [];
+            const selectedSourceQuote = item.sourceQuoteId ? sourceQuotes.find((quote) => quote.id === item.sourceQuoteId) : undefined;
+            const sourceQuoteCards = [
+              ...exactSourceQuotes,
+              ...(selectedSourceQuote && !exactSourceQuotes.some((quote) => quote.id === selectedSourceQuote.id) ? [selectedSourceQuote] : []),
+            ];
             const customQuantityOption = isPrint && item.quantity > 0 && !quantityOptions.includes(item.quantity);
             const totalPriceDraft = totalPriceDrafts[index];
             const totalPriceInputValue = totalPriceDraft ?? totalPriceValue(item);
@@ -767,9 +811,31 @@ export function OrderForm({ customers, sourceQuotes = [], order, onSaved, onCanc
               const totalCents = totalCentsFromPriceInput(value);
               setItem(index, { unitPriceCents: unitPriceCentsFromTotal(totalCents, item.quantity) });
             };
-            const setSourceShipping = (value: string) => {
+            const sourceQuoteShippingCents = (quote: SourceQuote) => {
+              return sourceShippingOverrides[sourceShippingOverrideKey(index, quote.id)] ?? (item.sourceQuoteId === quote.id ? item.sourceShippingCostCents : quote.shippingCostCents);
+            };
+            const setSourceShipping = (quote: SourceQuote, value: string) => {
               const amount = Number(value);
-              setItem(index, { sourceShippingCostCents: Number.isFinite(amount) && amount > 0 ? Math.round(amount * 100) : 0 });
+              const shippingCents = Number.isFinite(amount) && amount > 0 ? Math.round(amount * 100) : 0;
+              setSourceShippingOverrides((current) => ({ ...current, [sourceShippingOverrideKey(index, quote.id)]: shippingCents }));
+              if (item.sourceQuoteId === quote.id) {
+                setItem(index, { sourceShippingCostCents: shippingCents });
+              }
+            };
+            const selectSourceQuote = (quoteId: string) => {
+              const quote = sourceQuotes.find((item) => item.id === quoteId);
+              applySourceQuote(index, quoteId, currentTotalPriceCents(), quote ? sourceQuoteShippingCents(quote) : undefined);
+            };
+            const applySuggestedQuotePrice = (quote: SourceQuote) => {
+              const shippingCents = sourceQuoteShippingCents(quote);
+              const suggestedUnitCents = sourceQuoteSuggestedSaleUnitCents(quote, shippingCents);
+              if (suggestedUnitCents <= 0) return;
+              clearTotalPriceDraft(index);
+              setItem(index, {
+                ...sourceQuoteToItemPatch(quote),
+                sourceShippingCostCents: shippingCents,
+                unitPriceCents: suggestedUnitCents,
+              });
             };
             return (
               <div className="item-editor" key={index}>
@@ -794,7 +860,7 @@ export function OrderForm({ customers, sourceQuotes = [], order, onSaved, onCanc
                     </>
                   )}
                   <strong>{formatCents(orderItemTotalCents(item))}</strong>
-                  <button className="icon-button danger" disabled={form.items.length === 1} onClick={() => setForm({ ...form, items: form.items.filter((_, itemIndex) => itemIndex !== index) })}><Trash2 size={16} /></button>
+                  <button className="icon-button danger" disabled={form.items.length === 1} onClick={() => removeItem(index)}><Trash2 size={16} /></button>
                 </div>
                 {isPrint ? (
                   <div className="print-spec-grid order-print-spec-grid">
@@ -806,7 +872,7 @@ export function OrderForm({ customers, sourceQuotes = [], order, onSaved, onCanc
                       <span>{quantityUnit}</span>
                     </div></label>
                     <label><span>个人报价</span><div className="money-input"><span>¥</span><input type="number" min="0" step="0.01" value={totalPriceInputValue} onChange={(event) => setTotalPrice(event.target.value)} onBlur={() => clearTotalPriceDraft(index)} aria-label="个人报价" /></div></label>
-                    <label><span>尺寸</span><SearchableSelect ariaLabel="尺寸" value={spec.size} options={[{ value: "", label: "未选择" }, ...(customSizeOption ? [spec.size] : []), ...sizeOptions]} onChange={(value) => setSpec("size", value)} /></label>
+                    <label><span>尺寸</span><SearchableSelect ariaLabel="尺寸" value={formatPrintSize(spec.size)} options={[{ value: "", label: "未选择" }, ...(customSizeOption ? [formatPrintSize(spec.size)] : []), ...sizeOptions]} onChange={(value) => setSpec("size", value)} /></label>
                     <label><span>{printPreset.materialLabel ?? "纸张/材质"}</span><SearchableSelect ariaLabel={printPreset.materialLabel ?? "纸张/材质"} value={materialValue} options={printPreset.materials} onChange={(value) => setPrintMaterialSpec(value, paperWeightValue)} /></label>
                     <label><span>{printPreset.paperWeightLabel ?? "克重/厚度"}</span><SearchableSelect ariaLabel={printPreset.paperWeightLabel ?? "克重/厚度"} value={paperWeightValue} options={paperWeightOptions} onChange={(value) => setPrintMaterialSpec(materialValue, value)} /></label>
                     <label><span>{sideLabel}</span><SearchableSelect ariaLabel={sideLabel} value={spec.sides} options={[{ value: "", label: "未选择" }, ...sideOptions]} onChange={(value) => setSpec("sides", value)} /></label>
@@ -822,27 +888,42 @@ export function OrderForm({ customers, sourceQuotes = [], order, onSaved, onCanc
                             </label>
                           );
                         })}
-                        <label><span>其他工艺</span><input aria-label="其他工艺" value={customGroupedFinish} onChange={(event) => setCustomGroupedFinish(event.target.value)} placeholder="没有可留空" /></label>
+                        <label><span>其他工艺</span><input aria-label="其他工艺" value={customGroupedFinish} onChange={(event) => setCustomGroupedFinish(event.target.value)} placeholder="无" /></label>
                       </>
                     ) : (
                       <label><span>工艺</span><SearchableSelect ariaLabel="工艺" value={spec.finish} options={[{ value: "", label: "不选工艺" }, ...(customFinishOption ? [spec.finish] : []), ...printPreset.finishes.filter((option) => option !== "不选工艺")]} onChange={(value) => setSpec("finish", value)} /></label>
                     )}
-                    <label className="source-quote-field"><span>源头厂家报价</span><select value={item.sourceQuoteId ?? ""} onChange={(event) => applySourceQuote(index, event.target.value, currentTotalPriceCents())}>
-                      <option value="">不选择厂家报价</option>
-                      {quoteOptions.map((quote) => <option value={quote.id} key={quote.id}>{quoteOptionLabel(quote)}</option>)}
-                    </select></label>
-                    {item.sourceFactoryName && (
-                      <div className="source-cost-preview source-cost-preview-inline">
-                        <b>{item.sourceFactoryName}</b>
-                        <span>{item.sourceQuoteSummary || "已保存厂家报价快照"}</span>
-                        <div className="source-cost-breakdown">
-                          <strong>生产 {formatCents(item.sourceProductionCostCents)}</strong>
-                          <label><span>运费</span><div className="money-input source-shipping-input"><span>¥</span><input type="number" min="0" step="0.01" value={(item.sourceShippingCostCents / 100).toString()} onChange={(event) => setSourceShipping(event.target.value)} aria-label="源头运费" /></div></label>
-                          <strong>合计 {formatCents(orderItemSourceCost(item))}</strong>
-                        </div>
-                        {suggestedTotal > 0 && <button type="button" onClick={() => { clearTotalPriceDraft(index); setItem(index, { unitPriceCents: suggestedSaleUnitCents(item) }); }}>套用建议售价 {formatCents(orderItemTotalCents({ ...item, unitPriceCents: suggestedSaleUnitCents(item) }))}</button>}
-                      </div>
-                    )}
+                    <div className="source-quote-toolbar">
+                      <label className="source-quote-field"><span>手动选择厂家报价</span><select aria-label="源头厂家报价" value={item.sourceQuoteId ?? ""} onChange={(event) => selectSourceQuote(event.target.value)}>
+                        <option value="">不选择厂家报价</option>
+                        {quoteOptions.map((quote) => <option value={quote.id} key={quote.id}>{quoteOptionLabel(quote)}</option>)}
+                      </select></label>
+                    </div>
+                    <div className="source-quote-card-list" aria-label="匹配厂家报价">
+                      {sourceQuoteCards.length ? sourceQuoteCards.map((quote) => {
+                        const selected = item.sourceQuoteId === quote.id;
+                        const shippingCents = sourceQuoteShippingCents(quote);
+                        const sourceCostCents = sourceQuoteTotalCents(quote, shippingCents);
+                        const profitCents = sourceQuoteProfitCents(quote, item, shippingCents);
+                        const suggestedTotalCents = sourceQuoteSuggestedOrderTotalCents(quote, shippingCents);
+                        return (
+                          <div className={`source-quote-card ${selected ? "active" : ""}`} key={quote.id} onClick={() => selectSourceQuote(quote.id)}>
+                            <div className="source-quote-card-main">
+                              <b>{quote.factoryName}</b>
+                              <span>{quoteSummary(quote)}</span>
+                              <label className="source-quote-card-shipping" onClick={(event) => event.stopPropagation()}><span>运费</span><div className="money-input source-shipping-input"><span>¥</span><input type="number" min="0" step="0.01" value={(shippingCents / 100).toString()} onChange={(event) => setSourceShipping(quote, event.target.value)} aria-label={`${quote.factoryName}运费`} /></div></label>
+                              <div className="source-cost-breakdown source-quote-card-costs">
+                                <strong>生产 {formatCents(quote.productionCostCents)}</strong>
+                                <strong>运费 {formatCents(shippingCents)}</strong>
+                                <strong>合计 {formatCents(sourceCostCents)}</strong>
+                                <strong className={profitCents < 0 ? "negative" : ""}>毛利 {formatCents(profitCents)}</strong>
+                              </div>
+                            </div>
+                            {suggestedTotalCents > 0 && <button type="button" className="source-quote-suggest-button" onClick={(event) => { event.stopPropagation(); applySuggestedQuotePrice(quote); }}>套用建议售价 {formatCents(suggestedTotalCents)}</button>}
+                          </div>
+                        );
+                      }) : <div className="source-quote-empty">当前规格没有对应厂家报价</div>}
+                    </div>
                   </div>
                 ) : (
                   <div className="print-spec-grid design-spec-grid">
@@ -861,7 +942,12 @@ export function OrderForm({ customers, sourceQuotes = [], order, onSaved, onCanc
             );
           })}
         </div>
-        <div className="order-total"><span>厂家成本 {formatCents(sourceCost)}</span><span>预估毛利 {formatCents(total - sourceCost)}</span><strong>{formatCents(total)}</strong></div>
+        <div className="order-total">
+          <span>生产成本 {formatCents(sourceProductionCost)}</span>
+          <span>运费 {formatCents(sourceShippingCost)}</span>
+          <strong className={total - sourceCost < 0 ? "negative" : ""}>预估毛利 {formatCents(total - sourceCost)}</strong>
+          <span className="order-total-price">报价 {formatCents(total)}</span>
+        </div>
       </section>
 
       <section className="form-section">

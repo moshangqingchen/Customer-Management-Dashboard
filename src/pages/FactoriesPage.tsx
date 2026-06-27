@@ -8,6 +8,7 @@ import {
   canonicalPrintProjectName,
   childPrintProjectNames,
   defaultGroupedPrintFinish,
+  formatPrintSize,
   printCategoryName,
   printFinishGroupsForProject,
   printPaperWeightOptionsForMaterial,
@@ -113,7 +114,7 @@ function quoteToInput(quote: SourceQuote): SourceQuoteInput {
     itemType: quote.itemType,
     itemName,
     quantity: quote.quantity,
-    size: quote.size,
+    size: formatPrintSize(quote.size),
     material: materialSpec.material,
     paperWeight: materialSpec.paperWeight,
     sides: quote.sides,
@@ -127,7 +128,7 @@ function quoteToInput(quote: SourceQuote): SourceQuoteInput {
 }
 
 function quoteSpec(quote: SourceQuote | SourceQuoteInput) {
-  return [quote.size, [quote.material, quote.paperWeight].filter(Boolean).join(" "), quote.sides, quote.color, quote.finish]
+  return [formatPrintSize(quote.size), [quote.material, quote.paperWeight].filter(Boolean).join(" "), quote.sides, quote.color, quote.finish]
     .filter(Boolean)
     .join(" / ");
 }
@@ -281,7 +282,7 @@ function quoteSpecKey(quote: SourceQuote | SourceQuoteInput) {
   return [
     quote.itemType,
     itemName,
-    quote.size,
+    formatPrintSize(quote.size),
     materialSpec.material,
     materialSpec.paperWeight,
     quote.sides,
@@ -497,7 +498,7 @@ function PriceConfigurator({
     setSaving(true);
     setError("");
     try {
-      const input = { ...form, factoryId: factory.id, itemName: canonicalPrintProjectName(form.itemName), itemType: form.itemType.trim() || "印刷" };
+      const input = { ...form, factoryId: factory.id, itemName: canonicalPrintProjectName(form.itemName), itemType: form.itemType.trim() || "印刷", size: formatPrintSize(form.size) };
       const saved = editingQuote ? await api.updateSourceQuote(editingQuote.id, input) : await api.createSourceQuote(input);
       setEditingQuote(saved);
       setForm(quoteToInput(saved));
@@ -613,7 +614,7 @@ function PriceConfigurator({
                 })}
                 <label className="custom-finish-field">
                   <span>其他工艺</span>
-                  <input aria-label="其他工艺" value={customGroupedFinish} onChange={(event) => setCustomGroupedFinish(event.target.value)} placeholder="没有可留空" />
+                  <input aria-label="其他工艺" value={customGroupedFinish} onChange={(event) => setCustomGroupedFinish(event.target.value)} placeholder="无" />
                 </label>
               </>
             ) : (

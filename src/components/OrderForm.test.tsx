@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { within } from "@testing-library/react";
 
 import { OrderForm } from "./OrderForm";
 import { api } from "../lib/api";
@@ -67,7 +68,7 @@ const sourceQuote: SourceQuote = {
   paperWeight: "300g",
   sides: "双面",
   color: "彩色",
-  finish: "覆膜 / 圆角",
+  finish: "亮膜 / 圆角",
   productionCostCents: 4500,
   shippingCostCents: 800,
   leadTime: "2-3 天",
@@ -109,6 +110,16 @@ function selectOptions(select: Element) {
   return Array.from(select.querySelectorAll<HTMLOptionElement>("option")).map((option) => option.value || option.textContent);
 }
 
+function setNormalCardSpecForSourceQuote() {
+  fireEvent.change(screen.getByLabelText("数量"), { target: { value: "1000" } });
+  fireEvent.change(screen.getByLabelText("克重/厚度"), { target: { value: "300g" } });
+  fireEvent.mouseDown(screen.getByRole("option", { name: "300g" }));
+  fireEvent.change(screen.getByLabelText("覆膜"), { target: { value: "亮膜" } });
+  fireEvent.mouseDown(screen.getByRole("option", { name: "亮膜" }));
+  fireEvent.change(screen.getByLabelText("圆角"), { target: { value: "圆角" } });
+  fireEvent.mouseDown(screen.getByRole("option", { name: "圆角" }));
+}
+
 describe("OrderForm", () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -134,6 +145,11 @@ describe("OrderForm", () => {
     expect(screen.getByLabelText("印刷类目")).toHaveDisplayValue("名片");
     expect(screen.getByLabelText("印刷小类")).toHaveDisplayValue("普通名片");
     expect(screen.getByLabelText("尺寸")).toBeInTheDocument();
+    expect(screen.getByLabelText("覆膜")).toHaveValue("无");
+    expect(screen.getByLabelText("圆角")).toHaveValue("无");
+    expect(screen.getByLabelText("烫金")).toHaveValue("无");
+    expect(screen.getByLabelText("其他工艺")).toHaveValue("");
+    expect(screen.getByLabelText("其他工艺")).toHaveAttribute("placeholder", "无");
   });
 
   it("offers common design project names and platform size presets", () => {
@@ -191,7 +207,7 @@ describe("OrderForm", () => {
     let options = selectOptions(size);
     expect(screen.getByLabelText("印刷小类")).toHaveDisplayValue("普通名片");
     expect(selectOptions(screen.getByLabelText("印刷小类"))).toEqual(["普通名片", "PVC卡", "特种纸名片"]);
-    expect(options).toEqual(expect.arrayContaining(["90×54毫米", "90×50毫米", "180×54毫米", "110×90毫米", "140×100毫米", "160×54毫米"]));
+    expect(options).toEqual(expect.arrayContaining(["90×54mm", "90×50mm", "180×54mm", "110×90mm", "140×100mm", "160×54mm"]));
     expect(options).not.toEqual(expect.arrayContaining(["A3 297×420mm", "淘宝主图 800×800px", "易拉宝 80×200cm"]));
 
     fireEvent.change(projectName, { target: { value: "海报" } });
@@ -314,6 +330,7 @@ describe("OrderForm", () => {
     const itemTypeSelect = container.querySelector(".item-row select");
     expect(itemTypeSelect).not.toBeNull();
     fireEvent.change(itemTypeSelect!, { target: { value: "印刷品" } });
+    setNormalCardSpecForSourceQuote();
     fireEvent.change(screen.getByLabelText("源头厂家报价"), { target: { value: sourceQuote.id } });
 
     expect(screen.getByLabelText("项目类型")).toHaveDisplayValue("印刷品");
@@ -323,7 +340,7 @@ describe("OrderForm", () => {
     expect(screen.getByLabelText("个人报价")).toHaveDisplayValue("0");
     expect(screen.getByText("华彩印刷源头厂")).toBeInTheDocument();
     expect(screen.getByText("生产 ¥45.00")).toBeInTheDocument();
-    expect(screen.getByLabelText("源头运费")).toHaveValue(8);
+    expect(screen.getByLabelText("华彩印刷源头厂运费")).toHaveValue(8);
     expect(screen.getByText("合计 ¥53.00")).toBeInTheDocument();
   });
 
@@ -333,13 +350,46 @@ describe("OrderForm", () => {
     const itemTypeSelect = container.querySelector(".item-row select");
     expect(itemTypeSelect).not.toBeNull();
     fireEvent.change(itemTypeSelect!, { target: { value: "印刷品" } });
+    setNormalCardSpecForSourceQuote();
     fireEvent.change(screen.getByLabelText("源头厂家报价"), { target: { value: sourceQuote.id } });
 
-    fireEvent.change(screen.getByLabelText("源头运费"), { target: { value: "15" } });
+    fireEvent.change(screen.getByLabelText("华彩印刷源头厂运费"), { target: { value: "15" } });
 
-    expect(screen.getByLabelText("源头运费")).toHaveValue(15);
+    expect(screen.getByLabelText("华彩印刷源头厂运费")).toHaveValue(15);
     expect(screen.getByText("合计 ¥60.00")).toBeInTheDocument();
-    expect(screen.getByText("厂家成本 ¥60.00")).toBeInTheDocument();
+    expect(screen.getByText("生产成本 ¥45.00")).toBeInTheDocument();
+    expect(screen.getAllByText("运费 ¥15.00").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("keeps source shipping independent for each matching factory quote", () => {
+    const secondSourceQuote: SourceQuote = {
+      ...sourceQuote,
+      id: "quote-card-second",
+      factoryId: "factory-second",
+      factoryName: "第二源头厂",
+      productionCostCents: 5000,
+      shippingCostCents: 300,
+    };
+    const { container } = render(<OrderForm customers={[customer]} sourceQuotes={[sourceQuote, secondSourceQuote]} onSaved={vi.fn()} onCancel={vi.fn()} />);
+
+    const itemTypeSelect = container.querySelector(".item-row select");
+    expect(itemTypeSelect).not.toBeNull();
+    fireEvent.change(itemTypeSelect!, { target: { value: "印刷品" } });
+    setNormalCardSpecForSourceQuote();
+    fireEvent.change(screen.getByLabelText("源头厂家报价"), { target: { value: sourceQuote.id } });
+    fireEvent.change(screen.getByLabelText("华彩印刷源头厂运费"), { target: { value: "15" } });
+    fireEvent.change(screen.getByLabelText("第二源头厂运费"), { target: { value: "6" } });
+
+    fireEvent.change(screen.getByLabelText("源头厂家报价"), { target: { value: secondSourceQuote.id } });
+
+    expect(screen.getByLabelText("华彩印刷源头厂运费")).toHaveValue(15);
+    expect(screen.getByLabelText("第二源头厂运费")).toHaveValue(6);
+    expect(screen.getByLabelText("源头厂家报价")).toHaveDisplayValue("第二源头厂 · 名片 · 1000 · ¥50.00 + 运费 ¥3.00");
+    const matchingQuotes = screen.getByLabelText("匹配厂家报价");
+    expect(within(matchingQuotes).getByText("合计 ¥60.00")).toBeInTheDocument();
+    expect(within(matchingQuotes).getByText("合计 ¥56.00")).toBeInTheDocument();
+    expect(screen.getByText("生产成本 ¥50.00")).toBeInTheDocument();
+    expect(screen.getAllByText("运费 ¥6.00").length).toBeGreaterThanOrEqual(1);
   });
 
   it("auto-selects a matching source quote only when the print spec also matches", () => {
@@ -405,6 +455,52 @@ describe("OrderForm", () => {
     expect(screen.getByText("合计 ¥53.00")).toBeInTheDocument();
   });
 
+  it("lists every matching source factory quote with its own cost and profit", () => {
+    const boboQuote: SourceQuote = {
+      ...sourceQuote,
+      id: "quote-card-bobo-500",
+      factoryId: "factory-bobo",
+      factoryName: "博博印务",
+      itemName: "普通名片",
+      quantity: 500,
+      size: "90×54毫米",
+      paperWeight: "250g",
+      finish: "不选工艺",
+      productionCostCents: 1000,
+      shippingCostCents: 0,
+    };
+    const fastQuote: SourceQuote = {
+      ...sourceQuote,
+      id: "quote-card-fast-500",
+      factoryId: "factory-fast",
+      factoryName: "快印源头厂",
+      itemName: "普通名片",
+      quantity: 500,
+      size: "90×54mm",
+      paperWeight: "250g",
+      finish: "不选工艺",
+      productionCostCents: 1200,
+      shippingCostCents: 300,
+    };
+    const { container } = render(<OrderForm customers={[customer]} sourceQuotes={[boboQuote, fastQuote]} onSaved={vi.fn()} onCancel={vi.fn()} />);
+
+    const itemTypeSelect = container.querySelector(".item-row select");
+    expect(itemTypeSelect).not.toBeNull();
+    fireEvent.change(itemTypeSelect!, { target: { value: "印刷品" } });
+    fireEvent.change(screen.getByLabelText("个人报价"), { target: { value: "30" } });
+
+    const matchingQuotes = screen.getByLabelText("匹配厂家报价");
+    expect(within(matchingQuotes).getByText("博博印务")).toBeInTheDocument();
+    expect(within(matchingQuotes).getByText("快印源头厂")).toBeInTheDocument();
+    expect(within(matchingQuotes).getAllByText(/90×54mm/).length).toBeGreaterThanOrEqual(2);
+    expect(within(matchingQuotes).getByText("生产 ¥10.00")).toBeInTheDocument();
+    expect(within(matchingQuotes).getByText("合计 ¥10.00")).toBeInTheDocument();
+    expect(within(matchingQuotes).getByText("毛利 ¥20.00")).toBeInTheDocument();
+    expect(within(matchingQuotes).getByText("生产 ¥12.00")).toBeInTheDocument();
+    expect(within(matchingQuotes).getByText("运费 ¥3.00")).toBeInTheDocument();
+    expect(within(matchingQuotes).getByText("毛利 ¥15.00")).toBeInTheDocument();
+  });
+
   it("keeps normal-card paper and weight as separate controls", () => {
     const { container } = render(<OrderForm customers={[customer]} onSaved={vi.fn()} onCancel={vi.fn()} />);
 
@@ -451,7 +547,26 @@ describe("OrderForm", () => {
     fireEvent.change(screen.getByLabelText("数量"), { target: { value: "500" } });
 
     expect(screen.getByLabelText("源头厂家报价")).toHaveDisplayValue("不选择厂家报价");
+    expect(selectOptions(screen.getByLabelText("源头厂家报价"))).toEqual(["不选择厂家报价"]);
+    expect(screen.getByLabelText("匹配厂家报价")).toHaveTextContent("当前规格没有对应厂家报价");
     expect(screen.queryByText("成本 ¥80.00")).not.toBeInTheDocument();
+  });
+
+  it("does not list unrelated or wrong-quantity source quotes in the manual factory quote dropdown", () => {
+    const { container } = render(<OrderForm customers={[customer]} sourceQuotes={[sourceQuote]} onSaved={vi.fn()} onCancel={vi.fn()} />);
+
+    const itemTypeSelect = container.querySelector(".item-row select");
+    expect(itemTypeSelect).not.toBeNull();
+    fireEvent.change(itemTypeSelect!, { target: { value: "印刷品" } });
+
+    fireEvent.change(screen.getByLabelText("数量"), { target: { value: "500" } });
+    expect(selectOptions(screen.getByLabelText("源头厂家报价"))).toEqual(["不选择厂家报价"]);
+
+    fireEvent.change(screen.getByLabelText("印刷类目"), { target: { value: "宣传单" } });
+    fireEvent.change(screen.getByLabelText("印刷小类"), { target: { value: "专版宣传单" } });
+
+    expect(selectOptions(screen.getByLabelText("源头厂家报价"))).toEqual(["不选择厂家报价"]);
+    expect(screen.getByLabelText("源头厂家报价")).toHaveDisplayValue("不选择厂家报价");
   });
 
   it("treats the customer quote field as the item total instead of multiplying it by quantity", () => {
@@ -464,7 +579,7 @@ describe("OrderForm", () => {
     fireEvent.change(screen.getByLabelText("个人报价"), { target: { value: "200" } });
 
     expect(screen.getByLabelText("个人报价")).toHaveDisplayValue("200");
-    expect(screen.getAllByText("¥200.00").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText("报价 ¥200.00")).toBeInTheDocument();
     expect(screen.queryByText("¥200,000.00")).not.toBeInTheDocument();
   });
 
@@ -481,7 +596,7 @@ describe("OrderForm", () => {
 
     fireEvent.change(customerQuote, { target: { value: "200" } });
     expect(customerQuote).toHaveDisplayValue("200");
-    expect(screen.getAllByText("¥200.00").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText("报价 ¥200.00")).toBeInTheDocument();
   });
 
   it("can apply a common order item template", () => {
@@ -517,6 +632,7 @@ describe("OrderForm", () => {
     const itemTypeSelect = container.querySelector(".item-row select");
     expect(itemTypeSelect).not.toBeNull();
     fireEvent.change(itemTypeSelect!, { target: { value: "印刷品" } });
+    setNormalCardSpecForSourceQuote();
     fireEvent.change(screen.getByLabelText("源头厂家报价"), { target: { value: sourceQuote.id } });
     fireEvent.click(screen.getByRole("button", { name: /套用建议售价/ }));
 

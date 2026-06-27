@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+﻿import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { FactoriesPage } from "./FactoriesPage";
@@ -62,7 +62,7 @@ const quote: SourceQuote = {
   paperWeight: "300g",
   sides: "双面",
   color: "彩色",
-  finish: "覆膜 / 圆角",
+  finish: "亮膜 / 圆角",
   productionCostCents: 4500,
   shippingCostCents: 800,
   leadTime: "2-3 天",
@@ -441,19 +441,39 @@ describe("FactoriesPage", () => {
 
     expect(datalistOptions(screen.getByLabelText("数量"))).toEqual(expect.arrayContaining(["500", "1000", "5000"]));
     expect(selectOptions("材质")).toEqual(expect.arrayContaining(["铜版纸", "哑粉纸", "白卡纸", "自定义"]));
-    expect(selectOptions("尺寸")).toEqual(["90×54毫米", "90×50毫米", "180×54毫米", "110×90毫米", "140×100毫米", "160×54毫米", "自定义"]);
+    expect(selectOptions("尺寸")).toEqual(["90×54mm", "90×50mm", "180×54mm", "110×90mm", "140×100mm", "160×54mm", "自定义"]);
     expect(screen.queryByText("A4 210×297mm")).not.toBeInTheDocument();
-    expect(selectOptions("工艺")).toEqual(expect.arrayContaining(["不选工艺", "覆膜", "圆角", "覆膜 / 圆角", "烫金", "UV", "自定义"]));
-    expect(selectOptions("工艺")).not.toEqual(expect.arrayContaining(["折页", "骑马钉", "胶装"]));
+    expect(selectOptions("覆膜")).toEqual(["无", "亮膜", "哑膜"]);
+    expect(screen.getByLabelText("覆膜")).toHaveValue("亮膜");
+    expect(screen.getByLabelText("圆角")).toHaveValue("圆角");
+    expect(selectOptions("圆角")).toEqual(["无", "圆角"]);
+    expect(selectOptions("烫金")).toEqual(["无", "烫金"]);
+    expect(selectOptions("UV")).toEqual(["无", "UV"]);
+    expect(screen.queryByLabelText("工艺")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("其他工艺")).toHaveValue("");
+    expect(screen.getByLabelText("其他工艺")).toHaveAttribute("placeholder", "无");
 
     chooseSelectOption("材质", "自定义");
     fireEvent.change(screen.getByLabelText("自定义材质"), { target: { value: "自定义环保纸" } });
     expect(screen.getByDisplayValue("自定义环保纸")).toBeInTheDocument();
-    chooseSelectOption("工艺", "圆角");
-    expect(screen.getByLabelText("工艺")).toHaveValue("圆角");
-    chooseSelectOption("工艺", "自定义");
-    fireEvent.change(screen.getByLabelText("自定义工艺"), { target: { value: "异形圆角" } });
+    chooseSelectOption("圆角", "圆角");
+    expect(screen.getByLabelText("圆角")).toHaveValue("圆角");
+    fireEvent.change(screen.getByLabelText("其他工艺"), { target: { value: "异形圆角" } });
     expect(screen.getByDisplayValue("异形圆角")).toBeInTheDocument();
+  });
+
+  it("defaults grouped finish fields to none for a new source project", async () => {
+    render(<FactoriesPage factories={[factory]} factoryProjects={[]} quotes={[]} selectedFactoryId={factory.id} onSelect={vi.fn()} onChanged={vi.fn()} />);
+
+    await addCategory("名片");
+    await addProject("名片", "普通名片");
+
+    expect(screen.getByLabelText("覆膜")).toHaveValue("无");
+    expect(screen.getByLabelText("圆角")).toHaveValue("无");
+    expect(screen.getByLabelText("烫金")).toHaveValue("无");
+    expect(screen.getByLabelText("UV")).toHaveValue("无");
+    expect(screen.getByLabelText("其他工艺")).toHaveValue("");
+    expect(screen.getByLabelText("其他工艺")).toHaveAttribute("placeholder", "无");
   });
 
   it("switches dropdown options by left project and saves a custom size price", async () => {
@@ -466,11 +486,12 @@ describe("FactoriesPage", () => {
     expect(await screen.findByRole("heading", { name: "不干胶" })).toBeInTheDocument();
     expect(selectOptions("材质")).toEqual(expect.arrayContaining(["铜版不干胶", "透明不干胶", "PVC不干胶", "自定义"]));
     expect(selectOptions("尺寸")).toEqual(["50×30mm", "60×40mm", "70×50mm", "A4 210×297mm", "自定义"]);
-    expect(selectOptions("工艺")).toEqual(expect.arrayContaining(["模切", "异形模切", "覆膜 / 模切", "自定义"]));
-    expect(selectOptions("工艺")).not.toEqual(expect.arrayContaining(["圆角", "覆膜 / 圆角"]));
+    expect(selectOptions("覆膜")).toEqual(["无", "亮膜", "哑膜"]);
+    expect(selectOptions("模切")).toEqual(["无", "模切", "异形模切"]);
+    expect(screen.queryByLabelText("工艺")).not.toBeInTheDocument();
 
     fireEvent.click(subProjectButton("普通名片"));
-    expect(selectOptions("尺寸")).toEqual(["90×54毫米", "90×50毫米", "180×54毫米", "110×90毫米", "140×100毫米", "160×54毫米", "自定义"]);
+    expect(selectOptions("尺寸")).toEqual(["90×54mm", "90×50mm", "180×54mm", "110×90mm", "140×100mm", "160×54mm", "自定义"]);
     chooseSelectOption("尺寸", "自定义");
     expect(screen.getByLabelText("自定义尺寸")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("自定义尺寸长"), { target: { value: "100" } });
@@ -522,7 +543,8 @@ describe("FactoriesPage", () => {
     ]));
     expect(selectOptions("覆膜工艺")).toEqual(["不覆膜", "亮膜", "哑膜", "磨砂地板膜", "斜纹地板膜", "自定义"]);
     expect(selectOptions("尺寸")).toEqual(expect.arrayContaining(["自定义宽高", "60×90cm", "120×240cm", "自定义"]));
-    expect(selectOptions("工艺")).toEqual(expect.arrayContaining(["不裁切", "裁单张", "异型裁切（不拼大张裁小块）", "打扣", "自定义"]));
+    expect(selectOptions("裁切")).toEqual(["不裁切", "裁单张", "异型裁切（不拼大张裁小块）"]);
+    expect(selectOptions("打扣")).toEqual(["无", "打扣"]);
     expect(screen.getByRole("button", { name: /1 块/ })).toBeInTheDocument();
 
     chooseSelectOption("尺寸", "自定义");
@@ -559,7 +581,11 @@ describe("FactoriesPage", () => {
     expect(await screen.findByRole("heading", { name: "扇子" })).toBeInTheDocument();
     expect(selectOptions("材质")).toEqual(expect.arrayContaining(["PP塑料", "PVC", "竹柄纸扇", "无纺布", "自定义"]));
     expect(selectOptions("尺寸")).toEqual(["17×17cm", "19×19cm", "21×21cm", "七寸", "八寸", "自定义"]);
-    expect(selectOptions("工艺")).toEqual(expect.arrayContaining(["不选工艺", "装柄", "异形模切", "烫金", "自定义"]));
+    expect(selectOptions("模切")).toEqual(["无", "模切", "异形模切"]);
+    expect(selectOptions("装柄")).toEqual(["无", "装柄"]);
+    expect(selectOptions("覆膜")).toEqual(["无", "亮膜", "哑膜"]);
+    expect(selectOptions("烫金")).toEqual(["无", "烫金"]);
+    expect(screen.queryByLabelText("工艺")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /500 把/ })).toBeInTheDocument();
     expect(datalistOptions(screen.getByLabelText("数量"))).toEqual(["500", "1000", "2000", "3000", "5000", "10000"]);
   });
