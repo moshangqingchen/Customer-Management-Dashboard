@@ -418,7 +418,25 @@ export function printSpecValue(value?: string | number | null) {
 
 export function matchingPrintPresetValue(value: string, options: string[]) {
   const normalized = printSpecValue(value);
-  return options.find((option) => printSpecValue(option) === normalized || normalized.includes(printSpecValue(option))) ?? "";
+  const exact = options.find((option) => printSpecValue(option) === normalized);
+  if (exact) return exact;
+
+  return options
+    .map((option, index) => {
+      const normalizedOption = printSpecValue(option);
+      return {
+        option,
+        index,
+        position: normalizedOption ? normalized.lastIndexOf(normalizedOption) : -1,
+        length: normalizedOption.length,
+      };
+    })
+    .filter((match) => match.position >= 0)
+    .sort((left, right) =>
+      right.length - left.length ||
+      right.position - left.position ||
+      left.index - right.index
+    )[0]?.option ?? "";
 }
 
 export function printPaperWeightOptionsForMaterial(projectName: string, material: string) {
@@ -433,16 +451,15 @@ export function printPaperWeightOptionsForMaterial(projectName: string, material
 
 export function splitLegacyPrintMaterial(projectName: string, material: string, paperWeight = "") {
   const preset = printPresetForProject(projectName);
-  if (!preset.paperWeightsByMaterial) return { material, paperWeight };
   const combined = [material, paperWeight].filter(Boolean).join(" ");
-  const normalizedCombined = printSpecValue(combined);
-  const matchedMaterial = preset.materials.find((option) => normalizedCombined.includes(printSpecValue(option)));
-  if (!matchedMaterial) return { material, paperWeight };
-  const weightOptions = printPaperWeightOptionsForMaterial(projectName, matchedMaterial);
-  const matchedWeight = weightOptions.find((option) => normalizedCombined.includes(printSpecValue(option)));
+  const matchedMaterial = matchingPrintPresetValue(combined, preset.materials);
+  const weightOptions = matchedMaterial ? printPaperWeightOptionsForMaterial(projectName, matchedMaterial) : preset.paperWeights;
+  const explicitWeight = matchingPrintPresetValue(paperWeight, weightOptions);
+  const matchedWeight = matchingPrintPresetValue(combined, weightOptions);
+
   return {
-    material: matchedMaterial,
-    paperWeight: matchedWeight || paperWeight || weightOptions[0] || "",
+    material: matchedMaterial || material,
+    paperWeight: explicitWeight || matchedWeight || paperWeight,
   };
 }
 

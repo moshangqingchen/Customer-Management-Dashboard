@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ButtonHTMLAttributes, type PropsWithChildren, type ReactNode } from "react";
-import { Star, X } from "lucide-react";
+import { ChevronDown, Star, X } from "lucide-react";
 
 import { getStatusTone } from "../lib/format";
 
@@ -47,14 +47,19 @@ export function SearchableSelect({
   const selectedLabel = normalizedOptions.find((option) => option.value === value)?.label ?? value;
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(selectedLabel);
+  const [showAllOptions, setShowAllOptions] = useState(false);
   const closeTimer = useRef<number | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    if (!open) setQuery(selectedLabel);
+    if (!open) {
+      setQuery(selectedLabel);
+      setShowAllOptions(false);
+    }
   }, [open, selectedLabel]);
 
   const trimmedQuery = query.trim().toLowerCase();
-  const filteredOptions = normalizedOptions.filter((option) => {
+  const filteredOptions = showAllOptions ? normalizedOptions : normalizedOptions.filter((option) => {
     if (!trimmedQuery) return true;
     return option.label.toLowerCase().includes(trimmedQuery) || option.value.toLowerCase().includes(trimmedQuery);
   });
@@ -64,6 +69,7 @@ export function SearchableSelect({
     onChange(nextValue);
     setQuery(option?.label ?? nextValue);
     setOpen(false);
+    setShowAllOptions(false);
   };
 
   const close = () => {
@@ -73,12 +79,14 @@ export function SearchableSelect({
       return;
     }
     setOpen(false);
+    setShowAllOptions(false);
     setQuery(selectedLabel);
   };
 
   return (
     <div className={`searchable-select ${className}`}>
       <input
+        ref={inputRef}
         aria-label={ariaLabel}
         aria-expanded={open}
         aria-autocomplete="list"
@@ -89,7 +97,7 @@ export function SearchableSelect({
         placeholder={selectedLabel || placeholder}
         onFocus={(event) => {
           if (closeTimer.current) window.clearTimeout(closeTimer.current);
-          setQuery("");
+          setShowAllOptions(true);
           setOpen(true);
           event.currentTarget.select();
         }}
@@ -98,6 +106,7 @@ export function SearchableSelect({
         }}
         onChange={(event) => {
           setQuery(event.target.value);
+          setShowAllOptions(false);
           setOpen(true);
         }}
         onKeyDown={(event) => {
@@ -110,10 +119,27 @@ export function SearchableSelect({
           if (event.key === "Escape") {
             event.preventDefault();
             setOpen(false);
+            setShowAllOptions(false);
             setQuery(selectedLabel);
           }
         }}
       />
+      <button
+        type="button"
+        className="searchable-select-toggle"
+        aria-label={`${ariaLabel}下拉选项`}
+        disabled={disabled}
+        onMouseDown={(event) => {
+          event.preventDefault();
+          if (closeTimer.current) window.clearTimeout(closeTimer.current);
+          setQuery(selectedLabel);
+          setShowAllOptions(true);
+          setOpen(true);
+          inputRef.current?.focus();
+        }}
+      >
+        <ChevronDown size={16} />
+      </button>
       {open && (
         <div className="searchable-select-menu" role="listbox">
           {filteredOptions.length ? filteredOptions.map((option) => (

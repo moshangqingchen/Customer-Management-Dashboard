@@ -405,6 +405,36 @@ describe("OrderForm", () => {
     expect(screen.getByText("合计 ¥53.00")).toBeInTheDocument();
   });
 
+  it("keeps normal-card paper and weight as separate controls", () => {
+    const { container } = render(<OrderForm customers={[customer]} onSaved={vi.fn()} onCancel={vi.fn()} />);
+
+    const itemTypeSelect = container.querySelector(".item-row select");
+    expect(itemTypeSelect).not.toBeNull();
+    fireEvent.change(itemTypeSelect!, { target: { value: "印刷品" } });
+
+    expect(screen.getByLabelText("纸张/材质")).toHaveValue("铜版纸");
+    expect(screen.getByLabelText("克重/厚度")).toHaveValue("250g");
+
+    fireEvent.focus(screen.getByLabelText("克重/厚度"));
+    fireEvent.change(screen.getByLabelText("克重/厚度"), { target: { value: "300" } });
+    fireEvent.mouseDown(screen.getByRole("option", { name: "300g" }));
+
+    expect(screen.getByLabelText("纸张/材质")).toHaveValue("铜版纸");
+    expect(screen.getByLabelText("克重/厚度")).toHaveValue("300g");
+
+    fireEvent.mouseDown(screen.getByLabelText("克重/厚度下拉选项"));
+    expect(screen.getByRole("option", { name: "250g" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "350g" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "400g" })).toBeInTheDocument();
+
+    fireEvent.focus(screen.getByLabelText("纸张/材质"));
+    fireEvent.change(screen.getByLabelText("纸张/材质"), { target: { value: "哑粉" } });
+    fireEvent.mouseDown(screen.getByRole("option", { name: "哑粉纸" }));
+
+    expect(screen.getByLabelText("纸张/材质")).toHaveValue("哑粉纸");
+    expect(screen.getByLabelText("克重/厚度")).toHaveValue("300g");
+  });
+
   it("does not auto-select a source quote when only category and quantity match", () => {
     const mismatchedFlyerQuote: SourceQuote = {
       ...flyerSourceQuote,
