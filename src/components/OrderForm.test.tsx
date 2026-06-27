@@ -501,6 +501,54 @@ describe("OrderForm", () => {
     expect(within(matchingQuotes).getByText("毛利 ¥15.00")).toBeInTheDocument();
   });
 
+  it("keeps every matching quote visible after selecting one factory card", () => {
+    const boboQuote: SourceQuote = {
+      ...flyerSourceQuote,
+      id: "quote-flyer-bobo-500",
+      factoryId: "factory-bobo",
+      factoryName: "博博印务",
+      paperWeight: "157g",
+      productionCostCents: 6500,
+      shippingCostCents: 0,
+    };
+    const fuzhouQuote: SourceQuote = {
+      ...flyerSourceQuote,
+      id: "quote-flyer-fuzhou-500",
+      factoryId: "factory-fuzhou",
+      factoryName: "福州印网",
+      productionCostCents: 4900,
+      shippingCostCents: 0,
+    };
+    const mojiaQuote: SourceQuote = {
+      ...flyerSourceQuote,
+      id: "quote-flyer-mojia-500",
+      factoryId: "factory-mojia",
+      factoryName: "墨加印务",
+      productionCostCents: 5000,
+      shippingCostCents: 0,
+    };
+    const { container } = render(<OrderForm customers={[customer]} sourceQuotes={[boboQuote, fuzhouQuote, mojiaQuote]} onSaved={vi.fn()} onCancel={vi.fn()} />);
+
+    const itemTypeSelect = container.querySelector(".item-row select");
+    expect(itemTypeSelect).not.toBeNull();
+    fireEvent.change(itemTypeSelect!, { target: { value: "印刷品" } });
+    fireEvent.change(screen.getByLabelText("印刷类目"), { target: { value: "宣传单" } });
+    fireEvent.change(screen.getByLabelText("数量"), { target: { value: "500" } });
+
+    let matchingQuotes = screen.getByLabelText("匹配厂家报价");
+    expect(within(matchingQuotes).getByText("博博印务")).toBeInTheDocument();
+    expect(within(matchingQuotes).getByText("福州印网")).toBeInTheDocument();
+    expect(within(matchingQuotes).getByText("墨加印务")).toBeInTheDocument();
+
+    fireEvent.click(within(matchingQuotes).getByText("博博印务").closest(".source-quote-card")!);
+
+    matchingQuotes = screen.getByLabelText("匹配厂家报价");
+    expect(within(matchingQuotes).getByText("博博印务")).toBeInTheDocument();
+    expect(within(matchingQuotes).getByText("福州印网")).toBeInTheDocument();
+    expect(within(matchingQuotes).getByText("墨加印务")).toBeInTheDocument();
+    expect(screen.getByLabelText("克重")).toHaveValue("行标157g");
+  });
+
   it("keeps normal-card paper and weight as separate controls", () => {
     const { container } = render(<OrderForm customers={[customer]} onSaved={vi.fn()} onCancel={vi.fn()} />);
 

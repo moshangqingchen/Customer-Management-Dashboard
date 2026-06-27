@@ -596,10 +596,11 @@ export function OrderForm({ customers, sourceQuotes = [], order, onSaved, onCanc
       setItem(index, emptySourceSnapshot);
       return;
     }
+    const quantity = form.items[index]?.quantity ?? quote.quantity;
     setItem(index, {
-      ...sourceQuoteToItemPatch(quote),
+      ...sourceQuoteSnapshot(quote),
       ...(shippingOverride === undefined ? {} : { sourceShippingCostCents: shippingOverride }),
-      unitPriceCents: unitPriceCentsFromTotal(currentTotalCents, quote.quantity),
+      unitPriceCents: unitPriceCentsFromTotal(currentTotalCents, quantity),
     });
   };
 
