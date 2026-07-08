@@ -195,6 +195,7 @@ async function addDraftProject(name: string, categoryName = name) {
 
 describe("FactoriesPage", () => {
   beforeEach(() => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
     vi.mocked(api.createSourceFactory).mockReset();
     vi.mocked(api.updateSourceFactory).mockReset();
     vi.mocked(api.createSourceQuote).mockReset();

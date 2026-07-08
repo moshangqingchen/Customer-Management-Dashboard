@@ -240,6 +240,7 @@ export type PageId =
   | "dashboard"
   | "customers"
   | "orders"
+  | "quickReplies"
   | "factories"
   | "vip"
   | "files"

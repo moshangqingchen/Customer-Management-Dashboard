@@ -269,6 +269,18 @@ function buildPrintMaterial(material: string, paperWeight: string) {
   return [material, paperWeight].filter(Boolean).join(" ");
 }
 
+const printSideOptions = ["单面", "双面"];
+
+function normalizePrintSide(value: string) {
+  return printSideOptions.includes(value) ? value : "双面";
+}
+
+function normalizePrintItemSpec(item: OrderItemInput): OrderItemInput {
+  if (!isPrintItem(item.itemType)) return item;
+  const spec = parsePrintSpec(item.printSpec);
+  return { ...item, printSpec: buildPrintSpec({ ...spec, sides: normalizePrintSide(spec.sides) }) };
+}
+
 function defaultPrintSpec(projectName: string) {
   const preset = printPresetForProject(projectName);
   const canonicalProjectName = canonicalPrintProjectName(projectName);
@@ -277,7 +289,7 @@ function defaultPrintSpec(projectName: string) {
   return buildPrintSpec({
     size: formatPrintSize(preset.sizes[0]),
     material: buildPrintMaterial(material, paperWeight),
-    sides: preset.sideOptions?.[0] ?? (["联单", "易拉宝"].includes(canonicalProjectName) ? "单面" : "双面"),
+    sides: ["联单", "易拉宝"].includes(canonicalProjectName) ? "单面" : "双面",
     color: preset.colors?.[0] ?? (canonicalProjectName === "联单" ? "黑白" : "彩色"),
     finish: defaultGroupedPrintFinish(projectName),
   });
@@ -340,7 +352,7 @@ function sourceQuoteFullSpecMatches(quote: SourceQuote, item: OrderItemInput) {
     specValue(quote.size) === specValue(spec.size) &&
     (!quoteMaterialParts.material || material.includes(specValue(quoteMaterialParts.material))) &&
     (!quoteMaterialParts.paperWeight || material.includes(specValue(quoteMaterialParts.paperWeight))) &&
-    specValue(quote.sides) === specValue(spec.sides) &&
+    specValue(normalizePrintSide(quote.sides)) === specValue(normalizePrintSide(spec.sides)) &&
     specValue(quote.color) === specValue(spec.color) &&
     finishSpecValue(quote.finish) === finishSpecValue(spec.finish)
   );
@@ -670,7 +682,11 @@ export function OrderForm({ customers, sourceQuotes = [], order, onSaved, onCanc
     setSaving(true);
     setError("");
     try {
-      const input = { ...form, tags: tags.split(/[,，;；]/).map((tag) => tag.trim()).filter(Boolean) };
+      const input = {
+        ...form,
+        items: form.items.map(normalizePrintItemSpec),
+        tags: tags.split(/[,，;；]/).map((tag) => tag.trim()).filter(Boolean),
+      };
       const savedOrder = order ? await api.updateOrder(order.id, input) : await api.createOrder(input);
       onSaved(savedOrder);
     } catch (reason) {
@@ -737,8 +753,6 @@ export function OrderForm({ customers, sourceQuotes = [], order, onSaved, onCanc
             const quantityOptions = isPrint ? printPreset.quantities : [1, 2, 3, 5, 10];
             const colorOptions = isPrint ? printPreset.colors ?? ["彩色", "黑白", "专色"] : [];
             const colorLabel = isPrint ? printPreset.colorLabel ?? "颜色" : "颜色";
-            const sideOptions = isPrint ? printPreset.sideOptions ?? ["单面", "双面"] : [];
-            const sideLabel = isPrint ? printPreset.sideLabel ?? "单双面" : "单双面";
             const finishGroups = isPrint ? printFinishGroupsForProject(printProject) : [];
             const hasFinishGroups = finishGroups.length > 0;
             const groupedFinishValues = isPrint ? splitGroupedPrintFinish(printProject, spec.finish) : {};
@@ -876,7 +890,7 @@ export function OrderForm({ customers, sourceQuotes = [], order, onSaved, onCanc
                     <label><span>尺寸</span><SearchableSelect ariaLabel="尺寸" value={formatPrintSize(spec.size)} options={[{ value: "", label: "未选择" }, ...(customSizeOption ? [formatPrintSize(spec.size)] : []), ...sizeOptions]} onChange={(value) => setSpec("size", value)} /></label>
                     <label><span>{printPreset.materialLabel ?? "纸张/材质"}</span><SearchableSelect ariaLabel={printPreset.materialLabel ?? "纸张/材质"} value={materialValue} options={printPreset.materials} onChange={(value) => setPrintMaterialSpec(value, paperWeightValue)} /></label>
                     <label><span>{printPreset.paperWeightLabel ?? "克重/厚度"}</span><SearchableSelect ariaLabel={printPreset.paperWeightLabel ?? "克重/厚度"} value={paperWeightValue} options={paperWeightOptions} onChange={(value) => setPrintMaterialSpec(materialValue, value)} /></label>
-                    <label><span>{sideLabel}</span><SearchableSelect ariaLabel={sideLabel} value={spec.sides} options={[{ value: "", label: "未选择" }, ...sideOptions]} onChange={(value) => setSpec("sides", value)} /></label>
+                    <label><span>单双面</span><SearchableSelect ariaLabel="单双面" value={normalizePrintSide(spec.sides)} options={printSideOptions} onChange={(value) => setSpec("sides", normalizePrintSide(value))} /></label>
                     <label><span>{colorLabel}</span><SearchableSelect ariaLabel={colorLabel} value={spec.color} options={[{ value: "", label: "未选择" }, ...colorOptions]} onChange={(value) => setSpec("color", value)} /></label>
                     {hasFinishGroups ? (
                       <>

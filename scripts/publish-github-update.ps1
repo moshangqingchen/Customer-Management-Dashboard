@@ -74,7 +74,7 @@ function Publish-WithGitHubApi(
     $assetName = Split-Path -Leaf $file
     $existing = $assets | Where-Object { $_.name -eq $assetName }
     foreach ($asset in $existing) {
-      Invoke-RestMethod -Method Delete -Headers $headers -Uri "$apiBase/releases/assets/$($asset.id)"
+      Invoke-RestMethod -Method Delete -Headers $headers -Uri $asset.url
     }
 
     $escapedName = [Uri]::EscapeDataString($assetName)

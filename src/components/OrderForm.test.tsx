@@ -152,6 +152,18 @@ describe("OrderForm", () => {
     expect(screen.getByLabelText("其他工艺")).toHaveAttribute("placeholder", "无");
   });
 
+  it("only offers single-sided and double-sided print side choices", () => {
+    const { container } = render(<OrderForm customers={[customer]} onSaved={vi.fn()} onCancel={vi.fn()} />);
+
+    const itemTypeSelect = container.querySelector(".item-row select");
+    expect(itemTypeSelect).not.toBeNull();
+    fireEvent.change(itemTypeSelect!, { target: { value: "印刷品" } });
+
+    const sideSelect = screen.getByLabelText("单双面");
+    expect(sideSelect).toHaveValue("双面");
+    expect(selectOptions(sideSelect)).toEqual(["单面", "双面"]);
+  });
+
   it("offers common design project names and platform size presets", () => {
     render(<OrderForm customers={[customer]} onSaved={vi.fn()} onCancel={vi.fn()} />);
 

@@ -22,6 +22,7 @@ describe("App", () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    window.localStorage.clear();
   });
 
   it("renders the dashboard with practical daily-work sections", async () => {
@@ -65,6 +66,64 @@ describe("App", () => {
 
     expect(await screen.findByRole("heading", { name: "源头厂家" })).toBeInTheDocument();
     expect(screen.getAllByText("华彩印刷源头厂").length).toBeGreaterThan(0);
+  });
+
+  it("manages categorized customer service quick replies on a main page", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "客服快捷语" }));
+    expect(await screen.findByRole("heading", { name: "客服快捷语" })).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("主类名称"), { target: { value: "客户犹豫不回" } });
+    fireEvent.change(screen.getByLabelText("主类说明"), { target: { value: "客户已读后没有明确回复时使用" } });
+    fireEvent.click(screen.getByRole("button", { name: "添加主类" }));
+
+    fireEvent.change(screen.getByLabelText("小类名称"), { target: { value: "温和跟进" } });
+    fireEvent.change(screen.getByLabelText("小类说明"), { target: { value: "先确认是否方便，不制造压力" } });
+    fireEvent.click(screen.getByRole("button", { name: "添加小类" }));
+
+    fireEvent.change(screen.getByLabelText("话术标题"), { target: { value: "给选择题" } });
+    fireEvent.change(screen.getByLabelText("话术内容"), { target: { value: "亲，您看这个方向是继续优化，还是先按现在这版安排？" } });
+    fireEvent.click(screen.getByRole("button", { name: "添加话术" }));
+    fireEvent.click(screen.getByRole("button", { name: "复制话术：给选择题" }));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith("亲，您看这个方向是继续优化，还是先按现在这版安排？"));
+  });
+
+  it("supports context menu add and delete actions in customer service quick replies", async () => {
+    const prompt = vi.spyOn(window, "prompt");
+    prompt
+      .mockReturnValueOnce("右键小类")
+      .mockReturnValueOnce("通过右键添加的小类")
+      .mockReturnValueOnce("右键话术")
+      .mockReturnValueOnce("这是通过右键添加的话术。");
+
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "客服快捷语" }));
+    const categoryList = document.querySelector(".reply-category-list");
+    expect(categoryList).not.toBeNull();
+    fireEvent.contextMenu(within(categoryList as HTMLElement).getByRole("button", { name: /客户犹豫不回/ }));
+    fireEvent.click(screen.getByRole("button", { name: "新增小类" }));
+
+    const sceneList = document.querySelector(".reply-scene-list");
+    expect(sceneList).not.toBeNull();
+    expect(await within(sceneList as HTMLElement).findByRole("button", { name: /右键小类/ })).toBeInTheDocument();
+
+    fireEvent.contextMenu(within(sceneList as HTMLElement).getByRole("button", { name: /右键小类/ }));
+    fireEvent.click(screen.getByRole("button", { name: "新增话术" }));
+
+    expect(await screen.findByText("右键话术")).toBeInTheDocument();
+    fireEvent.contextMenu(screen.getByText("右键话术").closest("article")!);
+    fireEvent.click(screen.getByRole("button", { name: "删除话术" }));
+
+    expect(screen.queryByText("右键话术")).not.toBeInTheDocument();
   });
 
   it("opens the complete order page with the project name and address intact", async () => {

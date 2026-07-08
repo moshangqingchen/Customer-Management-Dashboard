@@ -28,6 +28,7 @@ import { FilesPage } from "./pages/FilesPage";
 import { ImportExportPage } from "./pages/ImportExportPage";
 import { Onboarding } from "./pages/Onboarding";
 import { OrdersPage } from "./pages/OrdersPage";
+import { QuickRepliesPage } from "./pages/QuickRepliesPage";
 import { SettingsPage } from "./pages/SettingsPage";
 
 const emptyDashboard: DashboardSummary = {
@@ -45,7 +46,7 @@ const emptyDashboard: DashboardSummary = {
 export default function App() {
   const [page, setPage] = useState<PageId>(() => {
     const requested = new URLSearchParams(window.location.search).get("page");
-    return ["dashboard", "customers", "orders", "factories", "vip", "files", "import", "settings"].includes(requested ?? "")
+    return ["dashboard", "customers", "orders", "quickReplies", "factories", "vip", "files", "import", "settings"].includes(requested ?? "")
       ? requested as PageId
       : "dashboard";
   });
@@ -261,6 +262,7 @@ export default function App() {
         {page === "customers" && <CustomersPage customers={customers} orders={orders} selectedCustomerId={selectedCustomerId} onSelect={(customer) => setSelectedCustomerId(customer.id)} onSelectOrder={(order) => { setSelectedCustomerId(order.customerId); setSelectedOrderId(order.id); setPage("orders"); }} onNew={() => setCustomerModal("new")} onEdit={setCustomerModal} onDelete={deleteCustomer} />}
         {page === "vip" && <CustomersPage customers={customers} orders={orders} selectedCustomerId={selectedCustomerId} vipOnly onSelect={(customer) => setSelectedCustomerId(customer.id)} onSelectOrder={(order) => { setSelectedCustomerId(order.customerId); setSelectedOrderId(order.id); setPage("orders"); }} onNew={() => setCustomerModal("new")} onEdit={setCustomerModal} onDelete={deleteCustomer} />}
         {page === "orders" && <OrdersPage orders={orders} customers={customers} files={files} libraryRoot={settings.libraryRoot} selectedOrderId={selectedOrderId} folderRefreshKey={fileRefreshKey} onNew={newOrder} onSelect={(order) => setSelectedOrderId(order.id)} onClearSelection={() => setSelectedOrderId(null)} onEdit={setOrderModal} onDelete={deleteOrder} onChanged={() => load()} />}
+        {page === "quickReplies" && <QuickRepliesPage />}
         {page === "factories" && <FactoriesPage factories={sourceFactories} factoryProjects={sourceFactoryProjects} quotes={sourceQuotes} selectedFactoryId={selectedFactoryId} onSelect={(factory) => setSelectedFactoryId(factory.id)} onChanged={() => load()} />}
         {page === "files" && <FilesPage files={files} libraryRoot={settings.libraryRoot} onChanged={() => load()} />}
         {page === "import" && <ImportExportPage onChanged={() => load()} />}
