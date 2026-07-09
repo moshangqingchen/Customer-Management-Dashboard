@@ -430,6 +430,7 @@ input,select { height: 38px; }
 .reply-card-actions button:last-child { width: 34px; padding: 0; color: #b66068; }
 .quick-reply-context-menu { z-index: 90; min-width: 168px; }
 .quick-reply-context-menu button { justify-content: flex-start; }
+.quick-reply-edit-form textarea { min-height: 130px; }
 .copy-info-list span { position: relative; padding-right: 42px; }
 .copy-info-list button,.copy-mini-button { width: 28px; height: 28px; display: grid; place-items: center; border: 1px solid #dfe8e2; border-radius: 8px; color: var(--teal-dark); background: #fff; cursor: pointer; }
 .copy-info-list button { position: absolute; right: 9px; bottom: 9px; }

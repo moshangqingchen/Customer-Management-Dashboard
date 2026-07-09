@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type MouseEvent } from "react";
-import { Check, Copy, FolderPlus, MessageCircle, Plus, Search, Trash2 } from "lucide-react";
+import { Check, Copy, Edit3, FolderPlus, MessageCircle, Plus, Search, Trash2 } from "lucide-react";
 
-import { Button, EmptyState, PageHeader } from "../components/ui";
+import { Button, EmptyState, Modal, PageHeader } from "../components/ui";
 
 interface QuickReply {
   id: string;
@@ -32,6 +32,15 @@ interface ContextMenuState {
   categoryId?: string;
   sceneId?: string;
   replyId?: string;
+}
+
+interface EditState {
+  target: ContextMenuTarget;
+  categoryId: string;
+  sceneId?: string;
+  replyId?: string;
+  primary: string;
+  secondary: string;
 }
 
 const STORAGE_KEY = "startup-customer-workbench.quickReplyLibrary";
@@ -172,6 +181,7 @@ export function QuickRepliesPage() {
   const [copiedId, setCopiedId] = useState("");
   const [copyError, setCopyError] = useState("");
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  const [editing, setEditing] = useState<EditState | null>(null);
 
   useEffect(() => {
     try {
@@ -370,6 +380,71 @@ export function QuickRepliesPage() {
   const contextScene = contextCategory?.scenes.find((scene) => scene.id === contextMenu?.sceneId);
   const contextReply = contextScene?.replies.find((reply) => reply.id === contextMenu?.replyId);
 
+  const editCategory = (category: QuickReplyCategory) => {
+    setEditing({
+      target: "category",
+      categoryId: category.id,
+      primary: category.name,
+      secondary: category.description,
+    });
+  };
+
+  const editScene = (categoryId: string, scene: QuickReplyScene) => {
+    setEditing({
+      target: "scene",
+      categoryId,
+      sceneId: scene.id,
+      primary: scene.name,
+      secondary: scene.note,
+    });
+  };
+
+  const editReply = (categoryId: string, sceneId: string, reply: QuickReply) => {
+    setEditing({
+      target: "reply",
+      categoryId,
+      sceneId,
+      replyId: reply.id,
+      primary: reply.title,
+      secondary: reply.content,
+    });
+  };
+
+  const saveEdit = () => {
+    if (!editing) return;
+    const primary = editing.primary.trim();
+    const secondary = editing.secondary.trim();
+    if (!primary || (editing.target === "reply" && !secondary)) return;
+
+    setCategories((current) => current.map((category) => {
+      if (category.id !== editing.categoryId) return category;
+      if (editing.target === "category") {
+        return { ...category, name: primary, description: secondary };
+      }
+      return {
+        ...category,
+        scenes: category.scenes.map((scene) => {
+          if (scene.id !== editing.sceneId) return scene;
+          if (editing.target === "scene") {
+            return { ...scene, name: primary, note: secondary };
+          }
+          return {
+            ...scene,
+            replies: scene.replies.map((reply) => (
+              reply.id === editing.replyId ? { ...reply, title: primary, content: secondary } : reply
+            )),
+          };
+        }),
+      };
+    }));
+    setEditing(null);
+  };
+
+  const editLabel = editing?.target === "category" ? "主类" : editing?.target === "scene" ? "小类" : "话术";
+  const primaryLabel = editing?.target === "reply" ? "话术标题" : `${editLabel}名称`;
+  const secondaryLabel = editing?.target === "reply" ? "话术内容" : `${editLabel}说明`;
+  const editCanSave = Boolean(editing && editing.primary.trim() && (editing.target !== "reply" || editing.secondary.trim()));
+
   return (
     <div className="page-content">
       <PageHeader
@@ -511,6 +586,7 @@ export function QuickRepliesPage() {
         <div className="context-menu quick-reply-context-menu" style={{ left: contextMenu.x, top: contextMenu.y }} onClick={(event) => event.stopPropagation()}>
           {contextMenu.target === "category" && (
             <>
+              {contextCategory && <button type="button" onClick={() => runContextAction(() => editCategory(contextCategory))}><Edit3 size={15} />更改主类</button>}
               <button type="button" onClick={() => runContextAction(addCategoryFromContext)}><Plus size={15} />新增主类</button>
               <button type="button" onClick={() => runContextAction(() => addSceneFromContext(contextMenu.categoryId))}><Plus size={15} />新增小类</button>
               <button type="button" className="danger" onClick={() => runContextAction(() => contextMenu.categoryId && deleteCategory(contextMenu.categoryId))}><Trash2 size={15} />删除主类</button>
@@ -518,6 +594,7 @@ export function QuickRepliesPage() {
           )}
           {contextMenu.target === "scene" && (
             <>
+              {contextScene && contextMenu.categoryId && <button type="button" onClick={() => runContextAction(() => editScene(contextMenu.categoryId!, contextScene))}><Edit3 size={15} />更改小类</button>}
               <button type="button" onClick={() => runContextAction(() => addSceneFromContext(contextMenu.categoryId))}><Plus size={15} />新增小类</button>
               <button type="button" onClick={() => runContextAction(() => addReplyFromContext(contextMenu.categoryId, contextMenu.sceneId))}><Plus size={15} />新增话术</button>
               <button type="button" className="danger" onClick={() => runContextAction(() => contextMenu.sceneId && deleteScene(contextMenu.sceneId))}><Trash2 size={15} />删除小类</button>
@@ -526,11 +603,40 @@ export function QuickRepliesPage() {
           {contextMenu.target === "reply" && (
             <>
               <button type="button" onClick={() => runContextAction(() => addReplyFromContext(contextMenu.categoryId, contextMenu.sceneId))}><Plus size={15} />新增话术</button>
+              {contextReply && contextMenu.categoryId && contextMenu.sceneId && <button type="button" onClick={() => runContextAction(() => editReply(contextMenu.categoryId!, contextMenu.sceneId!, contextReply))}><Edit3 size={15} />更改话术</button>}
               {contextReply && <button type="button" onClick={() => runContextAction(() => void copyReply(contextReply))}><Copy size={15} />复制话术</button>}
-              <button type="button" className="danger" onClick={() => runContextAction(() => contextMenu.replyId && deleteReply(contextMenu.replyId))}><Trash2 size={15} />删除话术</button>
+              {contextReply && <button type="button" className="danger" onClick={() => runContextAction(() => contextMenu.replyId && deleteReply(contextMenu.replyId))}><Trash2 size={15} />删除话术</button>}
             </>
           )}
         </div>
+      )}
+      {editing && (
+        <Modal title={`更改${editLabel}`} subtitle="修改后点击保存，原有分类关系不会改变。" onClose={() => setEditing(null)}>
+          <form className="form-stack quick-reply-edit-form" onSubmit={(event) => { event.preventDefault(); saveEdit(); }}>
+            <label>
+              <span>{primaryLabel}</span>
+              <input
+                aria-label={`编辑${primaryLabel}`}
+                value={editing.primary}
+                onChange={(event) => setEditing((current) => current ? { ...current, primary: event.target.value } : current)}
+                autoFocus
+              />
+            </label>
+            <label>
+              <span>{secondaryLabel}</span>
+              <textarea
+                aria-label={`编辑${secondaryLabel}`}
+                value={editing.secondary}
+                onChange={(event) => setEditing((current) => current ? { ...current, secondary: event.target.value } : current)}
+                placeholder={editing.target === "reply" ? "输入要复制给客户的话术内容" : "输入使用场景说明"}
+              />
+            </label>
+            <div className="form-actions">
+              <Button type="button" variant="secondary" onClick={() => setEditing(null)}>取消</Button>
+              <Button type="submit" disabled={!editCanSave}>保存更改</Button>
+            </div>
+          </form>
+        </Modal>
       )}
     </div>
   );

@@ -126,6 +126,43 @@ describe("App", () => {
     expect(screen.queryByText("右键话术")).not.toBeInTheDocument();
   });
 
+  it("edits quick reply categories, scenes, and replies from context menus", async () => {
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "客服快捷语" }));
+
+    const categoryList = document.querySelector(".reply-category-list");
+    expect(categoryList).not.toBeNull();
+    const categoryCard = within(categoryList as HTMLElement).getByRole("button", { name: /客户犹豫不回/ });
+    fireEvent.contextMenu(categoryCard);
+    fireEvent.click(screen.getByRole("button", { name: "更改主类" }));
+    fireEvent.change(screen.getByLabelText("编辑主类名称"), { target: { value: "客户犹豫跟进" } });
+    fireEvent.change(screen.getByLabelText("编辑主类说明"), { target: { value: "客户看过方案后未回复时使用" } });
+    fireEvent.click(screen.getByRole("button", { name: "保存更改" }));
+    expect(within(categoryList as HTMLElement).getByRole("button", { name: /客户犹豫跟进/ })).toBeInTheDocument();
+
+    const sceneList = document.querySelector(".reply-scene-list");
+    expect(sceneList).not.toBeNull();
+    const sceneCard = within(sceneList as HTMLElement).getByRole("button", { name: /温和跟进/ });
+    fireEvent.contextMenu(sceneCard);
+    fireEvent.click(screen.getByRole("button", { name: "更改小类" }));
+    fireEvent.change(screen.getByLabelText("编辑小类名称"), { target: { value: "温和提醒" } });
+    fireEvent.change(screen.getByLabelText("编辑小类说明"), { target: { value: "降低客户回复压力" } });
+    fireEvent.click(screen.getByRole("button", { name: "保存更改" }));
+    expect(within(sceneList as HTMLElement).getByRole("button", { name: /温和提醒/ })).toBeInTheDocument();
+
+    const replyCard = screen.getByText("确认是否方便").closest("article");
+    expect(replyCard).not.toBeNull();
+    fireEvent.contextMenu(replyCard!);
+    fireEvent.click(screen.getByRole("button", { name: "更改话术" }));
+    fireEvent.change(screen.getByLabelText("编辑话术标题"), { target: { value: "确认设计方向" } });
+    fireEvent.change(screen.getByLabelText("编辑话术内容"), { target: { value: "亲，您看当前设计方向是否合适？需要调整可以直接告诉我。" } });
+    fireEvent.click(screen.getByRole("button", { name: "保存更改" }));
+
+    expect(screen.getByText("确认设计方向")).toBeInTheDocument();
+    expect(screen.getByText("亲，您看当前设计方向是否合适？需要调整可以直接告诉我。")).toBeInTheDocument();
+  });
+
   it("opens the complete order page with the project name and address intact", async () => {
     render(<App />);
 
