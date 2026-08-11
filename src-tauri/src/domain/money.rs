@@ -19,7 +19,9 @@ pub fn total_amount(lines: &[OrderLine]) -> i64 {
 }
 
 pub fn payment_status(total_cents: i64, received_cents: i64) -> PaymentStatus {
-    if received_cents <= 0 {
+    if total_cents <= 0 {
+        PaymentStatus::Paid
+    } else if received_cents <= 0 {
         PaymentStatus::Unpaid
     } else if received_cents < total_cents {
         PaymentStatus::Partial

@@ -2,6 +2,8 @@ use std::path::Path;
 
 use rusqlite::{Connection, Result};
 
+pub const LATEST_SCHEMA_VERSION: i64 = 3;
+
 pub fn open(path: &Path) -> Result<Connection> {
     let connection = Connection::open(path)?;
     connection.execute_batch(
@@ -176,6 +178,12 @@ fn migrate(connection: &Connection) -> Result<()> {
             deleted_at TEXT
         );
 
+        CREATE TABLE IF NOT EXISTS import_batches (
+            batch_id TEXT PRIMARY KEY,
+            completed_at TEXT NOT NULL,
+            result_json TEXT NOT NULL
+        );
+
         CREATE VIRTUAL TABLE IF NOT EXISTS search_index USING fts5(
             entity_type,
             entity_id UNINDEXED,
@@ -260,6 +268,10 @@ fn migrate(connection: &Connection) -> Result<()> {
         "orders",
         "shipping_address",
         "TEXT NOT NULL DEFAULT ''",
+    )?;
+    connection.execute(
+        "INSERT OR IGNORE INTO schema_migrations(version, applied_at) VALUES (?1, datetime('now'))",
+        [LATEST_SCHEMA_VERSION],
     )?;
     Ok(())
 }

@@ -128,6 +128,7 @@ export interface PaymentInput {
   paidAt: string;
   method: string;
   notes: string;
+  allowOverpayment?: boolean;
 }
 
 export interface Payment extends PaymentInput {
@@ -173,6 +174,7 @@ export interface FileRecord {
   name: string;
   relativePath: string;
   sizeBytes: number;
+  state?: "ready" | "missing" | "unavailable" | "unknown";
   createdAt: string;
 }
 
@@ -200,6 +202,62 @@ export interface AppSettings {
   backupDir?: string | null;
 }
 
+export type StorageHealthStatus =
+  | "ready"
+  | "notConfigured"
+  | "missing"
+  | "notDirectory"
+  | "readOnly"
+  | "error";
+
+export interface StorageHealth {
+  status: StorageHealthStatus;
+  path: string | null;
+  writable: boolean;
+  freeBytes: number | null;
+  message: string;
+}
+
+export interface BackupStatus {
+  backupDir: string | null;
+  lastBackupPath: string | null;
+  lastBackupAt: string | null;
+  lastError: string | null;
+}
+
+export interface LibraryMigrationResult {
+  oldRoot: string;
+  newRoot: string;
+  copiedFiles: number;
+  copiedBytes: number;
+  oldRootRetained: boolean;
+}
+
+export interface FullArchiveInspection {
+  formatVersion: number;
+  schemaVersion: number;
+  exportedAt: string;
+  libraryFileCount: number;
+  libraryBytes: number;
+  sourceLibraryRoot: string | null;
+  message: string;
+}
+
+export interface FullRestoreResult {
+  libraryRoot: string;
+  restoredFiles: number;
+  restoredBytes: number;
+  safetyBackupPath: string;
+  previousLibraryRetained: boolean;
+}
+
+export type FilePickerKind =
+  | "spreadsheet"
+  | "databaseBackup"
+  | "fullArchive"
+  | "image"
+  | "attachment";
+
 export interface ImportCustomerRow {
   rowNumber: number;
   name: string;
@@ -214,14 +272,26 @@ export interface ImportCustomerRow {
 
 export interface ImportResult {
   imported: number;
+  updated?: number;
   skipped: number;
   errors: string[];
   duplicateWarnings: string[];
 }
 
+export interface CustomerImportOperation {
+  rowNumber: number;
+  action: "skip" | "update" | "create";
+  customerId?: string | null;
+  customer?: NewCustomer | null;
+}
+
 export interface SpreadsheetPreview {
   headers: string[];
   rows: string[][];
+  fileName?: string;
+  sheetNames?: string[];
+  selectedSheet?: string | null;
+  totalRows?: number;
 }
 
 export type CustomerImportField =

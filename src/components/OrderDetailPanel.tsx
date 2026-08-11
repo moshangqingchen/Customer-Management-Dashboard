@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, Copy, Edit3, ExternalLink, FilePlus2, FolderOpen, MapPin, RefreshCw, Trash2, Truck, UserRound, WalletCards } from "lucide-react";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 
@@ -7,6 +7,7 @@ import { fileSize, formatCents, paymentProgress, shortDate } from "../lib/format
 import { absoluteFilePath, fileKindLabel } from "../lib/files";
 import { orderProjectNames } from "../lib/orders";
 import type { AddressInput, Customer, FileRecord, NewOrder, Order } from "../lib/types";
+import { localDateString } from "../utils/date";
 import { Button, EmptyState, StatusBadge } from "./ui";
 import { FileThumbnail } from "./FileThumbnail";
 
@@ -24,22 +25,41 @@ function findAddressChoice(customer: Customer | undefined, address?: AddressInpu
   return index >= 0 ? String(index) : "custom";
 }
 
-function fileMergeKey(file: FileRecord) {
-  return file.name.trim().toLocaleLowerCase();
+function normalizedFilePath(file: FileRecord) {
+  return file.relativePath.trim().replace(/\\/g, "/").replace(/\/+/g, "/").toLocaleLowerCase();
+}
+
+function sameManagedFile(left: FileRecord, right: FileRecord) {
+  if (left.id === right.id) return true;
+  const leftPath = normalizedFilePath(left);
+  const rightPath = normalizedFilePath(right);
+  if (!leftPath || !rightPath) return false;
+  return leftPath === rightPath || leftPath.endsWith(`/${rightPath}`) || rightPath.endsWith(`/${leftPath}`);
 }
 
 function mergeOrderFiles(folderFiles: FileRecord[], databaseFiles: FileRecord[]) {
-  const seen = new Set<string>();
   const merged: FileRecord[] = [];
   for (const file of [...folderFiles, ...databaseFiles]) {
-    const key = fileMergeKey(file);
-    if (!key || seen.has(key)) continue;
-    seen.add(key);
+    if (merged.some((existing) => sameManagedFile(existing, file))) continue;
     merged.push(file);
   }
   return merged.sort((left, right) =>
     right.createdAt.localeCompare(left.createdAt) || left.name.localeCompare(right.name, "zh-Hans-CN"),
   );
+}
+
+function errorMessage(reason: unknown) {
+  if (reason instanceof Error) return reason.message;
+  return String(reason);
+}
+
+function isDropInside(position: { x: number; y: number }, element: HTMLElement | null) {
+  if (!element) return false;
+  const scale = window.devicePixelRatio || 1;
+  const x = position.x / scale;
+  const y = position.y / scale;
+  const rect = element.getBoundingClientRect();
+  return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
 }
 
 async function copyText(value: string) {
@@ -95,7 +115,7 @@ export function OrderDetailPanel({
   files?: FileRecord[];
   libraryRoot?: string | null;
   folderRefreshKey?: number;
-  onChanged: () => void;
+  onChanged: () => void | Promise<void>;
   onEdit: (order: Order) => void;
   onDelete: (order: Order) => void;
 }) {
@@ -111,6 +131,7 @@ export function OrderDetailPanel({
   const [message, setMessage] = useState("");
   const [copied, setCopied] = useState("");
   const [folderFiles, setFolderFiles] = useState<FileRecord[]>([]);
+  const dropZoneRef = useRef<HTMLButtonElement | null>(null);
   const databaseOrderFiles = useMemo(() => files.filter((file) => file.orderId === order?.id), [files, order?.id]);
   const orderFiles = useMemo(() => mergeOrderFiles(folderFiles, databaseOrderFiles), [folderFiles, databaseOrderFiles]);
   const sourceProductionCost = useMemo(
@@ -145,39 +166,53 @@ export function OrderDetailPanel({
         if (alive) setFolderFiles(nextFiles);
       })
       .catch((reason) => {
-        if (alive) setMessage(`读取订单文件夹失败：${String(reason)}`);
+        if (alive) setMessage(`读取订单文件夹失败：${errorMessage(reason)}`);
       });
 
     return () => { alive = false; };
   }, [order?.id, order?.folderPath, order?.customerId, folderRefreshKey]);
 
-  const uploadPath = async (path: string) => {
+  const uploadPath = useCallback(async (path: string) => {
     if (!order) return;
     setBusy(true);
+    setMessage("");
     try {
       await api.addOrderFile(order.id, path, "订单文件");
       if (order.folderPath) {
         setFolderFiles(await api.listOrderFolderFiles(order.folderPath, order.id, order.customerId));
       }
       setMessage("文件已复制到订单文件夹");
-      onChanged();
+      await onChanged();
     } catch (reason) {
-      setMessage(String(reason));
+      setMessage(`添加订单文件失败：${errorMessage(reason)}`);
     } finally {
       setBusy(false);
     }
-  };
+  }, [onChanged, order]);
 
   useEffect(() => {
     if (api.isDemo || !order) return;
     let unlisten: (() => void) | undefined;
+    let cancelled = false;
     getCurrentWebview().onDragDropEvent(async (event) => {
-      if (event.payload.type === "drop") {
+      if (
+        event.payload.type === "drop" &&
+        !document.querySelector(".modal-backdrop") &&
+        isDropInside(event.payload.position, dropZoneRef.current)
+      ) {
         for (const path of event.payload.paths) await uploadPath(path);
       }
-    }).then((value) => { unlisten = value; });
-    return () => unlisten?.();
-  }, [order?.id]);
+    }).then((value) => {
+      if (cancelled) value();
+      else unlisten = value;
+    }).catch((reason) => {
+      if (!cancelled) setMessage(`无法启用文件拖放：${errorMessage(reason)}`);
+    });
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
+  }, [order?.id, uploadPath]);
 
   const selectAddress = (value: string) => {
     setAddressChoice(value);
@@ -202,18 +237,22 @@ export function OrderDetailPanel({
         shippingAddress,
       }));
       setMessage("订单详情已保存");
-      onChanged();
+      await onChanged();
     } catch (reason) {
-      setMessage(String(reason));
+      setMessage(`保存订单详情失败：${errorMessage(reason)}`);
     } finally {
       setBusy(false);
     }
   };
 
   const copy = async (label: string, value: string) => {
-    if (await copyText(value)) {
-      setCopied(`已复制${label}`);
-      window.setTimeout(() => setCopied((current) => current === `已复制${label}` ? "" : current), 1400);
+    try {
+      if (await copyText(value)) {
+        setCopied(`已复制${label}`);
+        window.setTimeout(() => setCopied((current) => current === `已复制${label}` ? "" : current), 1400);
+      }
+    } catch (reason) {
+      setMessage(`复制${label}失败：${errorMessage(reason)}`);
     }
   };
 
@@ -226,9 +265,9 @@ export function OrderDetailPanel({
       setDesignStatus(nextDesignStatus);
       setFulfillmentStatus(nextFulfillmentStatus);
       setMessage("订单状态已更新");
-      onChanged();
+      await onChanged();
     } catch (reason) {
-      setMessage(String(reason));
+      setMessage(`更新订单状态失败：${errorMessage(reason)}`);
     } finally {
       setBusy(false);
     }
@@ -241,11 +280,61 @@ export function OrderDetailPanel({
     setBusy(true);
     setMessage("");
     try {
-      await api.addPayment(order.id, { amountCents: remainingCents, paidAt: new Date().toISOString().slice(0, 10), method: "结清尾款", notes: "" });
+      await api.addPayment(order.id, { amountCents: remainingCents, paidAt: localDateString(), method: "结清尾款", notes: "" });
       setMessage("尾款已结清");
-      onChanged();
+      await onChanged();
     } catch (reason) {
-      setMessage(String(reason));
+      setMessage(`结清尾款失败：${errorMessage(reason)}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const recordPayment = async () => {
+    if (!order || busy) return;
+    const amount = Number(payment);
+    const amountCents = Math.round(amount * 100);
+    if (!Number.isFinite(amount) || amountCents <= 0) {
+      setMessage("本次收款必须是大于 0 的有效金额");
+      return;
+    }
+    const remainingCents = Math.max(0, order.totalCents - order.receivedCents);
+    const allowOverpayment = amountCents > remainingCents;
+    if (allowOverpayment && !window.confirm(
+      `本次记录 ${formatCents(amountCents)}，将比订单剩余应收 ${formatCents(remainingCents)} 多 ${formatCents(amountCents - remainingCents)}。\n\n确认仍要记录这笔超额收款吗？`,
+    )) return;
+
+    setBusy(true);
+    setMessage("");
+    try {
+      await api.addPayment(order.id, {
+        amountCents,
+        paidAt: localDateString(),
+        method: "手动记录",
+        notes: "",
+        allowOverpayment,
+      });
+      setPayment("");
+      setMessage("收款已记录");
+      await onChanged();
+    } catch (reason) {
+      setMessage(`记录收款失败：${errorMessage(reason)}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const removePayment = async (paymentId: string, amountCents: number, paidAt: string) => {
+    if (!order || busy) return;
+    if (!window.confirm(`确定删除 ${shortDate(paidAt)} 的收款 ${formatCents(amountCents)} 吗？\n\n删除后订单已收金额和收款状态会重新计算。`)) return;
+    setBusy(true);
+    setMessage("");
+    try {
+      await api.deletePayment(order.id, paymentId);
+      setMessage("错误收款已删除，订单金额已重新计算");
+      await onChanged();
+    } catch (reason) {
+      setMessage(`删除收款记录失败：${errorMessage(reason)}`);
     } finally {
       setBusy(false);
     }
@@ -326,10 +415,37 @@ export function OrderDetailPanel({
         <h3><FolderOpen size={16} /> 文件夹</h3>
         <div className={`folder-state ${order.folderState}`}><FolderOpen size={20} /><div><strong>{order.folderState === "ready" ? "文件夹已创建" : "文件夹创建失败"}</strong><span>{order.folderPath ?? "可点击重试创建"}</span></div></div>
         <div className="button-row">
-          {order.folderPath && <Button variant="secondary" onClick={() => api.openInExplorer(order.folderPath!)}><ExternalLink size={16} />打开</Button>}
-          {order.folderState !== "ready" && <Button variant="secondary" onClick={async () => { await api.retryOrderFolder(order.id); onChanged(); }}><RefreshCw size={16} />重试</Button>}
+          {order.folderPath && <Button variant="secondary" disabled={busy} onClick={async () => {
+            try {
+              await api.openInExplorer(order.folderPath!);
+            } catch (reason) {
+              setMessage(`打开订单文件夹失败：${errorMessage(reason)}`);
+            }
+          }}><ExternalLink size={16} />打开</Button>}
+          {order.folderState !== "ready" && <Button variant="secondary" disabled={busy} onClick={async () => {
+            if (busy) return;
+            setBusy(true);
+            setMessage("");
+            try {
+              await api.retryOrderFolder(order.id);
+              setMessage("订单文件夹已重新创建");
+              await onChanged();
+            } catch (reason) {
+              setMessage(`重试创建订单文件夹失败：${errorMessage(reason)}`);
+            } finally {
+              setBusy(false);
+            }
+          }}><RefreshCw size={16} />重试</Button>}
         </div>
-        <button className="drop-zone compact" disabled={busy} onClick={async () => { const path = await api.chooseFile(); if (path) await uploadPath(path); }}>
+        <button ref={dropZoneRef} className="drop-zone compact" disabled={busy} onClick={async () => {
+          if (busy) return;
+          try {
+            const path = await api.chooseFile();
+            if (path) await uploadPath(path);
+          } catch (reason) {
+            setMessage(`选择订单文件失败：${errorMessage(reason)}`);
+          }
+        }}>
           <FilePlus2 size={22} /><strong>拖入或选择文件</strong><span>复制到受管文件库，不覆盖原文件</span>
         </button>
         {orderFiles.length > 0 && (
@@ -361,18 +477,12 @@ export function OrderDetailPanel({
 
       <section className="detail-card">
         <h3>收款记录</h3>
-        <div className="inline-row"><div className="money-input"><span>¥</span><input value={payment} type="number" min="0" step="0.01" onChange={(event) => setPayment(event.target.value)} placeholder="本次收款" /></div><Button onClick={async () => {
-          const amountCents = Math.round(Number(payment) * 100);
-          if (!amountCents) return;
-          await api.addPayment(order.id, { amountCents, paidAt: new Date().toISOString().slice(0, 10), method: "手动记录", notes: "" });
-          setPayment("");
-          onChanged();
-        }}><WalletCards size={16} />记录</Button>{order.totalCents > order.receivedCents && <Button variant="secondary" onClick={settleRemainingPayment} disabled={busy}>结清尾款</Button>}</div>
-        <div className="mini-list">{order.payments.length === 0 ? <p className="form-hint">暂无收款记录</p> : order.payments.map((item) => <div key={item.id}><span><b>{item.method}</b><small>{shortDate(item.paidAt)}</small></span><strong>{formatCents(item.amountCents)}</strong></div>)}</div>
+        <div className="inline-row"><div className="money-input"><span>¥</span><input aria-label="本次收款金额" value={payment} type="number" min="0.01" step="0.01" inputMode="decimal" onChange={(event) => setPayment(event.target.value)} placeholder="本次收款" /></div><Button onClick={recordPayment} disabled={busy}><WalletCards size={16} />{busy ? "处理中…" : "记录"}</Button>{order.totalCents > order.receivedCents && <Button variant="secondary" onClick={settleRemainingPayment} disabled={busy}>结清尾款</Button>}</div>
+        <div className="mini-list">{order.payments.length === 0 ? <p className="form-hint">暂无收款记录</p> : order.payments.map((item) => <div key={item.id}><span><b>{item.method}</b><small>{shortDate(item.paidAt)}</small></span><strong>{formatCents(item.amountCents)}</strong><button type="button" className="icon-button danger" disabled={busy} onClick={() => removePayment(item.id, item.amountCents, item.paidAt)} aria-label={`删除 ${shortDate(item.paidAt)} 的收款 ${formatCents(item.amountCents)}`}><Trash2 size={15} /></button></div>)}</div>
       </section>
 
       {order.notes && <section className="detail-card"><h3>备注</h3><p className="detail-note">{order.notes}</p></section>}
-      {(message || copied) && <div className="inline-message">{message || copied}</div>}
+      {(message || copied) && <div className="inline-message" role="status" aria-live="polite">{message || copied}</div>}
     </aside>
   );
 }

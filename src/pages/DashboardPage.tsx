@@ -15,17 +15,29 @@ import { fileSize, formatCents, shortDate } from "../lib/format";
 import { orderProjectNames } from "../lib/orders";
 import type { DashboardSummary, Order, PageId } from "../lib/types";
 import { Button, PageHeader, StatusBadge } from "../components/ui";
+import { localDateString } from "../utils/date";
 
-function todayString() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+function greeting() {
+  const hour = new Date().getHours();
+  if (hour < 11) return "早上好";
+  if (hour < 14) return "中午好";
+  if (hour < 18) return "下午好";
+  return "晚上好";
+}
+
+function activeOrderDeadlines(order: Order) {
+  const deadlines: string[] = [];
+  if (order.designDueAt && ["待设计", "设计中", "待确认"].includes(order.designStatus)) {
+    deadlines.push(order.designDueAt);
+  }
+  if (order.deliveryDueAt && !["已签收", "已取消"].includes(order.fulfillmentStatus)) {
+    deadlines.push(order.deliveryDueAt);
+  }
+  return deadlines.sort();
 }
 
 function orderDueDate(order: Order) {
-  return order.deliveryDueAt || order.designDueAt || "";
+  return activeOrderDeadlines(order)[0] || "";
 }
 
 function isTodoOrder(order: Order) {
@@ -37,13 +49,13 @@ function isTodoOrder(order: Order) {
   );
 }
 
-function todoLabel(order: Order, today = todayString()) {
-  const dueDate = orderDueDate(order);
-  if (dueDate && dueDate < today && !["已签收", "已取消"].includes(order.fulfillmentStatus)) return "已逾期";
+function todoLabel(order: Order, today = localDateString()) {
+  const deadlines = activeOrderDeadlines(order);
+  if (deadlines.some((date) => date < today)) return "已逾期";
+  if (deadlines.some((date) => date === today)) return "今天到期";
   if (order.receivedCents < order.totalCents) return "待收款";
   if (order.fulfillmentStatus === "待发货") return "待发货";
   if (["待设计", "设计中", "待确认"].includes(order.designStatus)) return order.designStatus;
-  if (dueDate === today) return "今天到期";
   return "待跟进";
 }
 
@@ -51,33 +63,52 @@ export function DashboardPage({
   summary,
   onNewCustomer,
   onNavigate,
+  onOpenOrders,
   onSelectOrder,
 }: {
   summary: DashboardSummary;
   onNewCustomer: () => void;
   onNavigate: (page: PageId) => void;
+  onOpenOrders?: (status: string) => void;
   onSelectOrder: (order: Order) => void;
 }) {
   const cards = [
-    { label: "待处理设计", value: summary.pendingDesign, note: "等待你推进的设计任务", icon: Palette, tone: "coral" },
-    { label: "三天内到期", value: summary.dueSoon, note: "建议优先安排时间", icon: CalendarClock, tone: "purple" },
-    { label: "待发货", value: summary.pendingShipment, note: "设计完成后及时发出", icon: PackageOpen, tone: "teal" },
-    { label: "待收款", value: formatCents(summary.unpaidCents), note: "未收和部分收款合计", icon: CircleDollarSign, tone: "yellow" },
+    { label: "待处理设计", value: summary.pendingDesign, note: "等待你推进的设计任务", icon: Palette, tone: "coral", filter: "待处理设计" },
+    { label: "三天内到期", value: summary.dueSoon, note: "建议优先安排时间", icon: CalendarClock, tone: "purple", filter: "三天内到期" },
+    { label: "待发货", value: summary.pendingShipment, note: "设计完成后及时发出", icon: PackageOpen, tone: "teal", filter: "待发货" },
+    { label: "待收款", value: formatCents(summary.unpaidCents), note: "未收和部分收款合计", icon: CircleDollarSign, tone: "yellow", filter: "待收款" },
   ];
-  const todoOrders = (summary.todoOrders?.length ? summary.todoOrders : summary.recentOrders.filter(isTodoOrder)).slice(0, 8);
+  const todoOrders = (summary.todoOrders ?? summary.recentOrders.filter(isTodoOrder)).slice(0, 8);
+  const openOrders = (status: string) => {
+    if (onOpenOrders) onOpenOrders(status);
+    else onNavigate("orders");
+  };
   return (
     <div className="page-content">
       <PageHeader
         eyebrow="今日工作概览"
-        title="早上好，今天也要有条理"
+        title={`${greeting()}，今天也要有条理`}
         description="把需要设计、发货和收款的事情集中处理。"
         actions={<Button variant="secondary" onClick={onNewCustomer}><UserPlus size={17} />新建客户</Button>}
       />
-      {summary.overdue > 0 && <div className="alert-banner"><AlertTriangle size={18} /><strong>有 {summary.overdue} 个订单已经逾期</strong><span>现在检查一下，避免遗漏交付。</span><button onClick={() => onNavigate("orders")}>查看订单 <ArrowRight size={15} /></button></div>}
+      {summary.overdue > 0 && <div className="alert-banner"><AlertTriangle size={18} /><strong>有 {summary.overdue} 个订单已经逾期</strong><span>现在检查一下，避免遗漏交付。</span><button onClick={() => openOrders("逾期")}>查看订单 <ArrowRight size={15} /></button></div>}
       <div className="stat-grid">
         {cards.map((card) => {
           const Icon = card.icon;
-          return <article className={`stat-card stat-${card.tone}`} key={card.label}><div className="stat-icon"><Icon size={22} /></div><span>{card.label}</span><strong>{card.value}</strong><small>{card.note}</small></article>;
+          return <article
+            className={`stat-card stat-${card.tone}`}
+            key={card.label}
+            role="button"
+            tabIndex={0}
+            aria-label={`${card.label}：${card.value}，打开对应订单`}
+            onClick={() => openOrders(card.filter)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                openOrders(card.filter);
+              }
+            }}
+          ><div className="stat-icon"><Icon size={22} /></div><span>{card.label}</span><strong>{card.value}</strong><small>{card.note}</small></article>;
         })}
       </div>
       <div className="dashboard-grid">

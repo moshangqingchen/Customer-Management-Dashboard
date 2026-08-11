@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Box, Plus, ReceiptText, Trash2, Truck } from "lucide-react";
 
 import { api } from "../lib/api";
@@ -416,10 +416,9 @@ function templateDescription(item: OrderItemInput) {
   return `${item.quantity} ${unit} / ${formatCents(orderItemTotalCents(item))}`;
 }
 
-function readCustomTemplates(): OrderItemTemplate[] {
-  if (typeof window === "undefined") return [];
+function parseCustomTemplates(value: string): OrderItemTemplate[] {
   try {
-    const parsed = JSON.parse(window.localStorage.getItem(customTemplateStorageKey) ?? "[]");
+    const parsed = JSON.parse(value);
     if (!Array.isArray(parsed)) return [];
     return parsed
       .filter((template): template is OrderItemTemplate =>
@@ -429,10 +428,16 @@ function readCustomTemplates(): OrderItemTemplate[] {
         label: String(template.label),
         description: String(template.description || templateDescription(template.item)),
         item: copyOrderItem(template.item),
-      }));
+      }))
+      .slice(0, 12);
   } catch {
     return [];
   }
+}
+
+function readCustomTemplates(): OrderItemTemplate[] {
+  if (typeof window === "undefined") return [];
+  return parseCustomTemplates(window.localStorage.getItem(customTemplateStorageKey) ?? "[]");
 }
 
 function writeCustomTemplates(templates: OrderItemTemplate[]) {
@@ -536,8 +541,9 @@ function orderToInput(order: Order): NewOrder {
   };
 }
 
-export function OrderForm({ customers, sourceQuotes = [], order, onSaved, onCancel }: { customers: Customer[]; sourceQuotes?: SourceQuote[]; order?: Order; onSaved: (savedOrder: Order) => void; onCancel: () => void }) {
-  const initialCustomer = customers.find((customer) => customer.id === order?.customerId) ?? customers[0];
+export function OrderForm({ customers, sourceQuotes = [], order, initialCustomerId, onSaved, onCancel }: { customers: Customer[]; sourceQuotes?: SourceQuote[]; order?: Order; initialCustomerId?: string | null; onSaved: (savedOrder: Order) => void; onCancel: () => void }) {
+  const preferredCustomerId = order?.customerId ?? initialCustomerId;
+  const initialCustomer = customers.find((customer) => customer.id === preferredCustomerId) ?? customers[0];
   const initialAddress = order?.shippingAddress ?? initialCustomer?.addresses[0] ?? null;
   const initialOrderInput: NewOrder = order ? orderToInput(order) : {
     customerId: initialCustomer?.id ?? "",
@@ -559,6 +565,7 @@ export function OrderForm({ customers, sourceQuotes = [], order, onSaved, onCanc
   const [tags, setTags] = useState(form.tags.join("，"));
   const [addressChoice, setAddressChoice] = useState(findAddressChoice(initialCustomer, initialAddress));
   const [customTemplates, setCustomTemplates] = useState<OrderItemTemplate[]>(readCustomTemplates);
+  const [templatePersistenceError, setTemplatePersistenceError] = useState("");
   const [totalPriceDrafts, setTotalPriceDrafts] = useState<Record<number, string>>({});
   const [sourceShippingOverrides, setSourceShippingOverrides] = useState<Record<string, number>>({});
   const [saving, setSaving] = useState(false);
@@ -569,6 +576,25 @@ export function OrderForm({ customers, sourceQuotes = [], order, onSaved, onCanc
   const sourceCost = sourceProductionCost + sourceShippingCost;
   const selectedCustomer = customers.find((customer) => customer.id === form.customerId);
   const templates = useMemo(() => [...orderItemTemplates, ...customTemplates], [customTemplates]);
+
+  useEffect(() => {
+    let active = true;
+    void api.getAppPreference("order_item_templates").then((saved) => {
+      if (!active) return;
+      if (saved) {
+        const restored = parseCustomTemplates(saved);
+        setCustomTemplates(restored);
+        writeCustomTemplates(restored);
+      } else if (customTemplates.length) {
+        void api.setAppPreference("order_item_templates", JSON.stringify(customTemplates)).catch(() => {
+          if (active) setTemplatePersistenceError("订单模板数据库暂时不可用，仍保留浏览器本地副本。");
+        });
+      }
+    }).catch(() => {
+      if (active) setTemplatePersistenceError("订单模板数据库暂时不可用，仍保留浏览器本地副本。");
+    });
+    return () => { active = false; };
+  }, []);
 
   const setItem = (index: number, patch: Partial<OrderItemInput>, options: { autoMatchSource?: boolean } = {}) =>
     setForm((current) => ({
@@ -649,6 +675,9 @@ export function OrderForm({ customers, sourceQuotes = [], order, onSaved, onCanc
     const nextTemplates = [template, ...customTemplates.filter((item) => item.label !== label)].slice(0, 12);
     setCustomTemplates(nextTemplates);
     writeCustomTemplates(nextTemplates);
+    void api.setAppPreference("order_item_templates", JSON.stringify(nextTemplates))
+      .then(() => setTemplatePersistenceError(""))
+      .catch(() => setTemplatePersistenceError("订单模板未能写入数据库备份，浏览器本地副本仍然保留。"));
     setError("");
   };
 
@@ -701,7 +730,7 @@ export function OrderForm({ customers, sourceQuotes = [], order, onSaved, onCanc
       <section className="form-section">
         <div className="section-title"><ReceiptText size={18} /><div><h3>订单信息</h3><p>保存成功后会自动创建客户和订单文件夹</p></div></div>
         <div className="form-grid three">
-          <label><span>客户 *</span><select value={form.customerId} onChange={(event) => selectCustomer(event.target.value)}><option value="">请选择客户</option>{customers.map((customer) => <option value={customer.id} key={customer.id}>{customer.name}</option>)}</select></label>
+          <label><span>客户 *{order ? "（编辑时不可更换）" : ""}</span><select value={form.customerId} disabled={Boolean(order)} onChange={(event) => selectCustomer(event.target.value)}><option value="">请选择客户</option>{customers.map((customer) => <option value={customer.id} key={customer.id}>{customer.name}</option>)}</select></label>
           <label><span>来源平台</span><select value={form.platform} onChange={(event) => setForm({ ...form, platform: event.target.value })}>{["微信", "闲鱼", "淘宝", "小红书", "抖音", "其他"].map((platform) => <option key={platform}>{platform}</option>)}</select></label>
           <label><span>平台网名</span><input value={form.platformAccount} onChange={(event) => setForm({ ...form, platformAccount: event.target.value })} /></label>
         </div>
@@ -735,6 +764,7 @@ export function OrderForm({ customers, sourceQuotes = [], order, onSaved, onCanc
             <small>复用当前明细</small>
           </button>
         </div>
+        {templatePersistenceError && <div className="form-hint" role="status">{templatePersistenceError}</div>}
         <div className="item-list">
           {form.items.map((item, index) => {
             const spec = parsePrintSpec(item.printSpec);
@@ -875,7 +905,7 @@ export function OrderForm({ customers, sourceQuotes = [], order, onSaved, onCanc
                     </>
                   )}
                   <strong>{formatCents(orderItemTotalCents(item))}</strong>
-                  <button className="icon-button danger" disabled={form.items.length === 1} onClick={() => removeItem(index)}><Trash2 size={16} /></button>
+                  <button type="button" className="icon-button danger" aria-label={`删除第 ${index + 1} 个订单项目`} disabled={form.items.length === 1} onClick={() => removeItem(index)}><Trash2 size={16} /></button>
                 </div>
                 {isPrint ? (
                   <div className="print-spec-grid order-print-spec-grid">
@@ -979,7 +1009,7 @@ export function OrderForm({ customers, sourceQuotes = [], order, onSaved, onCanc
         {form.shippingAddress && <div className="address-preview"><strong>{form.shippingAddress.recipient || "未填收件人"} {form.shippingAddress.phone}</strong><span>{form.shippingAddress.address}</span></div>}
         <label><span>订单备注</span><textarea value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} placeholder="制作要求、沟通记录、特别注意事项…" /></label>
       </section>
-      {error && <div className="form-error">{error}</div>}
+      {error && <div className="form-error" role="alert">{error}</div>}
       <div className="form-actions"><Button variant="secondary" onClick={onCancel}>取消</Button><Button onClick={submit} disabled={saving}>{saving ? "保存中…" : order ? "保存订单修改" : "创建订单并生成文件夹"}</Button></div>
     </div>
   );

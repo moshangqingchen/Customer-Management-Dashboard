@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ButtonHTMLAttributes, type PropsWithChildren, type ReactNode } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type ButtonHTMLAttributes, type PropsWithChildren, type ReactNode } from "react";
 import { ChevronDown, Star, X } from "lucide-react";
 
 import { getStatusTone } from "../lib/format";
@@ -48,8 +48,10 @@ export function SearchableSelect({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(selectedLabel);
   const [showAllOptions, setShowAllOptions] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
   const closeTimer = useRef<number | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const listboxId = useId();
 
   useEffect(() => {
     if (!open) {
@@ -63,6 +65,16 @@ export function SearchableSelect({
     if (!trimmedQuery) return true;
     return option.label.toLowerCase().includes(trimmedQuery) || option.value.toLowerCase().includes(trimmedQuery);
   });
+
+  useEffect(() => {
+    if (!open) return;
+    const selectedIndex = filteredOptions.findIndex((option) => option.value === value);
+    setActiveIndex(selectedIndex >= 0 ? selectedIndex : 0);
+  }, [open, query, showAllOptions, value, filteredOptions.length]);
+
+  useEffect(() => () => {
+    if (closeTimer.current) window.clearTimeout(closeTimer.current);
+  }, []);
 
   const selectOption = (nextValue: string) => {
     const option = normalizedOptions.find((item) => item.value === nextValue);
@@ -90,6 +102,8 @@ export function SearchableSelect({
         aria-label={ariaLabel}
         aria-expanded={open}
         aria-autocomplete="list"
+        aria-controls={listboxId}
+        aria-activedescendant={open && filteredOptions[activeIndex] ? `${listboxId}-${activeIndex}` : undefined}
         data-options={normalizedOptions.map((option) => option.label).join("\n")}
         disabled={disabled}
         role="combobox"
@@ -110,10 +124,27 @@ export function SearchableSelect({
           setOpen(true);
         }}
         onKeyDown={(event) => {
+          if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+            event.preventDefault();
+            setOpen(true);
+            setActiveIndex((current) => {
+              if (!filteredOptions.length) return 0;
+              const offset = event.key === "ArrowDown" ? 1 : -1;
+              return (current + offset + filteredOptions.length) % filteredOptions.length;
+            });
+          }
+          if (event.key === "Home" && open) {
+            event.preventDefault();
+            setActiveIndex(0);
+          }
+          if (event.key === "End" && open) {
+            event.preventDefault();
+            setActiveIndex(Math.max(0, filteredOptions.length - 1));
+          }
           if (event.key === "Enter") {
             event.preventDefault();
             const exact = normalizedOptions.find((option) => option.label === query || option.value === query);
-            const next = exact ?? filteredOptions[0];
+            const next = (open ? filteredOptions[activeIndex] : undefined) ?? exact ?? filteredOptions[0];
             if (next) selectOption(next.value);
           }
           if (event.key === "Escape") {
@@ -141,13 +172,15 @@ export function SearchableSelect({
         <ChevronDown size={16} />
       </button>
       {open && (
-        <div className="searchable-select-menu" role="listbox">
-          {filteredOptions.length ? filteredOptions.map((option) => (
+        <div className="searchable-select-menu" id={listboxId} role="listbox">
+          {filteredOptions.length ? filteredOptions.map((option, index) => (
             <div
-              className={option.value === value ? "active" : ""}
+              className={index === activeIndex ? "active" : ""}
+              id={`${listboxId}-${index}`}
               key={option.value}
               role="option"
               aria-selected={option.value === value}
+              onMouseEnter={() => setActiveIndex(index)}
               onMouseDown={(event) => {
                 event.preventDefault();
                 selectOption(option.value);
@@ -164,7 +197,7 @@ export function SearchableSelect({
 
 export function StarRating({ value, onChange, compact = false }: { value: number; onChange?: (value: number) => void; compact?: boolean }) {
   return (
-    <div className={`star-rating ${compact ? "compact" : ""}`} aria-label={`${value} 星 VIP`}>
+    <div className={`star-rating ${compact ? "compact" : ""}`} role="group" aria-label={`${value} 星 VIP`}>
       {[1, 2, 3, 4, 5].map((star) => (
         <button
           type="button"
@@ -189,15 +222,85 @@ export function Modal({
   wide = false,
   closeDisabled = false,
 }: PropsWithChildren<{ title: string; subtitle?: string; onClose: () => void; wide?: boolean; closeDisabled?: boolean }>) {
+  const cardRef = useRef<HTMLElement | null>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+  const titleId = useId();
+  const subtitleId = useId();
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+
+  useEffect(() => {
+    previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const card = cardRef.current;
+    const focusableSelector = [
+      "button:not([disabled])",
+      "input:not([disabled])",
+      "select:not([disabled])",
+      "textarea:not([disabled])",
+      "a[href]",
+      "[tabindex]:not([tabindex='-1'])",
+    ].join(",");
+    const focusFirst = window.requestAnimationFrame(() => {
+      const preferred = card?.querySelector<HTMLElement>("[autofocus]");
+      (preferred ?? card?.querySelector<HTMLElement>(focusableSelector) ?? card)?.focus();
+    });
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !closeDisabled) {
+        event.preventDefault();
+        event.stopPropagation();
+        closeRef.current();
+        return;
+      }
+      if (event.key !== "Tab" || !card) return;
+      const focusable = Array.from(card.querySelectorAll<HTMLElement>(focusableSelector))
+        .filter((element) => !element.hidden && element.getAttribute("aria-hidden") !== "true");
+      if (!focusable.length) {
+        event.preventDefault();
+        card.focus();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown, true);
+    return () => {
+      window.cancelAnimationFrame(focusFirst);
+      document.removeEventListener("keydown", handleKeyDown, true);
+      previousFocusRef.current?.focus();
+    };
+  }, [closeDisabled]);
+
   return (
-    <div className="modal-backdrop" onMouseDown={closeDisabled ? undefined : onClose}>
-      <section className={`modal-card ${wide ? "wide" : ""}`} onMouseDown={(event) => event.stopPropagation()}>
+    <div
+      className="modal-backdrop"
+      onMouseDown={closeDisabled ? undefined : (event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <section
+        ref={cardRef}
+        className={`modal-card ${wide ? "wide" : ""}`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={subtitle ? subtitleId : undefined}
+        tabIndex={-1}
+      >
         <header className="modal-header">
           <div>
-            <h2>{title}</h2>
-            {subtitle && <p>{subtitle}</p>}
+            <h2 id={titleId}>{title}</h2>
+            {subtitle && <p id={subtitleId}>{subtitle}</p>}
           </div>
-          <button className="icon-button" onClick={onClose} aria-label="关闭" disabled={closeDisabled}>
+          <button type="button" className="icon-button" onClick={onClose} aria-label="关闭" disabled={closeDisabled}>
             <X size={20} />
           </button>
         </header>

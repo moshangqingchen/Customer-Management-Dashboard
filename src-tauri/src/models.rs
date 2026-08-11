@@ -215,6 +215,8 @@ pub struct PaymentInput {
     pub paid_at: String,
     pub method: String,
     pub notes: String,
+    #[serde(default)]
+    pub allow_overpayment: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -271,6 +273,7 @@ pub struct FileRecord {
     pub relative_path: String,
     pub size_bytes: i64,
     pub created_at: String,
+    pub state: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -305,6 +308,57 @@ pub struct AppSettings {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct StorageHealth {
+    pub status: String,
+    pub path: Option<String>,
+    pub writable: bool,
+    pub free_bytes: Option<u64>,
+    pub message: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BackupStatus {
+    pub backup_dir: String,
+    pub last_backup_path: Option<String>,
+    pub last_backup_at: Option<String>,
+    pub last_error: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LibraryMigrationResult {
+    pub old_root: String,
+    pub new_root: String,
+    pub copied_files: usize,
+    pub copied_bytes: u64,
+    pub old_root_retained: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FullArchiveInspection {
+    pub format_version: i64,
+    pub schema_version: i64,
+    pub exported_at: String,
+    pub library_file_count: usize,
+    pub library_bytes: u64,
+    pub source_library_root: Option<String>,
+    pub message: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FullRestoreResult {
+    pub library_root: String,
+    pub restored_files: usize,
+    pub restored_bytes: u64,
+    pub safety_backup_path: String,
+    pub previous_library_retained: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ImportCustomerRow {
     pub row_number: usize,
     pub name: String,
@@ -321,6 +375,8 @@ pub struct ImportCustomerRow {
 #[serde(rename_all = "camelCase")]
 pub struct ImportResult {
     pub imported: usize,
+    #[serde(default)]
+    pub updated: usize,
     pub skipped: usize,
     pub errors: Vec<String>,
     pub duplicate_warnings: Vec<String>,
@@ -331,4 +387,17 @@ pub struct ImportResult {
 pub struct SpreadsheetPreview {
     pub headers: Vec<String>,
     pub rows: Vec<Vec<String>>,
+    pub file_name: String,
+    pub sheet_names: Vec<String>,
+    pub selected_sheet: Option<String>,
+    pub total_rows: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CustomerImportOperation {
+    pub row_number: usize,
+    pub action: String,
+    pub customer_id: Option<String>,
+    pub customer: Option<NewCustomer>,
 }

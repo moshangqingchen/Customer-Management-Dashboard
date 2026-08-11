@@ -25,6 +25,7 @@ fn derives_payment_status_from_received_amount() {
     assert_eq!(payment_status(10_000, 4_000), PaymentStatus::Partial);
     assert_eq!(payment_status(10_000, 10_000), PaymentStatus::Paid);
     assert_eq!(payment_status(10_000, 11_000), PaymentStatus::Paid);
+    assert_eq!(payment_status(0, 0), PaymentStatus::Paid);
 }
 
 #[test]

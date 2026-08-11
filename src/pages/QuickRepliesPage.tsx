@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type MouseEvent } from "react";
 import { Check, Copy, Edit3, FolderPlus, MessageCircle, Plus, Search, Trash2 } from "lucide-react";
 
 import { Button, EmptyState, Modal, PageHeader } from "../components/ui";
+import { api } from "../lib/api";
 
 interface QuickReply {
   id: string;
@@ -132,12 +133,38 @@ function loadCategories() {
   try {
     const saved = window.localStorage.getItem(STORAGE_KEY);
     if (!saved) return defaultCategories;
-    const parsed = JSON.parse(saved);
-    if (!Array.isArray(parsed)) return defaultCategories;
-    return parsed as QuickReplyCategory[];
+    const parsed: unknown = JSON.parse(saved);
+    if (!isQuickReplyLibrary(parsed)) return defaultCategories;
+    return parsed;
   } catch {
     return defaultCategories;
   }
+}
+
+function isQuickReplyLibrary(value: unknown): value is QuickReplyCategory[] {
+  if (!Array.isArray(value) || value.length > 200) return false;
+  let sceneCount = 0;
+  let replyCount = 0;
+  const validText = (text: unknown, maxLength: number) => typeof text === "string" && text.length <= maxLength;
+  return value.every((category) => {
+    if (!category || typeof category !== "object") return false;
+    const candidate = category as Partial<QuickReplyCategory>;
+    if (!validText(candidate.id, 200) || !validText(candidate.name, 200) || !validText(candidate.description, 2000) || !Array.isArray(candidate.scenes)) return false;
+    sceneCount += candidate.scenes.length;
+    if (sceneCount > 1000) return false;
+    return candidate.scenes.every((scene) => {
+      if (!scene || typeof scene !== "object") return false;
+      const sceneCandidate = scene as Partial<QuickReplyScene>;
+      if (!validText(sceneCandidate.id, 200) || !validText(sceneCandidate.name, 200) || !validText(sceneCandidate.note, 2000) || !Array.isArray(sceneCandidate.replies)) return false;
+      replyCount += sceneCandidate.replies.length;
+      if (replyCount > 20_000) return false;
+      return sceneCandidate.replies.every((reply) => {
+        if (!reply || typeof reply !== "object") return false;
+        const replyCandidate = reply as Partial<QuickReply>;
+        return validText(replyCandidate.id, 200) && validText(replyCandidate.title, 300) && validText(replyCandidate.content, 20_000);
+      });
+    });
+  });
 }
 
 function fallbackCopy(text: string) {
@@ -180,16 +207,51 @@ export function QuickRepliesPage() {
   const [query, setQuery] = useState("");
   const [copiedId, setCopiedId] = useState("");
   const [copyError, setCopyError] = useState("");
+  const [persistenceError, setPersistenceError] = useState("");
+  const [hydrated, setHydrated] = useState(false);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [editing, setEditing] = useState<EditState | null>(null);
 
   useEffect(() => {
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(categories));
-    } catch {
-      // The page remains usable even if persistence is unavailable.
-    }
-  }, [categories]);
+    let active = true;
+    void api.getAppPreference("quick_reply_library").then((saved) => {
+      if (!active) return;
+      if (saved) {
+        const parsed: unknown = JSON.parse(saved);
+        if (!isQuickReplyLibrary(parsed)) throw new Error("数据库中的快捷语格式无效");
+        setCategories(parsed);
+        setSelectedCategoryId(parsed[0]?.id ?? "");
+        setSelectedSceneId(parsed[0]?.scenes[0]?.id ?? "");
+      } else {
+        void api.setAppPreference("quick_reply_library", JSON.stringify(loadCategories())).catch(() => {
+          if (active) setPersistenceError("快捷语数据库暂时不可用，当前仍保留浏览器本地副本。");
+        });
+      }
+      setHydrated(true);
+    }).catch(() => {
+      if (!active) return;
+      setPersistenceError("快捷语数据库暂时不可用，当前仍保留浏览器本地副本。");
+      setHydrated(true);
+    });
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    const timer = window.setTimeout(() => {
+      const value = JSON.stringify(categories);
+      try {
+        window.localStorage.setItem(STORAGE_KEY, value);
+      } catch {
+        setPersistenceError("快捷语暂时无法保存到本机，请复制重要内容后重试。");
+        return;
+      }
+      void api.setAppPreference("quick_reply_library", value)
+        .then(() => setPersistenceError(""))
+        .catch(() => setPersistenceError("快捷语未能写入数据库备份，浏览器本地副本仍然保留。"));
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [categories, hydrated]);
   useEffect(() => {
     if (!contextMenu) return;
     const close = () => setContextMenu(null);
@@ -289,6 +351,10 @@ export function QuickRepliesPage() {
   };
 
   const deleteCategory = (categoryId: string) => {
+    const category = categories.find((item) => item.id === categoryId);
+    if (!category) return;
+    const replyCount = category.scenes.reduce((sum, scene) => sum + scene.replies.length, 0);
+    if (!window.confirm(`确定删除主类「${category.name}」吗？\n\n其中 ${category.scenes.length} 个小类和 ${replyCount} 条话术也会一并删除。`)) return;
     const nextCategories = categories.filter((category) => category.id !== categoryId);
     setCategories(nextCategories);
     const nextCategory = nextCategories[0];
@@ -298,6 +364,8 @@ export function QuickRepliesPage() {
 
   const deleteScene = (sceneId: string) => {
     if (!selectedCategory) return;
+    const scene = selectedCategory.scenes.find((item) => item.id === sceneId);
+    if (!scene || !window.confirm(`确定删除小类「${scene.name}」及其中 ${scene.replies.length} 条话术吗？`)) return;
     const nextScenes = selectedCategory.scenes.filter((scene) => scene.id !== sceneId);
     setCategories((current) => current.map((category) => (
       category.id === selectedCategory.id ? { ...category, scenes: nextScenes } : category
@@ -307,6 +375,8 @@ export function QuickRepliesPage() {
 
   const deleteReply = (replyId: string) => {
     if (!selectedCategory || !selectedScene) return;
+    const reply = selectedScene.replies.find((item) => item.id === replyId);
+    if (!reply || !window.confirm(`确定删除话术「${reply.title}」吗？`)) return;
     setCategories((current) => current.map((category) => {
       if (category.id !== selectedCategory.id) return category;
       return {
@@ -551,7 +621,8 @@ export function QuickRepliesPage() {
                 <Search size={16} />
                 <input aria-label="搜索话术" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索标题或内容" />
               </div>
-              {copyError && <div className="inline-message" role="status">{copyError}</div>}
+              {copyError && <div className="inline-message" role="alert">{copyError}</div>}
+              {persistenceError && <div className="inline-message" role="alert">{persistenceError}</div>}
 
               {visibleReplies.length ? (
                 <div className="reply-card-list">

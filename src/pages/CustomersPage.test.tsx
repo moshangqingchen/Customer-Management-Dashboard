@@ -105,4 +105,29 @@ describe("CustomersPage", () => {
 
     expect(onSelectOrder).toHaveBeenCalledWith(order);
   });
+
+  it("keeps the VIP view discoverable inside customer management", () => {
+    const ordinaryCustomer: Customer = {
+      ...customer,
+      id: "customer-ordinary",
+      name: "普通客户",
+      vipLevel: 0,
+      platformIdentities: [],
+    };
+    render(
+      <CustomersPage
+        customers={[customer, ordinaryCustomer]}
+        orders={[]}
+        onNew={vi.fn()}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("普通客户")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "星级 VIP" }));
+
+    expect(screen.queryByText("普通客户")).not.toBeInTheDocument();
+    expect(screen.getAllByText("林女士").length).toBeGreaterThan(0);
+  });
 });

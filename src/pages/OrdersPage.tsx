@@ -6,6 +6,24 @@ import { formatCents, shortDate } from "../lib/format";
 import { orderProjectNames } from "../lib/orders";
 import type { Customer, FileRecord, Order } from "../lib/types";
 import { Button, EmptyState, PageHeader, StatusBadge } from "../components/ui";
+import { localDateAfter, localDateString } from "../utils/date";
+
+const designPendingStatuses = ["待设计", "设计中", "待确认"];
+const fulfillmentClosedStatuses = ["已签收", "已取消"];
+
+function activeDeadlines(order: Order) {
+  const deadlines: string[] = [];
+  if (order.designDueAt && designPendingStatuses.includes(order.designStatus)) deadlines.push(order.designDueAt);
+  if (order.deliveryDueAt && !fulfillmentClosedStatuses.includes(order.fulfillmentStatus)) deadlines.push(order.deliveryDueAt);
+  return deadlines.sort();
+}
+
+function clampMenuPosition(x: number, y: number) {
+  return {
+    x: Math.max(8, Math.min(x, window.innerWidth - 188)),
+    y: Math.max(8, Math.min(y, window.innerHeight - 132)),
+  };
+}
 
 export function OrdersPage({
   orders,
@@ -13,6 +31,7 @@ export function OrdersPage({
   files = [],
   libraryRoot,
   selectedOrderId,
+  initialStatus,
   folderRefreshKey = 0,
   onNew,
   onSelect,
@@ -26,34 +45,37 @@ export function OrdersPage({
   files?: FileRecord[];
   libraryRoot?: string | null;
   selectedOrderId?: string | null;
+  initialStatus?: string | null;
   folderRefreshKey?: number;
   onNew: () => void;
   onSelect: (order: Order) => void;
   onClearSelection?: () => void;
   onEdit: (order: Order) => void;
   onDelete: (order: Order) => void;
-  onChanged: () => void;
+  onChanged: () => void | Promise<void>;
 }) {
   const [query, setQuery] = useState("");
-  const [status, setStatus] = useState("全部");
+  const [status, setStatus] = useState(initialStatus || "全部");
   const [activeCustomerId, setActiveCustomerId] = useState<string | null>(() =>
     orders.find((order) => order.id === selectedOrderId)?.customerId ?? null,
   );
   const [menu, setMenu] = useState<{ x: number; y: number; order: Order } | null>(null);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateString();
+  const threeDaysLater = localDateAfter(3);
   const filtered = useMemo(() => orders.filter((order) => {
     const matchesQuery = JSON.stringify(order).toLowerCase().includes(query.toLowerCase());
-    const dueDate = order.deliveryDueAt ?? order.designDueAt;
-    const isOpen = !["已签收", "已取消"].includes(order.fulfillmentStatus);
+    const deadlines = activeDeadlines(order);
     const matchesStatus =
       status === "全部" ||
       order.designStatus === status ||
       order.fulfillmentStatus === status ||
       order.paymentStatus === status ||
+      (status === "待处理设计" && designPendingStatuses.includes(order.designStatus)) ||
       (status === "待收款" && ["未收", "部分收款"].includes(order.paymentStatus)) ||
-      (status === "逾期" && Boolean(dueDate && dueDate < today && isOpen));
+      (status === "三天内到期" && deadlines.some((date) => date >= today && date <= threeDaysLater)) ||
+      (status === "逾期" && deadlines.some((date) => date < today));
     return matchesQuery && matchesStatus;
-  }), [orders, query, status, today]);
+  }), [orders, query, status, threeDaysLater, today]);
   const customerGroups = useMemo(() => {
     const groups = new Map<string, {
       customerId: string;
@@ -99,6 +121,10 @@ export function OrdersPage({
   }, [filtered, selectedOrderId]);
 
   useEffect(() => {
+    if (initialStatus) setStatus(initialStatus);
+  }, [initialStatus]);
+
+  useEffect(() => {
     if (activeCustomerId && !customerGroups.some((group) => group.customerId === activeCustomerId)) {
       setActiveCustomerId(null);
     }
@@ -118,8 +144,8 @@ export function OrdersPage({
     <div className="page-content">
       <PageHeader eyebrow="订单全流程" title="订单管理" description="设计进度和履约进度独立管理，临时变化也能清楚表达。" actions={<Button onClick={onNew}><Plus size={17} />新建订单</Button>} />
       <div className="toolbar order-toolbar">
-        <label className="search-field"><Search size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索订单号、客户、平台或快递单号…" /></label>
-        <label className="filter-select"><Filter size={16} /><select value={status} onChange={(event) => setStatus(event.target.value)}>{["全部", "待设计", "设计中", "待确认", "设计完成", "待处理", "待发货", "已发货", "已签收", "未收", "部分收款"].map((item) => <option key={item}>{item}</option>)}</select></label>
+        <label className="search-field"><Search size={17} /><input aria-label="搜索订单" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索订单号、客户、平台或快递单号…" /></label>
+        <label className="filter-select"><Filter size={16} /><select aria-label="筛选订单状态" value={status} onChange={(event) => setStatus(event.target.value)}>{["全部", "待处理设计", "待设计", "设计中", "待确认", "设计完成", "待处理", "待发货", "已发货", "已签收", "已取消", "待收款", "未收", "部分收款", "已结清", "三天内到期", "逾期"].map((item) => <option key={item}>{item}</option>)}</select></label>
         <div className="quick-filters">
           {["待设计", "待发货", "待收款", "逾期"].map((item) => <button className={status === item ? "active" : ""} key={item} onClick={() => setStatus(item)}>{item}</button>)}
           {status !== "全部" && <button onClick={() => setStatus("全部")}>清除</button>}
@@ -175,12 +201,12 @@ export function OrdersPage({
                   onContextMenu={(event) => {
                     event.preventDefault();
                     onSelect(order);
-                    setMenu({ x: event.clientX, y: event.clientY, order });
+                    setMenu({ ...clampMenuPosition(event.clientX, event.clientY), order });
                   }}
                 >
                   <span className="customer-cell"><i>{order.customerName.slice(0, 1)}</i><span><b title={orderProjectNames(order)}>{orderProjectNames(order)}</b><small>{order.platform} · {order.externalOrderNo || "内部订单"}</small></span></span>
                   <span className="amount-cell"><b>{formatCents(order.totalCents)}</b><small>{order.paymentStatus}</small></span>
-                  <span className="stacked-status"><StatusBadge value={order.designStatus} /><StatusBadge value={order.fulfillmentStatus} /></span><span>{shortDate(order.deliveryDueAt)}</span>
+                  <span className="stacked-status"><StatusBadge value={order.designStatus} /><StatusBadge value={order.fulfillmentStatus} /></span><span>{shortDate(activeDeadlines(order)[0] || order.deliveryDueAt || order.designDueAt)}</span>
                 </button>)}
               </div>
             </>

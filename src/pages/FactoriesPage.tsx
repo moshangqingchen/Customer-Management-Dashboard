@@ -780,6 +780,7 @@ export function FactoriesPage({
   quotes,
   selectedFactoryId,
   onSelect,
+  onClearSelection,
   onChanged,
 }: {
   factories: SourceFactory[];
@@ -787,6 +788,7 @@ export function FactoriesPage({
   quotes: SourceQuote[];
   selectedFactoryId?: string | null;
   onSelect?: (factory: SourceFactory) => void;
+  onClearSelection?: () => void;
   onChanged: () => void;
 }) {
   const [query, setQuery] = useState("");
@@ -806,9 +808,14 @@ export function FactoriesPage({
   const [draftKey, setDraftKey] = useState(0);
   const [factoryModal, setFactoryModal] = useState<SourceFactory | "new" | null>(null);
   const [copiedFactoryField, setCopiedFactoryField] = useState("");
+  const [deletingFactoryId, setDeletingFactoryId] = useState<string | null>(null);
   const lastSelectedFactoryId = useRef<string | null | undefined>(undefined);
 
   useEffect(() => {
+    if (!selectedFactoryId) {
+      lastSelectedFactoryId.current = selectedFactoryId;
+      return;
+    }
     if (selectedFactoryId && selectedFactoryId !== lastSelectedFactoryId.current) {
       setActiveFactoryId(selectedFactoryId);
       lastSelectedFactoryId.current = selectedFactoryId;
@@ -905,6 +912,7 @@ export function FactoriesPage({
     setProjectQuery("");
     setActiveProjectName(null);
     setActiveQuoteId(null);
+    onClearSelection?.();
   };
 
   const selectProject = (project: FactoryProjectGroup) => {
@@ -1019,10 +1027,20 @@ export function FactoriesPage({
   const menuTop = projectContextMenu ? Math.min(projectContextMenu.y, Math.max(8, window.innerHeight - 118)) : 0;
 
   const deleteFactory = async (factory: SourceFactory) => {
+    if (deletingFactoryId) return;
     if (!window.confirm(`确定删除厂家「${factory.name}」吗？\n\n该厂家的报价会一起从当前报价库移除，历史订单中的成本快照不会受影响。`)) return;
-    await api.deleteSourceFactory(factory.id);
-    setActiveFactoryId(null);
-    onChanged();
+    setDeletingFactoryId(factory.id);
+    setProjectError("");
+    try {
+      await api.deleteSourceFactory(factory.id);
+      setActiveFactoryId(null);
+      onClearSelection?.();
+      onChanged();
+    } catch (reason) {
+      setProjectError(`删除厂家失败：${reason instanceof Error ? reason.message : String(reason)}`);
+    } finally {
+      setDeletingFactoryId(null);
+    }
   };
 
   const openFactoryOrderUrl = async (url: string) => {
@@ -1067,7 +1085,7 @@ export function FactoriesPage({
           </div>
           <div className="panel-actions">
             <button className="icon-button" onClick={() => setFactoryModal(activeFactory)} aria-label="修改厂家"><Edit3 size={16} /></button>
-            <button className="icon-button danger" onClick={() => deleteFactory(activeFactory)} aria-label="删除厂家"><Trash2 size={16} /></button>
+            <button className="icon-button danger" disabled={deletingFactoryId === activeFactory.id} onClick={() => void deleteFactory(activeFactory)} aria-label="删除厂家"><Trash2 size={16} /></button>
           </div>
         </div>
 

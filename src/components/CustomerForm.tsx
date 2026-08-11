@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { DragEvent } from "react";
 import { MapPin, Plus, QrCode, Trash2, UserRound } from "lucide-react";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
@@ -19,7 +19,20 @@ const emptyCustomer: NewCustomer = {
   qrCodePath: null,
 };
 
-export function CustomerForm({ customer, onSaved, onCancel }: { customer?: Customer; onSaved: () => void; onCancel: () => void }) {
+function isQrImagePath(path: string) {
+  return /\.(?:png|jpe?g|webp)$/i.test(path.trim());
+}
+
+function isDropInside(position: { x: number; y: number }, element: HTMLElement | null) {
+  if (!element) return false;
+  const scale = window.devicePixelRatio || 1;
+  const x = position.x / scale;
+  const y = position.y / scale;
+  const rect = element.getBoundingClientRect();
+  return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+}
+
+export function CustomerForm({ customer, onSaved, onCancel }: { customer?: Customer; onSaved: (savedCustomer: Customer) => void; onCancel: () => void }) {
   const [form, setForm] = useState<NewCustomer>(customer ? {
     name: customer.name,
     phone: customer.phone,
@@ -35,9 +48,18 @@ export function CustomerForm({ customer, onSaved, onCancel }: { customer?: Custo
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [qrPreview, setQrPreview] = useState("");
+  const [choosingQr, setChoosingQr] = useState(false);
+  const qrDropRef = useRef<HTMLDivElement | null>(null);
 
   const setQrPath = (path: string) => {
-    if (path.trim()) setForm((current) => ({ ...current, qrCodePath: path }));
+    if (!path.trim()) return false;
+    if (!isQrImagePath(path)) {
+      setError("二维码仅支持 PNG、JPG、JPEG 或 WebP 图片");
+      return false;
+    }
+    setError("");
+    setForm((current) => ({ ...current, qrCodePath: path }));
+    return true;
   };
 
   useEffect(() => {
@@ -45,25 +67,43 @@ export function CustomerForm({ customer, onSaved, onCancel }: { customer?: Custo
       setQrPreview("");
       return;
     }
-    api.readImageDataUrl(form.qrCodePath).then(setQrPreview).catch(() => setQrPreview(""));
+    let active = true;
+    api.readImageDataUrl(form.qrCodePath)
+      .then((preview) => { if (active) setQrPreview(preview); })
+      .catch(() => { if (active) setQrPreview(""); });
+    return () => { active = false; };
   }, [form.qrCodePath]);
 
   useEffect(() => {
     if (api.isDemo) return;
     let unlisten: (() => void) | undefined;
-    getCurrentWebview().onDragDropEvent(async (event) => {
-      if (event.payload.type === "drop") {
-        const [path] = event.payload.paths;
+    let cancelled = false;
+    getCurrentWebview().onDragDropEvent((event) => {
+      if (event.payload.type === "drop" && isDropInside(event.payload.position, qrDropRef.current)) {
+        const path = event.payload.paths.find(isQrImagePath);
         if (path) setQrPath(path);
+        else setError("请把 PNG、JPG、JPEG 或 WebP 二维码图片拖到此区域");
       }
-    }).then((value) => { unlisten = value; });
-    return () => unlisten?.();
+    }).then((value) => {
+      if (cancelled) value();
+      else unlisten = value;
+    }).catch((reason) => {
+      if (!cancelled) setError(`无法启用二维码拖放：${reason instanceof Error ? reason.message : String(reason)}`);
+    });
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
   }, []);
 
   const handleQrDrop = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     const file = event.dataTransfer.files[0] as File & { path?: string };
     const path = file?.path || file?.name || "";
+    if (!isQrImagePath(path) && !file?.type?.startsWith("image/")) {
+      setError("请拖入 PNG、JPG、JPEG 或 WebP 二维码图片");
+      return;
+    }
     setQrPath(path);
   };
 
@@ -92,9 +132,10 @@ export function CustomerForm({ customer, onSaved, onCancel }: { customer?: Custo
     setError("");
     try {
       const input = { ...form, tags: tags.split(/[,，;；]/).map((tag) => tag.trim()).filter(Boolean) };
-      if (customer) await api.updateCustomer(customer.id, input);
-      else await api.createCustomer(input);
-      onSaved();
+      const savedCustomer = customer
+        ? await api.updateCustomer(customer.id, input)
+        : await api.createCustomer(input);
+      onSaved(savedCustomer);
     } catch (reason) {
       setError(String(reason));
     } finally {
@@ -130,15 +171,24 @@ export function CustomerForm({ customer, onSaved, onCancel }: { customer?: Custo
             </select>
             <input value={identity.handle} onChange={(event) => updateIdentity(index, "handle", event.target.value)} placeholder="平台网名 / 昵称" />
             <input value={identity.account} onChange={(event) => updateIdentity(index, "account", event.target.value)} placeholder="平台账号" />
-            <button className="icon-button danger" onClick={() => setForm({ ...form, platformIdentities: form.platformIdentities.filter((_, itemIndex) => itemIndex !== index) })}><Trash2 size={16} /></button>
+            <button type="button" className="icon-button danger" aria-label={`删除第 ${index + 1} 个平台身份`} onClick={() => setForm({ ...form, platformIdentities: form.platformIdentities.filter((_, itemIndex) => itemIndex !== index) })}><Trash2 size={16} /></button>
           </div>
         ))}
-        <div className="qr-picker qr-drop-zone" aria-label="拖入客户二维码" onDragOver={(event) => event.preventDefault()} onDrop={handleQrDrop}>
+        <div ref={qrDropRef} className="qr-picker qr-drop-zone" aria-label="拖入客户二维码" onDragOver={(event) => event.preventDefault()} onDrop={handleQrDrop}>
           <div>{qrPreview ? <img src={qrPreview} alt="客户二维码预览" /> : <QrCode size={22} />}<span>{form.qrCodePath ? form.qrCodePath.split(/[\\/]/).pop() : "点击选择，或把客户二维码图片拖到这里"}</span></div>
           <Button variant="secondary" onClick={async () => {
-            const path = await api.chooseFile();
-            if (path) setForm({ ...form, qrCodePath: path });
-          }}>选择二维码图片</Button>
+            if (choosingQr) return;
+            setChoosingQr(true);
+            setError("");
+            try {
+              const path = await api.chooseFile("image");
+              if (path) setQrPath(path);
+            } catch (reason) {
+              setError(`选择二维码失败：${reason instanceof Error ? reason.message : String(reason)}`);
+            } finally {
+              setChoosingQr(false);
+            }
+          }} disabled={choosingQr}>{choosingQr ? "选择中…" : "选择二维码图片"}</Button>
         </div>
       </section>
 
@@ -155,12 +205,12 @@ export function CustomerForm({ customer, onSaved, onCancel }: { customer?: Custo
               <label><span>收件人</span><input value={address.recipient} onChange={(event) => updateAddress(index, "recipient", event.target.value)} /></label>
               <label><span>联系电话</span><input value={address.phone} onChange={(event) => updateAddress(index, "phone", event.target.value)} /></label>
             </div>
-            <div className="inline-row"><input value={address.address} onChange={(event) => updateAddress(index, "address", event.target.value)} placeholder="详细地址" /><button className="icon-button danger" onClick={() => setForm({ ...form, addresses: form.addresses.filter((_, itemIndex) => itemIndex !== index) })}><Trash2 size={16} /></button></div>
+            <div className="inline-row"><input value={address.address} onChange={(event) => updateAddress(index, "address", event.target.value)} placeholder="详细地址" /><button type="button" className="icon-button danger" aria-label={`删除第 ${index + 1} 个地址`} onClick={() => setForm({ ...form, addresses: form.addresses.filter((_, itemIndex) => itemIndex !== index) })}><Trash2 size={16} /></button></div>
           </div>
         ))}
       </section>
 
-      {error && <div className="form-error">{error}</div>}
+      {error && <div className="form-error" role="alert">{error}</div>}
       <div className="form-actions"><Button variant="secondary" onClick={onCancel}>取消</Button><Button onClick={submit} disabled={saving}>{saving ? "保存中…" : customer ? "保存修改" : "创建客户"}</Button></div>
     </div>
   );

@@ -51,22 +51,26 @@ function Publish-WithGitHubApi(
 
   $releases = @(Invoke-RestMethod -Headers $headers -Uri "$apiBase/releases?per_page=100")
   $release = $releases | Where-Object { $_.tag_name -eq $Tag } | Select-Object -First 1
-  $releaseBody = @{
+  if ($release -and !$release.draft) {
+    throw "Release $Tag is already published. Refusing to replace live updater assets; publish a new version instead."
+  }
+
+  $draftBody = @{
     tag_name = $Tag
     name = $ReleaseTitle
     body = $ReleaseNotes
-    draft = $false
+    draft = $true
     prerelease = $false
-    make_latest = "true"
+    make_latest = "false"
   } | ConvertTo-Json
 
   if ($release) {
     $release = Invoke-RestMethod -Method Patch -Headers $headers -ContentType "application/json" `
-      -Uri "$apiBase/releases/$($release.id)" -Body $releaseBody
+      -Uri "$apiBase/releases/$($release.id)" -Body $draftBody
   }
   else {
     $release = Invoke-RestMethod -Method Post -Headers $headers -ContentType "application/json" `
-      -Uri "$apiBase/releases" -Body $releaseBody
+      -Uri "$apiBase/releases" -Body $draftBody
   }
 
   $assets = @(Invoke-RestMethod -Headers $headers -Uri "$apiBase/releases/$($release.id)/assets?per_page=100")
@@ -84,6 +88,16 @@ function Publish-WithGitHubApi(
       -UseBasicParsing | Out-Null
     Write-Host "Uploaded $assetName"
   }
+
+  $publishBody = @{
+    name = $ReleaseTitle
+    body = $ReleaseNotes
+    draft = $false
+    prerelease = $false
+    make_latest = "true"
+  } | ConvertTo-Json
+  Invoke-RestMethod -Method Patch -Headers $headers -ContentType "application/json" `
+    -Uri "$apiBase/releases/$($release.id)" -Body $publishBody | Out-Null
 }
 
 if ($gh) {
@@ -114,20 +128,31 @@ try {
   $tag = "v$Version"
 
   if ($gh) {
-    & $gh.Source release view $tag --repo $Repository *> $null
+    $releaseJson = & $gh.Source release view $tag --repo $Repository --json isDraft 2>$null
     if ($LASTEXITCODE -eq 0) {
-      & $gh.Source release upload $tag $manifest $installer $signature --repo $Repository --clobber
-      if ($LASTEXITCODE -ne 0) { throw "Uploading update assets failed." }
-      & $gh.Source release edit $tag --repo $Repository --title "版本 $Version" --notes $Notes --latest
+      $existingRelease = $releaseJson | ConvertFrom-Json
+      if (!$existingRelease.isDraft) {
+        throw "Release $tag is already published. Refusing to replace live updater assets; publish a new version instead."
+      }
+      & $gh.Source release edit $tag --repo $Repository --title "版本 $Version" --notes $Notes --draft
     }
     else {
-      & $gh.Source release create $tag $manifest $installer $signature `
+      & $gh.Source release create $tag `
         --repo $Repository `
         --title "版本 $Version" `
         --notes $Notes `
-        --latest
+        --draft
     }
-    if ($LASTEXITCODE -ne 0) { throw "Creating or updating the GitHub release failed." }
+    if ($LASTEXITCODE -ne 0) { throw "Creating or updating the draft GitHub release failed." }
+
+    # Keep the release hidden until every signed payload is available. The manifest is
+    # uploaded last so an updater can never observe a manifest whose installer is absent.
+    & $gh.Source release upload $tag $installer $signature --repo $Repository --clobber
+    if ($LASTEXITCODE -ne 0) { throw "Uploading signed update assets failed. The release remains a draft." }
+    & $gh.Source release upload $tag $manifest --repo $Repository --clobber
+    if ($LASTEXITCODE -ne 0) { throw "Uploading the update manifest failed. The release remains a draft." }
+    & $gh.Source release edit $tag --repo $Repository --draft=false --latest
+    if ($LASTEXITCODE -ne 0) { throw "Publishing the verified GitHub release failed. The release remains a draft." }
   }
   else {
     Publish-WithGitHubApi `
@@ -135,7 +160,7 @@ try {
       -Tag $tag `
       -ReleaseTitle "版本 $Version" `
       -ReleaseNotes $Notes `
-      -Files @($manifest, $installer, $signature)
+      -Files @($installer, $signature, $manifest)
   }
 
   Write-Host "Update $Version published. Existing installations will find it on next launch."

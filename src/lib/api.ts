@@ -2,11 +2,17 @@ import { invoke } from "@tauri-apps/api/core";
 
 import type {
   AppSettings,
+  BackupStatus,
   Customer,
+  CustomerImportOperation,
   DashboardSummary,
   FileRecord,
+  FilePickerKind,
+  FullArchiveInspection,
+  FullRestoreResult,
   ImportCustomerRow,
   ImportResult,
+  LibraryMigrationResult,
   NewCustomer,
   NewOrder,
   Order,
@@ -20,6 +26,7 @@ import type {
   SourceQuote,
   SourceQuoteInput,
   SpreadsheetPreview,
+  StorageHealth,
 } from "./types";
 import { isImageFile } from "./files";
 
@@ -361,7 +368,20 @@ function demoOrderFolderFiles(folderPath: string, orderId: string, customerId: s
   ];
 }
 
-const demoSettings: AppSettings = { libraryRoot: "D:\\创业客户文件库（演示）", backupDir: "D:\\创业客户备份（演示）" };
+let demoSettings: AppSettings = { libraryRoot: "D:\\创业客户文件库（演示）", backupDir: "D:\\创业客户备份（演示）" };
+
+function demoStorageHealth(path = demoSettings.libraryRoot ?? null): StorageHealth {
+  if (!path?.trim()) {
+    return { status: "notConfigured", path: null, writable: false, freeBytes: null, message: "尚未设置客户文件库" };
+  }
+  return {
+    status: "ready",
+    path,
+    writable: true,
+    freeBytes: 128 * 1024 * 1024 * 1024,
+    message: "文件库可正常读写",
+  };
+}
 
 async function call<T>(command: string, args?: Record<string, unknown>): Promise<T> {
   return invoke<T>(command, args);
@@ -388,8 +408,28 @@ function demoDashboard(): DashboardSummary {
 export const api = {
   isDemo: !isTauri,
   getSettings: () => (isTauri ? call<AppSettings>("get_settings") : Promise.resolve(demoSettings)),
+  getAppPreference: (key: "quick_reply_library" | "order_item_templates") => (
+    isTauri
+      ? call<string | null>("get_app_preference", { key })
+      : Promise.resolve(window.localStorage.getItem(`startup-customer-workbench.preference.${key}`))
+  ),
+  setAppPreference: (key: "quick_reply_library" | "order_item_templates", value: string) => {
+    if (isTauri) return call<void>("set_app_preference", { key, value });
+    window.localStorage.setItem(`startup-customer-workbench.preference.${key}`, value);
+    return Promise.resolve();
+  },
   chooseDirectory: () => (isTauri ? call<string | null>("choose_directory") : Promise.resolve("D:\\创业客户文件库（演示）")),
-  chooseFile: () => (isTauri ? call<string | null>("choose_file") : Promise.resolve("D:\\演示文件\\设计稿.psd")),
+  chooseFile: (kind: FilePickerKind = "attachment") => {
+    if (isTauri) return call<string | null>("choose_file", { kind });
+    const demoPaths: Record<FilePickerKind, string> = {
+      spreadsheet: "D:\\演示文件\\客户清单.xlsx",
+      databaseBackup: "D:\\演示文件\\workbench-demo.db",
+      fullArchive: "D:\\演示文件\\创业客户工作台-完整归档.zip",
+      image: "D:\\演示文件\\客户二维码.png",
+      attachment: "D:\\演示文件\\设计稿.psd",
+    };
+    return Promise.resolve(demoPaths[kind]);
+  },
   chooseSaveFile: (defaultName: string, extension: string) =>
     isTauri ? call<string | null>("choose_save_file", { defaultName, extension }) : Promise.resolve(`D:\\${defaultName}`),
   readImageDataUrl: (path: string) => (
@@ -397,15 +437,45 @@ export const api = {
       ? call<string>("read_image_data_url", { path })
       : Promise.resolve(isImageFile({ name: path, relativePath: path }) ? demoImageDataUrl(path) : "")
   ),
-  previewSpreadsheet: (path: string) =>
+  previewSpreadsheet: (path: string, sheet?: string): Promise<SpreadsheetPreview> =>
     isTauri
-      ? call<SpreadsheetPreview>("preview_customer_spreadsheet", { path })
+      ? call<SpreadsheetPreview>("preview_customer_spreadsheet", { path, sheet: sheet ?? null })
       : Promise.resolve({
           headers: ["客户名称", "电话", "微信号", "平台", "平台网名", "VIP星级", "标签"],
           rows: [["演示导入客户", "13800138000", "demo-wx", "闲鱼", "演示网名", "3", "复购,导入"]],
+          fileName: path.split(/[\\/]/).pop() || path,
+          sheetNames: ["客户"],
+          selectedSheet: sheet || "客户",
+          totalRows: 1,
         }),
-  setLibraryRoot: (path: string) => (isTauri ? call<AppSettings>("set_library_root", { path }) : Promise.resolve({ ...demoSettings, libraryRoot: path })),
-  setBackupDir: (path: string) => (isTauri ? call<AppSettings>("set_backup_dir", { path }) : Promise.resolve({ ...demoSettings, backupDir: path })),
+  validateLibraryRoot: (path: string) => (
+    isTauri ? call<StorageHealth>("validate_library_root", { path }) : Promise.resolve(demoStorageHealth(path))
+  ),
+  getStorageHealth: () => (
+    isTauri ? call<StorageHealth>("get_storage_health") : Promise.resolve(demoStorageHealth())
+  ),
+  setLibraryRoot: async (path: string) => {
+    if (isTauri) return call<AppSettings>("set_library_root", { path });
+    demoSettings = { ...demoSettings, libraryRoot: path };
+    return demoSettings;
+  },
+  migrateLibraryRoot: async (target: string) => {
+    if (isTauri) return call<LibraryMigrationResult>("migrate_library_root", { target });
+    const oldRoot = demoSettings.libraryRoot || "";
+    demoSettings = { ...demoSettings, libraryRoot: target };
+    return {
+      oldRoot,
+      newRoot: target,
+      copiedFiles: demoFiles.length,
+      copiedBytes: demoFiles.reduce((sum, file) => sum + file.sizeBytes, 0),
+      oldRootRetained: true,
+    } satisfies LibraryMigrationResult;
+  },
+  setBackupDir: async (path: string) => {
+    if (isTauri) return call<AppSettings>("set_backup_dir", { path });
+    demoSettings = { ...demoSettings, backupDir: path };
+    return demoSettings;
+  },
   listSourceFactories: () => (isTauri ? call<SourceFactory[]>("list_source_factories") : Promise.resolve(demoFactoriesWithCounts())),
   createSourceFactory: async (input: SourceFactoryInput) => {
     if (isTauri) return call<SourceFactory>("create_source_factory", { input });
@@ -594,12 +664,38 @@ export const api = {
   },
   addPayment: async (orderId: string, input: PaymentInput) => {
     if (isTauri) return call<Order>("add_payment", { orderId, input });
+    if (input.amountCents <= 0) throw new Error("收款金额必须大于 0");
+    const target = demoOrders.find((order) => order.id === orderId);
+    if (!target) throw new Error("订单不存在");
+    if (!input.allowOverpayment && target.receivedCents + input.amountCents > target.totalCents) {
+      throw new Error("本次收款会超过订单应收金额，请确认后再提交");
+    }
     demoOrders = demoOrders.map((order) => {
       if (order.id !== orderId) return order;
       const receivedCents = order.receivedCents + input.amountCents;
-      return { ...order, receivedCents, paymentStatus: receivedCents >= order.totalCents ? "已结清" : "部分收款" };
+      return {
+        ...order,
+        payments: [...order.payments, { ...input, id: crypto.randomUUID(), orderId }],
+        receivedCents,
+        paymentStatus: receivedCents >= order.totalCents ? "已结清" : "部分收款",
+      };
     });
     return demoOrders.find((order) => order.id === orderId)!;
+  },
+  deletePayment: async (orderId: string, paymentId: string) => {
+    if (isTauri) return call<Order>("delete_payment", { orderId, paymentId });
+    const target = demoOrders.find((order) => order.payments.some((payment) => payment.id === paymentId));
+    if (!target) throw new Error("收款记录不存在");
+    demoOrders = demoOrders.map((order) => {
+      if (order.id !== target.id) return order;
+      const payments = order.payments.filter((payment) => payment.id !== paymentId);
+      const receivedCents = payments.reduce((sum, payment) => sum + payment.amountCents, 0);
+      const paymentStatus = order.totalCents <= 0 || receivedCents >= order.totalCents
+        ? "已结清"
+        : receivedCents <= 0 ? "未收" : "部分收款";
+      return { ...order, payments, receivedCents, paymentStatus };
+    });
+    return demoOrders.find((order) => order.id === target.id)!;
   },
   retryOrderFolder: (orderId: string) => (isTauri ? call<Order>("retry_order_folder", { orderId }) : Promise.resolve(demoOrders.find((order) => order.id === orderId)!)),
   listFiles: () => (isTauri ? call<FileRecord[]>("list_files") : Promise.resolve(demoFiles)),
@@ -642,12 +738,76 @@ export const api = {
     isTauri
       ? call<ImportResult>("import_customers", { rows })
       : Promise.resolve({ imported: rows.filter((row) => row.name).length, skipped: rows.filter((row) => !row.name).length, errors: [], duplicateWarnings: [] }),
+  applyCustomerImport: async (batchId: string, operations: CustomerImportOperation[]) => {
+    if (isTauri) return call<ImportResult>("apply_customer_import", { batchId, operations });
+    let imported = 0;
+    let updated = 0;
+    let skipped = 0;
+    for (const operation of operations) {
+      if (operation.action === "skip" || !operation.customer) {
+        skipped += 1;
+      } else if (operation.action === "update" && operation.customerId) {
+        const current = demoCustomers.find((customer) => customer.id === operation.customerId);
+        if (!current) throw new Error("要更新的客户不存在");
+        demoCustomers = demoCustomers.map((customer) => customer.id === operation.customerId
+          ? { ...current, ...operation.customer!, updatedAt: new Date().toISOString() }
+          : customer);
+        updated += 1;
+      } else {
+        demoCustomers = [{
+          ...operation.customer,
+          id: crypto.randomUUID(),
+          orderCount: 0,
+          totalSpentCents: 0,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }, ...demoCustomers];
+        imported += 1;
+      }
+    }
+    return { imported, updated, skipped, errors: [], duplicateWarnings: [] };
+  },
   exportFull: (destination: string) => (isTauri ? call<string>("export_full", { destination }) : Promise.resolve(destination)),
-  restoreBackup: (source: string) => (isTauri ? call<string>("restore_backup", { source }) : Promise.resolve(source)),
-  runBackup: (defaultDir: string) => (
+  inspectFullArchive: (source: string) => (
     isTauri
-      ? call<string>("run_backup", { defaultDir })
-      : Promise.resolve(`${defaultDir || "D:\\创业客户备份（演示）"}\\startup-customer-workbench-demo.sqlite3`)
+      ? call<FullArchiveInspection>("inspect_full_archive", { source })
+      : Promise.resolve({
+          formatVersion: 1,
+          schemaVersion: 1,
+          exportedAt: now,
+          libraryFileCount: demoFiles.length,
+          libraryBytes: demoFiles.reduce((sum, file) => sum + file.sizeBytes, 0),
+          sourceLibraryRoot: demoSettings.libraryRoot ?? null,
+          message: "演示归档已通过完整性检查",
+        })
+  ),
+  restoreFullArchive: async (source: string, targetLibraryRoot: string) => {
+    if (isTauri) return call<FullRestoreResult>("restore_full_archive", { source, targetLibraryRoot });
+    const previousRoot = demoSettings.libraryRoot;
+    demoSettings = { ...demoSettings, libraryRoot: targetLibraryRoot };
+    return {
+      libraryRoot: targetLibraryRoot,
+      restoredFiles: demoFiles.length,
+      restoredBytes: demoFiles.reduce((sum, file) => sum + file.sizeBytes, 0),
+      safetyBackupPath: "D:\\创业客户备份（演示）\\workbench-before-full-restore-demo.db",
+      previousLibraryRetained: Boolean(previousRoot),
+    } satisfies FullRestoreResult;
+  },
+  restoreBackup: (source: string) => (isTauri ? call<string>("restore_backup", { source }) : Promise.resolve(source)),
+  runBackup: () => (
+    isTauri
+      ? call<string>("run_backup")
+      : Promise.resolve(`${demoSettings.backupDir || "D:\\创业客户备份（演示）"}\\workbench-demo.db`)
+  ),
+  getBackupStatus: () => (
+    isTauri
+      ? call<BackupStatus>("get_backup_status")
+      : Promise.resolve({
+          backupDir: demoSettings.backupDir ?? "D:\\创业客户备份（演示）",
+          lastBackupPath: null,
+          lastBackupAt: null,
+          lastError: null,
+        })
   ),
   exportCloudReadModel: (destination: string) => (isTauri ? call<string>("export_cloud_read_model", { destination }) : Promise.resolve(destination)),
   openInExplorer: (path: string) => (isTauri ? call<void>("open_in_explorer", { path }) : Promise.resolve()),

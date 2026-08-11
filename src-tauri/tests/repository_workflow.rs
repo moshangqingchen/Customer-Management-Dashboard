@@ -105,6 +105,48 @@ fn sample_source_factory() -> SourceFactoryInput {
     }
 }
 
+#[test]
+fn replacing_customer_qr_code_updates_the_managed_copy() {
+    let temp = tempdir().unwrap();
+    let service = AppService::new(temp.path().join("app.db")).unwrap();
+    let library = temp.path().join("客户文件库");
+    fs::create_dir_all(&library).unwrap();
+    service.set_library_root(&library).unwrap();
+    let first_qr = temp.path().join("first.png");
+    let second_qr = temp.path().join("second.png");
+    fs::write(&first_qr, b"first-qr").unwrap();
+    fs::write(&second_qr, b"second-qr").unwrap();
+    let mut input = sample_customer();
+    input.qr_code_path = Some(first_qr.to_string_lossy().to_string());
+    let customer = service.create_customer(input).unwrap();
+    service
+        .create_order(sample_order(&customer.id, "QR-001"))
+        .unwrap();
+    let managed_qr = service
+        .get_customer(&customer.id)
+        .unwrap()
+        .unwrap()
+        .qr_code_path
+        .unwrap();
+    assert_eq!(fs::read(&managed_qr).unwrap(), b"first-qr");
+
+    let mut updated = sample_customer();
+    updated.qr_code_path = Some(second_qr.to_string_lossy().to_string());
+    service.update_customer(&customer.id, updated).unwrap();
+    service
+        .create_order(sample_order(&customer.id, "QR-002"))
+        .unwrap();
+
+    let current_qr = service
+        .get_customer(&customer.id)
+        .unwrap()
+        .unwrap()
+        .qr_code_path
+        .unwrap();
+    assert_eq!(current_qr, managed_qr);
+    assert_eq!(fs::read(current_qr).unwrap(), b"second-qr");
+}
+
 fn sample_source_quote(factory_id: &str) -> SourceQuoteInput {
     SourceQuoteInput {
         factory_id: factory_id.to_string(),
@@ -518,7 +560,7 @@ fn externally_deleted_order_folder_is_reflected_when_orders_are_loaded() {
 }
 
 #[test]
-fn syncing_managed_library_hides_customers_whose_managed_folder_was_deleted() {
+fn syncing_managed_library_keeps_business_records_when_managed_folder_was_deleted() {
     let temp = tempdir().unwrap();
     let service = AppService::new(temp.path().join("app.db")).unwrap();
     let library = temp.path().join("客户文件库");
@@ -541,18 +583,21 @@ fn syncing_managed_library_hides_customers_whose_managed_folder_was_deleted() {
 
     service.sync_managed_library().unwrap();
 
-    assert!(service.get_customer(&customer.id).unwrap().is_none());
-    assert!(service.get_order(&order.id).unwrap().is_none());
+    assert!(service.get_customer(&customer.id).unwrap().is_some());
+    assert_eq!(
+        service.get_order(&order.id).unwrap().unwrap().folder_state,
+        "failed"
+    );
     assert!(service
         .list_customers(false)
         .unwrap()
         .iter()
-        .all(|item| item.id != customer.id));
+        .any(|item| item.id == customer.id));
     assert!(service
         .list_orders()
         .unwrap()
         .iter()
-        .all(|item| item.id != order.id));
+        .any(|item| item.id == order.id));
 }
 
 #[test]
@@ -585,7 +630,11 @@ fn syncing_managed_library_reconciles_external_order_folder_file_changes() {
     service.sync_managed_library().unwrap();
 
     let files = service.list_files().unwrap();
-    assert!(files.iter().all(|file| file.id != uploaded.id));
+    let missing = files
+        .iter()
+        .find(|file| file.id == uploaded.id)
+        .expect("missing file record should remain visible");
+    assert_eq!(missing.state, "missing");
     let external = files
         .iter()
         .find(|file| file.name == "手工加入.png")
@@ -615,6 +664,7 @@ fn dashboard_ignores_payments_from_deleted_orders() {
                 paid_at: Local::now().format("%Y-%m-%d").to_string(),
                 method: "微信".to_string(),
                 notes: "".to_string(),
+                allow_overpayment: false,
             },
         )
         .unwrap();
@@ -654,6 +704,7 @@ fn dashboard_surfaces_actionable_todo_orders() {
                 paid_at: Local::now().format("%Y-%m-%d").to_string(),
                 method: "微信".to_string(),
                 notes: "".to_string(),
+                allow_overpayment: false,
             },
         )
         .unwrap();
@@ -675,6 +726,7 @@ fn dashboard_surfaces_actionable_todo_orders() {
                 paid_at: Local::now().format("%Y-%m-%d").to_string(),
                 method: "微信".to_string(),
                 notes: "".to_string(),
+                allow_overpayment: false,
             },
         )
         .unwrap();

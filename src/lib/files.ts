@@ -1,6 +1,8 @@
 import type { FileRecord } from "./types";
 
-const imageExtensions = new Set(["png", "jpg", "jpeg", "webp", "gif", "svg"]);
+// SVG can contain active/external content. Keep automatic previews to raster formats;
+// SVG files remain manageable as ordinary attachments and can be opened explicitly.
+const imageExtensions = new Set(["png", "jpg", "jpeg", "webp", "gif"]);
 
 export function fileExtension(name: string) {
   const match = name.toLowerCase().match(/\.([a-z0-9]+)$/);

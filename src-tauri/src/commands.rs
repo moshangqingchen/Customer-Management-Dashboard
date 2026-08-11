@@ -2,15 +2,16 @@ use std::{path::PathBuf, process::Command};
 
 use base64::Engine;
 use chrono::{DateTime, Utc};
-use tauri::State;
+use tauri::{AppHandle, Manager, State};
 use walkdir::WalkDir;
 
 use crate::{
     models::{
-        AppSettings, Customer, DashboardSummary, FileRecord, ImportCustomerRow, ImportResult,
-        NewCustomer, NewOrder, Order, PaymentInput, SearchHit, SourceFactory, SourceFactoryInput,
-        SourceFactoryProject, SourceFactoryProjectInput, SourceQuote, SourceQuoteInput,
-        SpreadsheetPreview,
+        AppSettings, BackupStatus, Customer, CustomerImportOperation, DashboardSummary, FileRecord,
+        FullArchiveInspection, FullRestoreResult, ImportCustomerRow, ImportResult,
+        LibraryMigrationResult, NewCustomer, NewOrder, Order, PaymentInput, SearchHit,
+        SourceFactory, SourceFactoryInput, SourceFactoryProject, SourceFactoryProjectInput,
+        SourceQuote, SourceQuoteInput, SpreadsheetPreview, StorageHealth,
     },
     service::AppService,
 };
@@ -29,8 +30,19 @@ pub fn choose_directory() -> Option<String> {
 }
 
 #[tauri::command]
-pub fn choose_file() -> Option<String> {
-    rfd::FileDialog::new()
+pub fn choose_file(kind: Option<String>) -> Option<String> {
+    let dialog = match kind.as_deref() {
+        Some("spreadsheet") => {
+            rfd::FileDialog::new().add_filter("客户表格", &["xlsx", "xls", "xlsb", "ods", "csv"])
+        }
+        Some("databaseBackup") => {
+            rfd::FileDialog::new().add_filter("工作台数据库备份", &["db", "sqlite", "sqlite3"])
+        }
+        Some("fullArchive") => rfd::FileDialog::new().add_filter("工作台完整归档", &["zip"]),
+        Some("image") => rfd::FileDialog::new().add_filter("图片", &["png", "jpg", "jpeg", "webp"]),
+        _ => rfd::FileDialog::new(),
+    };
+    dialog
         .pick_file()
         .map(|path| path.to_string_lossy().to_string())
 }
@@ -47,7 +59,13 @@ pub fn choose_save_file(default_name: String, extension: String) -> Option<Strin
 #[tauri::command]
 pub fn read_image_data_url(path: String) -> CommandResult<String> {
     let path = PathBuf::from(path);
-    let bytes = std::fs::read(&path).map_err(command_error)?;
+    let metadata = std::fs::metadata(&path).map_err(command_error)?;
+    if !metadata.is_file() {
+        return Err("所选路径不是图片文件".to_string());
+    }
+    if metadata.len() > 16 * 1024 * 1024 {
+        return Err("图片不能超过 16 MB".to_string());
+    }
     let extension = path
         .extension()
         .and_then(|value| value.to_str())
@@ -57,9 +75,10 @@ pub fn read_image_data_url(path: String) -> CommandResult<String> {
         "jpg" | "jpeg" => "image/jpeg",
         "webp" => "image/webp",
         "gif" => "image/gif",
-        "svg" => "image/svg+xml",
-        _ => "image/png",
+        "png" => "image/png",
+        _ => return Err("仅支持 PNG、JPG、WEBP 或 GIF 图片".to_string()),
     };
+    let bytes = std::fs::read(&path).map_err(command_error)?;
     Ok(format!(
         "data:{mime};base64,{}",
         base64::engine::general_purpose::STANDARD.encode(bytes)
@@ -67,8 +86,12 @@ pub fn read_image_data_url(path: String) -> CommandResult<String> {
 }
 
 #[tauri::command]
-pub fn preview_customer_spreadsheet(path: String) -> CommandResult<SpreadsheetPreview> {
-    crate::import_service::preview_spreadsheet(&PathBuf::from(path)).map_err(command_error)
+pub fn preview_customer_spreadsheet(
+    path: String,
+    sheet: Option<String>,
+) -> CommandResult<SpreadsheetPreview> {
+    crate::import_service::preview_spreadsheet(&PathBuf::from(path), sheet.as_deref())
+        .map_err(command_error)
 }
 
 #[tauri::command]
@@ -77,22 +100,59 @@ pub fn get_settings(service: State<'_, AppService>) -> CommandResult<AppSettings
 }
 
 #[tauri::command]
+pub fn get_app_preference(
+    service: State<'_, AppService>,
+    key: String,
+) -> CommandResult<Option<String>> {
+    service.get_app_preference(&key).map_err(command_error)
+}
+
+#[tauri::command]
+pub fn set_app_preference(
+    service: State<'_, AppService>,
+    key: String,
+    value: String,
+) -> CommandResult<()> {
+    service
+        .set_app_preference(&key, &value)
+        .map_err(command_error)
+}
+
+#[tauri::command]
 pub fn set_library_root(
     service: State<'_, AppService>,
     path: String,
 ) -> CommandResult<AppSettings> {
     service
-        .set_setting("library_root", &path)
-        .map_err(command_error)?;
-    service.settings().map_err(command_error)
+        .set_library_root(&PathBuf::from(path))
+        .map_err(command_error)
+}
+
+#[tauri::command]
+pub fn validate_library_root(service: State<'_, AppService>, path: String) -> StorageHealth {
+    service.validate_library_root(&PathBuf::from(path))
+}
+
+#[tauri::command]
+pub fn get_storage_health(service: State<'_, AppService>) -> CommandResult<StorageHealth> {
+    service.storage_health().map_err(command_error)
+}
+
+#[tauri::command]
+pub fn migrate_library_root(
+    service: State<'_, AppService>,
+    target: String,
+) -> CommandResult<LibraryMigrationResult> {
+    service
+        .migrate_library_root(&PathBuf::from(target))
+        .map_err(command_error)
 }
 
 #[tauri::command]
 pub fn set_backup_dir(service: State<'_, AppService>, path: String) -> CommandResult<AppSettings> {
     service
-        .set_setting("backup_dir", &path)
-        .map_err(command_error)?;
-    service.settings().map_err(command_error)
+        .set_backup_dir(&PathBuf::from(path))
+        .map_err(command_error)
 }
 
 #[tauri::command]
@@ -269,6 +329,17 @@ pub fn add_payment(
 }
 
 #[tauri::command]
+pub fn delete_payment(
+    service: State<'_, AppService>,
+    order_id: String,
+    payment_id: String,
+) -> CommandResult<Order> {
+    service
+        .delete_payment(&order_id, &payment_id)
+        .map_err(command_error)
+}
+
+#[tauri::command]
 pub fn retry_order_folder(
     service: State<'_, AppService>,
     order_id: String,
@@ -347,6 +418,7 @@ pub fn list_order_folder_files(
             relative_path: absolute_path,
             size_bytes: metadata.len() as i64,
             created_at: modified,
+            state: "ready".to_string(),
         });
     }
     files.sort_by(|left, right| {
@@ -396,10 +468,39 @@ pub fn import_customers(
 }
 
 #[tauri::command]
-pub fn run_backup(service: State<'_, AppService>, default_dir: String) -> CommandResult<String> {
+pub fn apply_customer_import(
+    service: State<'_, AppService>,
+    batch_id: String,
+    operations: Vec<CustomerImportOperation>,
+) -> CommandResult<ImportResult> {
     service
-        .create_daily_backup(&PathBuf::from(default_dir))
+        .apply_customer_import(&batch_id, operations)
+        .map_err(command_error)
+}
+
+fn default_backup_dir(app: &AppHandle) -> CommandResult<PathBuf> {
+    app.path()
+        .document_dir()
+        .map(|path| path.join("创业客户管理工作台备份"))
+        .map_err(command_error)
+}
+
+#[tauri::command]
+pub fn run_backup(service: State<'_, AppService>, app: AppHandle) -> CommandResult<String> {
+    let default_dir = default_backup_dir(&app)?;
+    service
+        .create_manual_backup(&default_dir)
         .map(|path| path.to_string_lossy().to_string())
+        .map_err(command_error)
+}
+
+#[tauri::command]
+pub fn get_backup_status(
+    service: State<'_, AppService>,
+    app: AppHandle,
+) -> CommandResult<BackupStatus> {
+    service
+        .backup_status(&default_backup_dir(&app)?)
         .map_err(command_error)
 }
 
@@ -408,6 +509,27 @@ pub fn export_full(service: State<'_, AppService>, destination: String) -> Comma
     service
         .export_full(&PathBuf::from(destination))
         .map(|path| path.to_string_lossy().to_string())
+        .map_err(command_error)
+}
+
+#[tauri::command]
+pub fn inspect_full_archive(
+    service: State<'_, AppService>,
+    source: String,
+) -> CommandResult<FullArchiveInspection> {
+    service
+        .inspect_full_archive(&PathBuf::from(source))
+        .map_err(command_error)
+}
+
+#[tauri::command]
+pub fn restore_full_archive(
+    service: State<'_, AppService>,
+    source: String,
+    target_library_root: String,
+) -> CommandResult<FullRestoreResult> {
+    service
+        .restore_full_archive(&PathBuf::from(source), &PathBuf::from(target_library_root))
         .map_err(command_error)
 }
 

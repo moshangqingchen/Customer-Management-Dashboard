@@ -98,6 +98,7 @@ describe("App", () => {
 
   it("supports context menu add and delete actions in customer service quick replies", async () => {
     const prompt = vi.spyOn(window, "prompt");
+    vi.spyOn(window, "confirm").mockReturnValue(true);
     prompt
       .mockReturnValueOnce("右键小类")
       .mockReturnValueOnce("通过右键添加的小类")
