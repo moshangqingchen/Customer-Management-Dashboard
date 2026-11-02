@@ -144,7 +144,9 @@ fn list_is_read_only_and_folder_creation_is_lazy_unique_and_uses_template() {
 fn import_copy_and_filesystem_views_reflect_current_files() {
     let f = Fixture::new();
     let sources = f.sources();
-    let added = library::files_add(&f.db, &project("p1"), &sources, Some("过程稿")).unwrap();
+    let added = library::files_add(&f.db, &project("p1"), &sources, Some("过程稿"))
+        .unwrap()
+        .added;
     assert_eq!(added.len(), 4);
     assert_eq!(added[1].name, "封面 (2).pdf");
     let photo = added.iter().find(|e| e.name == "猫.JPG").unwrap();
@@ -272,7 +274,11 @@ fn failed_batch_preserves_successful_files_and_reports_failures_in_activity() {
     let f = Fixture::new();
     let mut sources = f.sources();
     sources.push(f.path("不存在.txt"));
-    let copied = library::files_add(&f.db, &project("p1"), &sources, None).unwrap();
+    let result = library::files_add(&f.db, &project("p1"), &sources, None).unwrap();
+    assert_eq!(result.failed.len(), 1);
+    assert_eq!(result.failed[0].name, "不存在.txt");
+    assert!(!result.failed[0].message.is_empty());
+    let copied = result.added;
     assert_eq!(copied.len(), 4);
     for file in &copied {
         assert!(Path::new(&file.path).is_file());
@@ -290,12 +296,10 @@ fn failed_batch_preserves_successful_files_and_reports_failures_in_activity() {
     );
     let folder = library::ensure_folder(&f.db, &project("p1")).unwrap();
     let recursive = folder.parent().unwrap().to_string_lossy().to_string();
-    assert_eq!(
-        library::files_add(&f.db, &project("p1"), &[recursive], None)
-            .unwrap_err()
-            .code,
-        "invalid"
-    );
+    let result = library::files_add(&f.db, &project("p1"), &[recursive], None).unwrap();
+    assert!(result.added.is_empty());
+    assert_eq!(result.failed.len(), 1);
+    assert!(result.failed[0].message.contains("自身"));
     assert!(folder.is_dir());
 }
 
@@ -303,9 +307,12 @@ fn failed_batch_preserves_successful_files_and_reports_failures_in_activity() {
 fn wholly_failed_batch_names_each_failure_and_does_not_write_success_activity() {
     let f = Fixture::new();
     let sources = [f.path("缺失甲.psd"), f.path("缺失乙.ai")];
-    let error = library::files_add(&f.db, &project("p1"), &sources, None).unwrap_err();
-    assert!(error.message.contains("缺失甲.psd"));
-    assert!(error.message.contains("缺失乙.ai"));
+    let result = library::files_add(&f.db, &project("p1"), &sources, None).unwrap();
+    assert!(result.added.is_empty());
+    assert_eq!(result.failed.len(), 2);
+    assert_eq!(result.failed[0].name, "缺失甲.psd");
+    assert_eq!(result.failed[1].name, "缺失乙.ai");
+    assert!(result.failed.iter().all(|file| !file.message.is_empty()));
     assert!(activities::list(&f.db, Some("c1"), None, None)
         .unwrap()
         .is_empty());
@@ -316,9 +323,59 @@ fn wholly_failed_batch_names_each_failure_and_does_not_write_success_activity() 
 }
 
 #[test]
+fn directory_batch_keeps_copied_files_and_reports_unsafe_nested_entries() {
+    let f = Fixture::new();
+    let source = f.tmp.path().join("带失败的素材包");
+    fs::create_dir(&source).unwrap();
+    fs::write(source.join("可用.ai"), b"design source").unwrap();
+    let outside = f.tmp.path().join("不可跟随");
+    fs::create_dir(&outside).unwrap();
+    fs::write(outside.join("私有.txt"), b"secret").unwrap();
+    let link = source.join("链接资料");
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        let result = std::process::Command::new("cmd.exe")
+            .creation_flags(0x08000000)
+            .args(["/d", "/c", "mklink", "/J"])
+            .arg(&link)
+            .arg(&outside)
+            .output()
+            .unwrap();
+        assert!(result.status.success());
+    }
+    #[cfg(unix)]
+    std::os::unix::fs::symlink(&outside, &link).unwrap();
+    let result = library::files_add(
+        &f.db,
+        &project("p1"),
+        &[source.to_string_lossy().into_owned()],
+        None,
+    )
+    .unwrap();
+    assert_eq!(result.added.len(), 1);
+    assert_eq!(result.added[0].name, "可用.ai");
+    assert_eq!(fs::read(&result.added[0].path).unwrap(), b"design source");
+    assert!(result
+        .failed
+        .iter()
+        .any(|failure| failure.name == "链接资料"));
+    assert!(result
+        .failed
+        .iter()
+        .all(|failure| !failure.message.is_empty()));
+    let note = &activities::list(&f.db, Some("c1"), None, Some(1)).unwrap()[0];
+    assert_eq!(note.meta["names"], serde_json::json!(["可用.ai"]));
+    assert!(note.body.contains("链接资料"));
+    assert!(outside.join("私有.txt").is_file());
+}
+
+#[test]
 fn rename_and_trash_copy_path_stays_in_library_and_preserves_collisions() {
     let f = Fixture::new();
-    let files = library::files_add(&f.db, &project("p1"), &f.sources(), None).unwrap();
+    let files = library::files_add(&f.db, &project("p1"), &f.sources(), None)
+        .unwrap()
+        .added;
     let original = Path::new(&files[0].path);
     assert_eq!(
         library::file_rename(&f.db, original, "../新名")

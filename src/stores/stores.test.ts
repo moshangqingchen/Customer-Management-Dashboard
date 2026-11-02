@@ -22,8 +22,8 @@ describe('导航和界面偏好', () => {
     useUI.getState().setTheme('dark'); useUI.getState().toggleSidebar(); useUI.getState().setPanelWidth(1500);
     useUI.getState().setProjectView('kanban'); useUI.getState().setFileView('list'); useUI.getState().setCommandOpen(true);
     const stored: unknown = JSON.parse(localStorage.getItem('clientdesk.ui.v1') ?? '{}');
-    expect(stored).toEqual({ version: 0, state: { theme: 'dark', sidebarCollapsed: true, tagsCollapsed: false, panelWidth: 880, projectView: 'kanban', fileView: 'list' } });
-    useUI.getState().setPanelWidth(10); expect(useUI.getState().panelWidth).toBe(480);
+    expect(stored).toEqual({ version: 0, state: { theme: 'dark', sidebarCollapsed: true, tagsCollapsed: false, panelWidth: 900, projectView: 'kanban', fileView: 'list' } });
+    useUI.getState().setPanelWidth(10); expect(useUI.getState().panelWidth).toBe(520);
   });
   it('跟随系统设置html主题，显式主题覆盖系统', () => {
     const media = vi.fn().mockReturnValue({ matches: true }); vi.stubGlobal('matchMedia', media);

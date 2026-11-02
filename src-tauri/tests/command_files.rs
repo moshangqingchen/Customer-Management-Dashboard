@@ -68,7 +68,7 @@ fn project_commands_populate_counts_and_keep_folder_renames_in_sync() {
     .unwrap();
     let get = || invoke("project_get", json!({"id":project_id})).unwrap();
     assert_eq!(get()["fileCount"], 1);
-    assert_eq!(get()["coverPath"], added[0]["path"]);
+    assert_eq!(get()["coverPath"], added["added"][0]["path"]);
     assert_eq!(
         invoke("projects_list", json!({})).unwrap()[0]["fileCount"],
         1
@@ -106,7 +106,7 @@ fn project_commands_populate_counts_and_keep_folder_renames_in_sync() {
     assert_eq!(current["fileCount"], 1);
     let folder = current["folder"].as_str().unwrap();
     assert!(folder.starts_with("林女士/"));
-    assert!(!Path::new(added[0]["path"].as_str().unwrap()).exists());
+    assert!(!Path::new(added["added"][0]["path"].as_str().unwrap()).exists());
     let path = root.join(folder).join("素材.png");
     assert_eq!(
         Path::new(current["coverPath"].as_str().unwrap())

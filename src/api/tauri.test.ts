@@ -67,6 +67,13 @@ const cases: [string, Record<string, unknown> | undefined, () => Promise<unknown
   ['trash_purge', { type: 'project', id: 'p' }, () => api.trash.purge('project', 'p')],
 ];
 describe('Tauri 接口契约', () => {
+  it('添加与选择文件保留部分成功结果，全部失败仍正常返回', async () => {
+    const result = { added: [], failed: [{ name: '缺失.psd', message: '文件不存在' }] };
+    vi.mocked(invoke).mockResolvedValueOnce(result);
+    expect(await api.files.add({ projectId: 'p' }, ['C:/缺失.psd'])).toEqual(result);
+    vi.mocked(invoke).mockResolvedValueOnce(result);
+    expect(await api.files.pickAndAdd({ projectId: 'p' })).toEqual(result);
+  });
   it('项目封面路径按后端原值返回，缺少图片时保留 null', async () => {
     vi.mocked(invoke).mockResolvedValueOnce({ id: 'p', coverPath: 'D:/文件库/终稿.png' });
     expect((await api.projects.get('p')).coverPath).toBe('D:/文件库/终稿.png');

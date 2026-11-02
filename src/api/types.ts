@@ -64,6 +64,7 @@ export interface FileEntry {
   clientId: ID | null; projectId: ID | null;
 }
 export interface FileListResult { files: FileEntry[]; folder: string | null; folderMissing: boolean; }
+export interface FilesAddResult { added: FileEntry[]; failed: { name: string; message: string }[]; }
 export type FileTarget = { projectId: ID } | { clientId: ID };
 
 export interface LibraryStatus {

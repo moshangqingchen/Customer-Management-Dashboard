@@ -1,10 +1,11 @@
 import { lazy, Suspense } from 'react';
-import { CircleCheck, FilePlus2, MessageSquare, Plus, Wallet } from 'lucide-react';
+import { ActivityIcon } from '../activity/ActivityEvent';
+import { activitySummary } from '../../lib/activity';
 import type { Activity, Project } from '../../api/types';
 import { activityTime } from '../../lib/today';
 import { outstanding } from '../../lib/money';
 import { useNav } from '../../stores/nav';
-import { Button, Card, EmptyState, IconTile, Money, Section, Skeleton } from '../ui';
+import { Button, Card, EmptyState, Money, Section, Skeleton } from '../ui';
 import type { TodayOverview } from './TodayProjects';
 
 const IncomeChart = lazy(() => import('./TodayIncomeChart'));
@@ -24,13 +25,11 @@ export function TodayPayments({ projects }: { projects: Project[] }) {
     </div>)}</div>}
   </Section></Card>;
 }
-const activityMeta = { note: { Icon: MessageSquare, tone: 'violet' }, status: { Icon: CircleCheck, tone: 'amber' }, payment: { Icon: Wallet, tone: 'mint' }, file: { Icon: FilePlus2, tone: 'sky' }, created: { Icon: Plus, tone: 'peach' } } as const;
 export function TodayActivity({ activities, pending, error, onRetry, now }: { activities: Activity[]; pending: boolean; error: boolean; onRetry: () => void; now: Date }) {
   const navigate = useNav(s => s.navigate);
   return <Card className="min-w-0 p-5 md:col-span-2 xl:col-span-1 xl:p-6"><Section title="最近动态">
-    {pending ? <div className="space-y-4">{[0, 1, 2].map(i => <Skeleton key={i} className="h-9" />)}</div> : error ? <div className="space-y-2 text-sm text-fg-2"><p>动态暂时读取失败</p><Button size="sm" onClick={onRetry}>重新加载</Button></div> : activities.length === 0 ? <EmptyState illustrationName="empty-today" title="故事从这里开始" description="项目的新进展会记录在这里。" /> : <ol className="space-y-1">{activities.map((activity, i) => {
-      const { Icon, tone } = activityMeta[activity.kind];
-      return <li key={activity.id} className="relative flex gap-3 py-2">{i !== activities.length - 1 && <span className="absolute top-12 bottom-[-10px] left-[17px] w-px bg-line" />}<IconTile tone={tone} size="sm"><Icon size={17} /></IconTile><button type="button" className="min-w-0 flex-1 text-left" onClick={() => activity.projectId ? navigate('today', { projectId: activity.projectId }) : navigate('clients', { clientId: activity.clientId })}><p className="text-[13px] leading-5"><span className="font-medium">{activity.clientName}</span><span className="mx-1.5 text-fg-3">·</span>{activity.body}</p>{activity.projectTitle && <p className="mt-0.5 truncate text-xs text-fg-2">{activity.projectTitle}</p>}<time dateTime={activity.createdAt} className="mt-1 block text-xs text-fg-3">{activityTime(activity.createdAt, now)}</time></button></li>;
+    {pending ? <div className="space-y-4">{[0, 1, 2].map(i => <Skeleton key={i} className="h-9" />)}</div> : error ? <div className="space-y-2 text-sm text-fg-2"><p>动态暂时读取失败</p><Button size="sm" onClick={onRetry}>重新加载</Button></div> : activities.length === 0 ? <EmptyState illustrationName="empty-today" title="故事从这里开始" description="项目的新进展会记录在这里。" /> : <ol className="space-y-1">{activities.slice(0, 8).map(activity => {
+      return <li key={activity.id} className="flex items-center gap-2 py-2"><ActivityIcon kind={activity.kind} /><button type="button" className="min-w-0 flex-1 truncate text-left text-[13px]" title={activity.body} onClick={() => activity.projectId ? navigate('today', { projectId: activity.projectId }) : navigate('clients', { clientId: activity.clientId })}><span className="font-medium">{activity.clientName}</span><span className="mx-1 text-fg-3">·</span><span className="text-fg-2">{activitySummary(activity)}</span></button><time dateTime={activity.createdAt} className="shrink-0 text-[11px] text-fg-3">{activityTime(activity.createdAt, now)}</time></li>;
     })}</ol>}
   </Section></Card>;
 }

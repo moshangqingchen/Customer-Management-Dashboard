@@ -6,8 +6,8 @@ import { addBrowserFiles } from '../api/mock';
 import { useFileDrop } from './useFileDrop';
 
 vi.mock('../api/client', () => ({ api: { files: { add: vi.fn() } }, isTauri: false }));
-vi.mock('../api/mock', () => ({ addBrowserFiles: vi.fn().mockResolvedValue([]) }));
-vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
+vi.mock('../api/mock', () => ({ addBrowserFiles: vi.fn().mockResolvedValue({ added: [], failed: [] }) }));
+vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn(), warning: vi.fn() } }));
 
 function drag(type: string, files: File[] = []) {
   const event = new Event(type, { bubbles: true, cancelable: true });

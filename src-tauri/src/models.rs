@@ -298,6 +298,18 @@ pub struct FileListResult {
     pub folder: Option<String>,
     pub folder_missing: bool,
 }
+#[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FilesAddResult {
+    pub added: Vec<FileEntry>,
+    pub failed: Vec<FileAddFailure>,
+}
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FileAddFailure {
+    pub name: String,
+    pub message: String,
+}
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged, deny_unknown_fields)]
 pub enum FileTarget {

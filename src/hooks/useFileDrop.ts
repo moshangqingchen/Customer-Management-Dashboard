@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { isTauri } from '../api/client';
 import type { FileTarget } from '../api/types';
 import { useAddBrowserFiles, useAddFiles } from './queries';
+import { filesAddedToast } from '../components/files/fileFeedback';
 
 export function dropTarget(element: Element | null): FileTarget | null {
   const value = element?.closest<HTMLElement>('[data-drop-target]')?.dataset.dropTarget;
@@ -25,7 +26,6 @@ export function useFileDrop(enabled = true): void {
       if (highlighted !== next) { clear(); highlighted = next; highlighted?.setAttribute('data-drop-active', 'true'); }
       return next;
     };
-    const success = (count: number) => { if (count) toast.success(`已添加 ${count} 个文件`); };
     const atPoint = (x: number, y: number) => document.elementFromPoint(x, y);
     const onDragOver = (event: DragEvent) => {
       if (!event.dataTransfer?.types.includes('Files')) return;
@@ -37,7 +37,7 @@ export function useFileDrop(enabled = true): void {
       const element = highlight(atPoint(event.clientX, event.clientY)); const target = dropTarget(element); clear();
       if (!target || !event.dataTransfer?.files.length) return;
       const files = Array.from(event.dataTransfer.files, file => ({ name: file.name, size: file.size }));
-      latest.current.browser.mutate({ target, files, subfolder: element?.dataset.dropSubfolder }, { onSuccess: result => success(result.length) });
+      latest.current.browser.mutate({ target, files, subfolder: element?.dataset.dropSubfolder }, { onSuccess: filesAddedToast });
     };
     const onLeave = (event: DragEvent) => { if (!event.relatedTarget) clear(); };
     if (isTauri) {
@@ -48,7 +48,7 @@ export function useFileDrop(enabled = true): void {
           const element = highlight(atPoint(payload.position.x / window.devicePixelRatio, payload.position.y / window.devicePixelRatio));
           if (payload.type !== 'drop') return;
           const target = dropTarget(element); clear();
-          if (target) latest.current.native.mutate({ target, sourcePaths: payload.paths, subfolder: element?.dataset.dropSubfolder }, { onSuccess: result => success(result.length) });
+          if (target) latest.current.native.mutate({ target, sourcePaths: payload.paths, subfolder: element?.dataset.dropSubfolder }, { onSuccess: filesAddedToast });
         });
         if (disposed) stop(); else unlisten = stop;
       }).catch(() => { if (!disposed) toast.error('文件拖放未能启动，请使用添加文件按钮'); });

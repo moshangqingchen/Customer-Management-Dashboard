@@ -72,7 +72,13 @@ export function useUpdateClient() {
       ...(patch.name !== undefined ? [queryKeys.allPayments, queryKeys.activities] : []), ...(patch.renameFolder ? [queryKeys.files] : [])]),
   });
 }
-export const useDeleteClient = () => useAction((id: string) => api.clients.delete(id), (_q, _r, id) => [queryKeys.clients, queryKeys.client(id), queryKeys.projects, queryKeys.project(), queryKeys.allPayments, queryKeys.activities, queryKeys.tags, queryKeys.trash, queryKeys.files]);
+export function useDeleteClient() {
+  const q = useQueryClient();
+  return useMutation({ mutationFn: (id: string) => api.clients.delete(id), onError: errorToast, onSuccess: async (_result, id) => {
+    await Promise.all([q.invalidateQueries({ queryKey: queryKeys.client(id), refetchType: 'none' }), q.invalidateQueries({ queryKey: queryKeys.project(), refetchType: 'none' }), q.invalidateQueries({ queryKey: queryKeys.files, refetchType: 'none' }),
+      invalidate(q, [queryKeys.clients, queryKeys.projects, queryKeys.allPayments, queryKeys.activities, queryKeys.tags, queryKeys.trash])]);
+  } });
+}
 export const useSetClientTags = () => useAction(({ clientId, tagIds }: { clientId: string; tagIds: string[] }) => api.clients.setTags(clientId, tagIds), (_q, _r, a) => [queryKeys.clients, queryKeys.client(a.clientId), queryKeys.tags]);
 export const useCreateProject = () => useAction((input: ProjectInput) => api.projects.create(input), (q, result) => projectKeys(q, result.id, result.clientId));
 export function useUpdateProject() {
@@ -116,7 +122,13 @@ export function useSetProjectStatus() {
   });
 }
 export const useDuplicateProject = () => useAction((id: string) => api.projects.duplicate(id), (q, project) => projectKeys(q, project.id, project.clientId));
-export const useDeleteProject = () => useAction((id: string) => api.projects.delete(id), (q, _r, id) => [...projectKeys(q, id), queryKeys.allPayments, queryKeys.payments(id), queryKeys.files, queryKeys.trash]);
+export function useDeleteProject() {
+  const q = useQueryClient();
+  return useMutation({ mutationFn: (id: string) => api.projects.delete(id), onError: errorToast, onSuccess: async (_result, id) => {
+    await Promise.all([q.invalidateQueries({ queryKey: queryKeys.project(id), refetchType: 'none' }), q.invalidateQueries({ queryKey: queryKeys.payments(id), refetchType: 'none' }), q.invalidateQueries({ queryKey: queryKeys.files, refetchType: 'none' }),
+      invalidate(q, [queryKeys.projects, queryKeys.clients, queryKeys.client(projectClient(q, id)), queryKeys.allPayments, queryKeys.activities, queryKeys.tags, queryKeys.trash])]);
+  } });
+}
 export const useSetProjectTags = () => useAction(({ projectId, tagIds }: { projectId: string; tagIds: string[] }) => api.projects.setTags(projectId, tagIds), (_q, _r, a) => [queryKeys.projects, queryKeys.project(a.projectId), queryKeys.tags]);
 const paymentKeys = (q: QueryClient, payment: Payment): QueryKey[] => [...projectKeys(q, payment.projectId), queryKeys.payments(payment.projectId), queryKeys.allPayments];
 export const useAddPayment = () => useAction((input: PaymentInput) => api.payments.add(input), paymentKeys);
@@ -145,10 +157,10 @@ const fileKeys = (q: QueryClient, files: FileEntry[], target?: FileTarget): Quer
   if (target && 'projectId' in target) projectIds.push(target.projectId);
   return [queryKeys.files, queryKeys.projects, queryKeys.clients, queryKeys.activities, ...projectIds.map(id => queryKeys.project(id)), ...projectIds.map(id => queryKeys.client(projectClient(q, id))), ...(target && 'clientId' in target ? [queryKeys.client(target.clientId)] : [])];
 };
-export const useAddFiles = () => useAction(({ target, sourcePaths, subfolder }: { target: FileTarget; sourcePaths: string[]; subfolder?: string }) => api.files.add(target, sourcePaths, subfolder), (q, files, a) => fileKeys(q, files, a.target));
-export const usePickAndAddFiles = () => useAction(({ target, subfolder }: { target: FileTarget; subfolder?: string }) => api.files.pickAndAdd(target, subfolder), (q, files, a) => fileKeys(q, files, a.target));
-export const useAddBrowserFiles = () => useAction(async ({ target, files, subfolder }: { target: FileTarget; files: { name: string; size: number }[]; subfolder?: string }) => (await import('../api/mock')).addBrowserFiles(target, files, subfolder), (q, files, a) => fileKeys(q, files, a.target));
-export const useRenameFile = () => useAction(({ path, newName }: { path: string; newName: string }) => api.files.rename(path, newName), (_q, file) => [queryKeys.files, ...(file.projectId ? [queryKeys.project(file.projectId)] : [])]);
+export const useAddFiles = () => useAction(({ target, sourcePaths, subfolder }: { target: FileTarget; sourcePaths: string[]; subfolder?: string }) => api.files.add(target, sourcePaths, subfolder), (q, result, a) => fileKeys(q, result.added, a.target));
+export const usePickAndAddFiles = () => useAction(({ target, subfolder }: { target: FileTarget; subfolder?: string }) => api.files.pickAndAdd(target, subfolder), (q, result, a) => fileKeys(q, result.added, a.target));
+export const useAddBrowserFiles = () => useAction(async ({ target, files, subfolder }: { target: FileTarget; files: { name: string; size: number }[]; subfolder?: string }) => (await import('../api/mock')).addBrowserFiles(target, files, subfolder), (q, result, a) => fileKeys(q, result.added, a.target));
+export const useRenameFile = () => useAction(({ path, newName }: { path: string; newName: string }) => api.files.rename(path, newName), (q, file) => fileKeys(q, [file]));
 export const useTrashFile = () => useAction((path: string) => api.files.trash(path), () => [queryKeys.files, queryKeys.projects, queryKeys.project(), queryKeys.activities]);
 export const useOpenFile = () => useAction((path: string) => api.files.open(path));
 export const useRevealFile = () => useAction((path: string) => api.files.reveal(path));

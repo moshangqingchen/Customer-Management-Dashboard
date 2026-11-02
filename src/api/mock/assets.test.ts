@@ -30,7 +30,7 @@ describe('Mock 封面身份与兼容升级', () => {
     await mockApi.library.setRoot('D:/客户工作台');
     const client = await mockApi.clients.create({ name: '稳定图客户' });
     const project = await mockApi.projects.create({ clientId: client.id, title: '稳定图项目' });
-    const [original] = await addBrowserFiles({ projectId: project.id }, [{ name: '初稿.png', size: 100 }]);
+    const [original] = (await addBrowserFiles({ projectId: project.id }, [{ name: '初稿.png', size: 100 }])).added;
     const assetId = designAssetId(original.path);
     await mockApi.files.rename(original.path, '定稿.webp');
     await mockApi.clients.update(client.id, { name: '新的客户名', renameFolder: true });
@@ -64,8 +64,8 @@ describe('Mock 封面身份与兼容升级', () => {
     await mockApi.library.setRoot('D:/客户工作台');
     const client = await mockApi.clients.create({ name: '深度规则客户' });
     const project = await mockApi.projects.create({ clientId: client.id, title: '深度规则项目' });
-    const [valid] = await addBrowserFiles({ projectId: project.id }, [{ name: '可见稿.png', size: 100 }], '一层/二层');
-    const [deep] = await addBrowserFiles({ projectId: project.id }, [{ name: '第四层.png', size: 100 }], '一层/二层/三层');
+    const [valid] = (await addBrowserFiles({ projectId: project.id }, [{ name: '可见稿.png', size: 100 }], '一层/二层')).added;
+    const [deep] = (await addBrowserFiles({ projectId: project.id }, [{ name: '第四层.png', size: 100 }], '一层/二层/三层')).added;
     const hidden: FileEntry[] = [
       { ...valid, name: '.隐藏.png', path: `${valid.path}.hidden`, folderGroup: '' },
       { ...valid, name: '~$临时.png', path: `${valid.path}.temp`, folderGroup: '' },

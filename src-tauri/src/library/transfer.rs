@@ -8,7 +8,7 @@ use super::{
 };
 use crate::{
     error::{AppError, Result},
-    models::{ActivityKind, FileEntry, FileTarget},
+    models::{ActivityKind, FileAddFailure, FileEntry, FileTarget, FilesAddResult},
     repo::{self, activities},
     Database,
 };
@@ -183,7 +183,7 @@ pub fn files_add(
     target: &FileTarget,
     sources: &[String],
     subfolder: Option<&str>,
-) -> Result<Vec<FileEntry>> {
+) -> Result<FilesAddResult> {
     files_add_with_copy_hook(db, target, sources, subfolder, |_| {})
 }
 
@@ -195,11 +195,11 @@ pub fn files_add_with_copy_hook(
     sources: &[String],
     subfolder: Option<&str>,
     before_copy: impl Fn(&Path),
-) -> Result<Vec<FileEntry>> {
+) -> Result<FilesAddResult> {
     let root = root(db)?;
     let info = db.read(|conn| Target::load(conn, target))?;
     if sources.is_empty() {
-        return Ok(vec![]);
+        return Ok(FilesAddResult::default());
     }
     let base = ensure_folder(db, target)?;
     let relative_base = base.strip_prefix(&root).map_err(|_| super::outside())?;
@@ -249,12 +249,6 @@ pub fn files_add_with_copy_hook(
         .map(|failure| format!("{}：{}", failure.name, failure.error.message))
         .collect();
     let failed_names: Vec<_> = failures.iter().map(|failure| &failure.name).collect();
-    if files.is_empty() && !failures.is_empty() {
-        return Err(AppError::new(
-            &failures[0].error.code,
-            format!("以下文件添加失败：{}", errors.join("；")),
-        ));
-    }
     if !files.is_empty() {
         let mut body = format!("添加了 {} 个文件", files.len());
         if !errors.is_empty() {
@@ -304,7 +298,16 @@ pub fn files_add_with_copy_hook(
             file.client_id = Some(client_id.clone());
         }
     }
-    Ok(files)
+    Ok(FilesAddResult {
+        added: files,
+        failed: failures
+            .into_iter()
+            .map(|failure| FileAddFailure {
+                name: failure.name,
+                message: failure.error.message,
+            })
+            .collect(),
+    })
 }
 
 fn ordinary_file(db: &impl Database, path: &Path, root: &Path) -> Result<PathBuf> {

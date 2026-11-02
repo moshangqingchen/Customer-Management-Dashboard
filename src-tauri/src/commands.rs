@@ -371,7 +371,7 @@ pub fn files_add(
     target: Arg<FileTarget>,
     source_paths: Arg<Vec<String>>,
     subfolder: Arg<Option<String>>,
-) -> Result<Vec<FileEntry>> {
+) -> Result<FilesAddResult> {
     library::files_add(&*state, &target.0, &source_paths.0, subfolder.0.as_deref())
 }
 
@@ -381,14 +381,14 @@ pub fn files_pick_and_add(
     app: AppHandle,
     target: Arg<FileTarget>,
     subfolder: Arg<Option<String>>,
-) -> Result<Vec<FileEntry>> {
+) -> Result<FilesAddResult> {
     let Some(files) = app
         .dialog()
         .file()
         .set_title("选择要添加的文件")
         .blocking_pick_files()
     else {
-        return Ok(Vec::new());
+        return Ok(FilesAddResult::default());
     };
     let sources = files
         .into_iter()

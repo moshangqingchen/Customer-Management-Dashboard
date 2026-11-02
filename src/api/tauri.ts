@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import type { Api } from './client';
-import type { Project } from './types';
+import type { FilesAddResult, Project } from './types';
 
 export const tauriApi: Api = {
   app: { info: () => invoke('app_info'), saveTextFile: (defaultName, content) => invoke('save_text_file', { defaultName, content }) },
@@ -35,8 +35,8 @@ export const tauriApi: Api = {
   },
   files: {
     list: (target, includeProjects) => invoke('files_list', { target, includeProjects }), recent: limit => invoke('files_recent', { limit }),
-    add: (target, sourcePaths, subfolder) => invoke('files_add', { target, sourcePaths, subfolder }),
-    pickAndAdd: (target, subfolder) => invoke('files_pick_and_add', { target, subfolder }),
+    add: (target, sourcePaths, subfolder) => invoke<FilesAddResult>('files_add', { target, sourcePaths, subfolder }),
+    pickAndAdd: (target, subfolder) => invoke<FilesAddResult>('files_pick_and_add', { target, subfolder }),
     open: path => invoke('file_open', { path }), reveal: path => invoke('file_reveal', { path }),
     rename: (path, newName) => invoke('file_rename', { path, newName }), trash: path => invoke('file_trash', { path }),
     openFolder: target => invoke('folder_open', { target }),

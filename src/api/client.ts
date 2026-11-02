@@ -32,8 +32,8 @@ export interface Api {
   activities: { list(filter?: ActivityFilter): Promise<T.Activity[]>; recent(limit: number): Promise<T.Activity[]>; addNote(input: NoteInput): Promise<T.Activity>; updateNote(id: T.ID, body: string): Promise<T.Activity>; delete(id: T.ID): Promise<void> };
   files: {
     list(target: T.FileTarget, includeProjects?: boolean): Promise<T.FileListResult>; recent(limit: number): Promise<T.FileEntry[]>;
-    add(target: T.FileTarget, sourcePaths: string[], subfolder?: string): Promise<T.FileEntry[]>;
-    pickAndAdd(target: T.FileTarget, subfolder?: string): Promise<T.FileEntry[]>;
+    add(target: T.FileTarget, sourcePaths: string[], subfolder?: string): Promise<T.FilesAddResult>;
+    pickAndAdd(target: T.FileTarget, subfolder?: string): Promise<T.FilesAddResult>;
     open(path: string): Promise<void>; reveal(path: string): Promise<void>; rename(path: string, newName: string): Promise<T.FileEntry>;
     trash(path: string): Promise<void>; openFolder(target: T.FileTarget): Promise<void>;
   };

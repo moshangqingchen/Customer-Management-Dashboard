@@ -96,7 +96,27 @@ export function addFileRecords(target: T.FileTarget, source: { name: string; siz
   if (result.length && clientId) activity(clientId, project?.id ?? null, 'file', `添加了 ${result.length} 个文件`, { names: result.map(file => file.name) });
   return result;
 }
-export const addBrowserFiles = operation((target: T.FileTarget, incoming: { name: string; size: number }[], subfolder?: string) => addFileRecords(target, incoming, subfolder));
+function addResult(target: T.FileTarget, incoming: { name: string; size: number; error?: string }[], subfolder?: string): T.FilesAddResult {
+  // Validate the destination before collecting per-file failures, including an empty selection.
+  addFileRecords(target, [], subfolder);
+  const failed: T.FilesAddResult['failed'] = [];
+  const accepted = incoming.filter(file => {
+    const message = file.error ?? (!file.name.trim() ? '文件名不能为空' : !Number.isFinite(file.size) || file.size < 0 ? '文件大小无效' : undefined);
+    if (message) failed.push({ name: file.name || '未命名', message });
+    return !message;
+  });
+  const added = addFileRecords(target, accepted, subfolder);
+  if (failed.length && added.length) {
+    const latest = state().activities.at(-1);
+    if (latest?.kind === 'file') {
+      latest.meta.failedNames = failed.map(file => file.name);
+      latest.meta.errors = failed.map(file => `${file.name}：${file.message}`);
+      latest.body += `；以下文件添加失败：${failed.map(file => `${file.name}：${file.message}`).join('；')}`;
+    }
+  }
+  return { added, failed };
+}
+export const addBrowserFiles = operation((target: T.FileTarget, incoming: { name: string; size: number }[], subfolder?: string) => addResult(target, incoming, subfolder));
 function pickFiles(): Promise<File[]> {
   return new Promise(resolve => {
     const input = document.createElement('input'); input.type = 'file'; input.multiple = true;
@@ -113,7 +133,7 @@ export const files: Api['files'] = {
     return { files: result.sort((a, b) => a.relPath.localeCompare(b.relPath)), folder: base, folderMissing: false };
   }),
   recent: operation(limit => { root(); return state().files.filter(activeFile).sort((a, b) => b.modifiedAt.localeCompare(a.modifiedAt)).slice(0, Math.max(0, limit)); }),
-  add: operation((target, sourcePaths, subfolder) => addFileRecords(target, sourcePaths.map(path => ({ name: normalize(path).split('/').at(-1) ?? '未命名', size: 0 })), subfolder)),
+  add: operation((target, sourcePaths, subfolder) => addResult(target, sourcePaths.map(path => ({ name: normalize(path).split('/').at(-1) ?? '未命名', size: 0, error: !/^(?:[A-Za-z]:[\\/]|[\\/])/.test(path) ? '源文件位置必须是绝对路径' : undefined })), subfolder)),
   pickAndAdd: async (target, subfolder) => addBrowserFiles(target, await pickFiles(), subfolder),
   open: operation(path => { const file = fileRecord(path); toast.info(`模拟打开：${file.name}`); }),
   reveal: operation(path => { const file = fileRecord(path); toast.info(`模拟在文件夹中显示：${file.name}`); }),

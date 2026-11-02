@@ -1,0 +1,54 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { api } from '../../api/client';
+import { addBrowserFiles } from '../../api/mock';
+import { reset } from '../../api/mock/store';
+import { FilesArea } from './FilesArea';
+
+vi.mock('sonner', () => ({ toast: { info: vi.fn(), success: vi.fn(), error: vi.fn(), warning: vi.fn() } }));
+let queryClient: QueryClient;
+beforeEach(() => { reset(); queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } }); });
+afterEach(() => { queryClient.clear(); vi.restoreAllMocks(); });
+describe('文件共享区', () => {
+  it('按客户资料和项目分组、切换列表、双击打开、窗口重新聚焦后刷新', async () => {
+    await api.library.setRoot('D:/客户工作台');
+    const client = await api.clients.create({ name: '文件测试客户' });
+    const project = await api.projects.create({ clientId: client.id, title: '菜单设计' });
+    await addBrowserFiles({ projectId: project.id }, [{ name: '菜单.pdf', size: 1024 }], '交付成品');
+    await addBrowserFiles({ clientId: client.id }, [{ name: '品牌说明.txt', size: 100 }]);
+    const { mockApi } = await import('../../api/mock'); const openFile = vi.spyOn(mockApi.files, 'open'); const list = vi.spyOn(mockApi.files, 'list');
+    render(<QueryClientProvider client={queryClient}><FilesArea target={{ clientId: client.id }} includeProjects /></QueryClientProvider>);
+    expect(await screen.findByText('菜单设计 / 交付成品')).toBeTruthy(); expect(screen.getByText('_客户资料')).toBeTruthy();
+    const area = screen.getByLabelText('文件区'); expect(area.getAttribute('data-drop-target')).toBe(`client:${client.id}`);
+    await userEvent.click(screen.getByRole('button', { name: '列表视图' }));
+    fireEvent.doubleClick(screen.getByRole('button', { name: '打开文件：菜单.pdf' }));
+    await waitFor(() => expect(openFile).toHaveBeenCalledTimes(1));
+    const oldCalls = list.mock.calls.length;
+    await addBrowserFiles({ clientId: client.id }, [{ name: '新增资料.txt', size: 10 }]);
+    fireEvent(window, new Event('focus'));
+    await waitFor(() => expect(list.mock.calls.length).toBeGreaterThan(oldCalls));
+    expect(await screen.findByText('新增资料.txt')).toBeTruthy();
+  });
+  it('文件库离线显示重新选择入口并禁用文件操作', async () => {
+    const client = await api.clients.create({ name: '未配置客户' });
+    render(<QueryClientProvider client={queryClient}><FilesArea target={{ clientId: client.id }} /></QueryClientProvider>);
+    expect(await screen.findByText('文件库暂时不可用')).toBeTruthy();
+    expect((screen.getByRole('button', { name: '添加文件' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByRole('button', { name: '重新选择位置' })).toBeTruthy();
+  });
+  it('文件夹丢失时工具栏与空状态的添加文件入口都禁用', async () => {
+    await api.library.setRoot('D:/客户工作台');
+    const client = await api.clients.create({ name: '文件夹测试客户' });
+    const { mockApi } = await import('../../api/mock');
+    vi.spyOn(mockApi.files, 'list').mockResolvedValue({ files: [], folder: 'D:/客户工作台/已移走', folderMissing: true });
+    const pick = vi.spyOn(mockApi.files, 'pickAndAdd');
+    render(<QueryClientProvider client={queryClient}><FilesArea target={{ clientId: client.id }} /></QueryClientProvider>);
+    expect(await screen.findByText('找不到原文件夹')).toBeTruthy();
+    const buttons = screen.getAllByRole('button', { name: '添加文件' });
+    expect(buttons).toHaveLength(2);
+    expect(buttons.every(button => (button as HTMLButtonElement).disabled)).toBe(true);
+    await userEvent.click(buttons[1]); expect(pick).not.toHaveBeenCalled();
+  });
+});

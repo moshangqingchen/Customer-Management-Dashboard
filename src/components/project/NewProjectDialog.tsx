@@ -12,7 +12,7 @@ export function NewProjectDialog() {
   const [form, setForm] = useState(initial); const [error, setError] = useState(''); const titleRef = useRef<HTMLInputElement>(null);
   const { data: clients = [] } = useClients(); const { data: tags = [] } = useTags(); const { data: settings } = useSettings();
   const create = useCreateProject(); const createClient = useCreateClient(); const createTag = useCreateTag();
-  useEffect(() => { if (open) { setForm({ ...initial, tagIds: [] }); setError(''); } }, [open]);
+  useEffect(() => { if (open) { const nav = useNav.getState(); const route = nav.entries[nav.index]; setForm({ ...initial, clientId: route.page === 'clients' ? route.params.clientId ?? '' : '', tagIds: [] }); setError(''); } }, [open]);
   function patch<K extends keyof typeof initial>(key: K, value: typeof initial[K]) { setForm(s => ({ ...s, [key]: value })); }
   async function save(keepOpen: boolean) {
     if (create.isPending) return;

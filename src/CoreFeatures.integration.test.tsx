@@ -1,0 +1,112 @@
+import { act, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { App } from './App';
+import { mockApi } from './api/mock';
+import { reset } from './api/mock/store';
+import { useNav } from './stores/nav';
+import { useUI } from './stores/ui';
+
+let query: QueryClient;
+const originalScrollIntoView = Element.prototype.scrollIntoView;
+const originalHasPointerCapture = Element.prototype.hasPointerCapture;
+const originalSetPointerCapture = Element.prototype.setPointerCapture;
+const originalReleasePointerCapture = Element.prototype.releasePointerCapture;
+beforeEach(() => {
+  reset(); query = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  useNav.setState({ entries: [{ page: 'today', params: {} }], index: 0 });
+  useUI.setState({ theme: 'light', sidebarCollapsed: false, tagsCollapsed: false, commandOpen: false, newClientOpen: false, newProjectOpen: false });
+  vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() })));
+  vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} });
+  Element.prototype.scrollIntoView = vi.fn(); Element.prototype.hasPointerCapture = () => false;
+  Element.prototype.setPointerCapture = () => undefined; Element.prototype.releasePointerCapture = () => undefined;
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 640, 180));
+});
+afterEach(() => {
+  query.clear(); vi.unstubAllGlobals(); vi.restoreAllMocks();
+  Element.prototype.scrollIntoView = originalScrollIntoView; Element.prototype.hasPointerCapture = originalHasPointerCapture;
+  Element.prototype.setPointerCapture = originalSetPointerCapture; Element.prototype.releasePointerCapture = originalReleasePointerCapture;
+});
+async function ready() {
+  await mockApi.library.setRoot('D:/客户工作台');
+  render(<QueryClientProvider client={query}><App /></QueryClientProvider>);
+  await screen.findByRole('heading', { name: '今日' });
+  return userEvent.setup();
+}
+
+describe('核心业务完整组件集成', () => {
+  it('新建客户 → 为其新建项目 → 记收款 → 改状态，动态完整保留', async () => {
+    const errors = vi.spyOn(console, 'error'); const user = await ready();
+    await user.keyboard('{Control>}{Shift>}N{/Shift}{/Control}');
+    let dialog = screen.getByRole('dialog', { name: '新建客户' });
+    await user.type(within(dialog).getByRole('textbox', { name: /客户名称/ }), '朝雾甜品工作室');
+    await user.click(within(dialog).getByRole('button', { name: '创建客户' }));
+    await screen.findByRole('heading', { name: '合作项目' });
+    const client = (await mockApi.clients.list()).find(value => value.name === '朝雾甜品工作室');
+    expect(client).toBeTruthy();
+    expect(useNav.getState().entries[useNav.getState().index]).toEqual({ page: 'clients', params: { clientId: client!.id } });
+    await user.click(screen.getByRole('button', { name: '为他新建项目' }));
+    dialog = await screen.findByRole('dialog', { name: '新建项目' });
+    expect(within(dialog).getByRole('combobox', { name: '选择客户' }).textContent).toContain(client!.name);
+    await user.type(within(dialog).getByRole('textbox', { name: /项目名称/ }), '朝雾冬季菜单设计');
+    const quote = within(dialog).getByRole('textbox', { name: '金额（元）' });
+    await user.clear(quote); await user.type(quote, '1280');
+    await user.click(within(dialog).getByRole('button', { name: '创建项目' }));
+    let panel = await screen.findByRole('dialog', { name: '项目详情' });
+    await within(panel).findByRole('heading', { name: '朝雾冬季菜单设计' });
+    const project = (await mockApi.projects.list()).find(value => value.title === '朝雾冬季菜单设计');
+    expect(project?.clientId).toBe(client!.id);
+    await user.click(within(panel).getByRole('button', { name: '记一笔' }));
+    expect((within(panel).getByRole('textbox', { name: '金额（元）' }) as HTMLInputElement).value).toBe('1280');
+    await user.click(within(panel).getByRole('button', { name: '记录收款' }));
+    await waitFor(async () => expect((await mockApi.projects.get(project!.id)).receivedCents).toBe(128000));
+    await user.click(within(panel).getByRole('combobox', { name: '项目详情状态' }));
+    await user.click(await screen.findByRole('option', { name: '已交付' }));
+    await within(panel).findByText('已交付且已收清，可以标记完成');
+    await user.click(within(panel).getByRole('button', { name: '标记完成' }));
+    await waitFor(async () => expect((await mockApi.projects.get(project!.id)).status).toBe('done'));
+    panel = screen.getByRole('dialog', { name: '项目详情' });
+    await user.click(within(panel).getByRole('tab', { name: '动态' }));
+    await within(panel).findByText('创建了项目');
+    expect(within(panel).getByText('记录了收款 ¥1,280')).toBeTruthy();
+    expect(within(panel).getAllByText('已交付').length).toBeGreaterThan(0);
+    const events = await mockApi.activities.list({ projectId: project!.id });
+    expect(events.filter(value => value.kind === 'status').map(value => value.meta.to)).toEqual(['done', 'delivered']);
+    expect(events.some(value => value.kind === 'created')).toBe(true);
+    expect(events.some(value => value.kind === 'payment' && value.meta.amountCents === 128000)).toBe(true);
+    expect(errors).not.toHaveBeenCalled();
+  });
+
+  it('跨页只保留一个项目面板，客户跳转与后退前进恢复选择，整页复用详情', async () => {
+    const user = await ready(); const values = await mockApi.projects.list(); const first = values[0]; const second = values[1];
+    act(() => useNav.getState().navigate('today', { projectId: first.id }));
+    let panel = await screen.findByRole('dialog', { name: '项目详情' });
+    await within(panel).findByRole('heading', { name: first.title });
+    act(() => useNav.getState().navigate('today', { projectId: second.id }));
+    panel = screen.getByRole('dialog', { name: '项目详情' });
+    await within(panel).findByRole('heading', { name: second.title });
+    expect(screen.getAllByRole('dialog', { name: '项目详情' })).toHaveLength(1);
+    expect(screen.getByRole('heading', { name: '今日' })).toBeTruthy();
+    await user.click(within(panel).getByRole('button', { name: `查看客户：${second.clientName}` }));
+    await screen.findByRole('heading', { name: '合作项目' });
+    expect(document.querySelector(`[data-drop-target="client:${second.clientId}"]`)).toBeTruthy();
+    expect(screen.queryByRole('dialog', { name: '项目详情' })).toBeNull();
+    await user.keyboard('{Alt>}{ArrowLeft}{/Alt}');
+    panel = await screen.findByRole('dialog', { name: '项目详情' });
+    await within(panel).findByRole('heading', { name: second.title });
+    await user.keyboard('{Alt>}{ArrowLeft}{/Alt}');
+    expect(useNav.getState().entries[useNav.getState().index].params.projectId).toBe(first.id);
+    panel = screen.getByRole('dialog', { name: '项目详情' });
+    await within(panel).findByRole('heading', { name: first.title });
+    await user.keyboard('{Alt>}{ArrowRight}{/Alt}');
+    panel = screen.getByRole('dialog', { name: '项目详情' });
+    await within(panel).findByRole('heading', { name: second.title });
+    await user.click(within(panel).getByRole('button', { name: '在整页打开' }));
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: '项目详情' })).toBeNull());
+    expect(within(screen.getByRole('main')).getByRole('heading', { name: second.title })).toBeTruthy();
+    expect(useNav.getState().entries[useNav.getState().index].params.projectFullPage).toBe(true);
+    await user.keyboard('{Alt>}{ArrowLeft}{/Alt}');
+    expect(await screen.findByRole('dialog', { name: '项目详情' })).toBeTruthy();
+  });
+});

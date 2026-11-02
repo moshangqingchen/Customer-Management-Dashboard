@@ -195,10 +195,10 @@ describe('文件库与备份', () => {
     await api.library.setRoot('D:/客户工作台'); const { project } = await emptyProject();
     const resolveCover = vi.spyOn(designAssets, 'designImageById').mockImplementation(assetId => `${assetId}?cover`);
     try {
-    const files = await addBrowserFiles({ projectId: project.id }, [
+    const files = (await addBrowserFiles({ projectId: project.id }, [
       { name: '旧稿.png', size: 100 }, { name: '新稿.JPG', size: 25 * 1024 * 1024 },
       { name: '大图.webp', size: 25 * 1024 * 1024 + 1 }, { name: '矢量.svg', size: 100 },
-    ]);
+    ])).added;
     files.forEach((file, index) => { state().files.find(record => record.path === file.path)!.modifiedAt = `2030-03-0${index + 1}T12:00:00Z`; });
     const current = await api.projects.get(project.id);
     expect(current.fileCount).toBe(4);
@@ -230,15 +230,26 @@ describe('文件库与备份', () => {
   it('文件夹惰性创建、文件重名自动编号、浏览器拖入保留大小', async () => {
     await api.library.setRoot('D:/客户工作台'); const { client, project } = await emptyProject();
     expect((await api.clients.get(client.id)).folder).toBeNull();
-    const added = await addBrowserFiles({ projectId: project.id }, [{ name: '设计.psd', size: 9123456 }, { name: '设计.psd', size: 50 }], '过程稿');
+    const added = (await addBrowserFiles({ projectId: project.id }, [{ name: '设计.psd', size: 9123456 }, { name: '设计.psd', size: 50 }], '过程稿')).added;
     expect(added.map(file => file.name)).toEqual(['设计.psd', '设计 (2).psd']); expect(added[0].sizeBytes).toBe(9123456);
     expect((await api.projects.get(project.id)).fileCount).toBe(2); expect((await api.clients.get(client.id)).folder).toBe('测试客户');
     expect((await api.files.list({ clientId: client.id }, true)).files).toHaveLength(2);
     expect((await api.files.list({ clientId: client.id })).files).toHaveLength(0);
   });
+  it('添加文件返回逐项失败，全部失败仍为正常结果，目标无效继续报错', async () => {
+    await api.library.setRoot('D:/客户工作台'); const { project } = await emptyProject();
+    const result = await addBrowserFiles({ projectId: project.id }, [{ name: '可用.png', size: 100 }, { name: '损坏.psd', size: -1 }]);
+    expect(result.added.map(file => file.name)).toEqual(['可用.png']);
+    expect(result.failed).toEqual([{ name: '损坏.psd', message: '文件大小无效' }]);
+    const recent = (await api.activities.list({ projectId: project.id })).find(value => value.kind === 'file');
+    expect(recent?.meta.failedNames).toEqual(['损坏.psd']);
+    const failed = await api.files.add({ projectId: project.id }, ['relative.ai']);
+    expect(failed.added).toEqual([]); expect(failed.failed).toEqual([{ name: 'relative.ai', message: '源文件位置必须是绝对路径' }]);
+    await expect(api.files.add({ projectId: 'missing' }, ['D:/图.png'])).rejects.toMatchObject({ code: 'notFound' });
+  });
   it('文件与子目录路径必须安全、重命名冲突报错', async () => {
     await api.library.setRoot('D:/客户工作台'); const { project } = await emptyProject();
-    const files = await addBrowserFiles({ projectId: project.id }, [{ name: '甲.png', size: 100 }, { name: '乙.png', size: 200 }]);
+    const files = (await addBrowserFiles({ projectId: project.id }, [{ name: '甲.png', size: 100 }, { name: '乙.png', size: 200 }])).added;
     await expect(api.files.open('C:/secret.txt')).rejects.toMatchObject({ code: 'outsideLibrary' });
     await expect(addBrowserFiles({ projectId: project.id }, [{ name: '丙.png', size: 100 }], '../外部')).rejects.toMatchObject({ code: 'outsideLibrary' });
     await expect(api.files.rename(files[0].path, '乙.png')).rejects.toMatchObject({ code: 'exists' });
@@ -248,7 +259,7 @@ describe('文件库与备份', () => {
   });
   it('客户及项目重命名可同步文件夹与文件路径', async () => {
     await api.library.setRoot('D:/客户工作台'); const { client, project } = await emptyProject();
-    const added = await addBrowserFiles({ projectId: project.id }, [{ name: '稿件.svg', size: 100 }]);
+    const added = (await addBrowserFiles({ projectId: project.id }, [{ name: '稿件.svg', size: 100 }])).added;
     await api.clients.update(client.id, { name: '新客户名', renameFolder: true }); await api.projects.update(project.id, { title: '新项目名', renameFolder: true });
     const result = await api.files.list({ projectId: project.id }); expect(result.files[0].path).toContain('/新客户名/'); expect(result.files[0].path).toContain('新项目名/');
     expect(thumbnail(result.files[0].path)).toBe(designImageForPath(added[0].path) ?? '');

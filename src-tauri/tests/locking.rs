@@ -93,7 +93,7 @@ fn concurrent_adds_share_one_new_project_folder_and_preserve_same_name_files() {
     start.wait();
     let mut copied = Vec::new();
     for worker in workers {
-        copied.extend(worker.join().unwrap().unwrap());
+        copied.extend(worker.join().unwrap().unwrap().added);
     }
     assert_eq!(copied.len(), 2);
     assert_ne!(copied[0].path, copied[1].path);
@@ -152,7 +152,7 @@ fn slow_file_copy_does_not_hold_the_database_mutex() {
     querying.join().unwrap();
     started.unwrap();
     assert_eq!(queried.expect("客户查询被文件复制阻塞").unwrap().len(), 1);
-    assert_eq!(copied.unwrap().len(), 1);
+    assert_eq!(copied.unwrap().added.len(), 1);
 }
 
 #[test]
@@ -164,7 +164,9 @@ fn file_count_cache_is_invalidated_by_add_rename_trash_and_folder_open() {
     assert_eq!(f.count(), 0, "外部写入在缓存有效期内沿用旧计数");
 
     let source = f.source("新稿.ai", b"new");
-    let added = library::files_add(&*f.state, &target(), &[source], None).unwrap();
+    let added = library::files_add(&*f.state, &target(), &[source], None)
+        .unwrap()
+        .added;
     assert_eq!(f.count(), 2, "添加文件必须立即使此前缓存失效");
     library::file_rename(&*f.state, Path::new(&added[0].path), ".隐藏.ai").unwrap();
     assert_eq!(f.count(), 1, "重命名后重新应用可见文件规则");
@@ -184,7 +186,9 @@ fn concurrent_renames_to_the_same_name_preserve_both_original_contents() {
         f.source("初稿.ai", b"first design"),
         f.source("终稿.ai", b"second design"),
     ];
-    let added = library::files_add(&*f.state, &target(), &sources, None).unwrap();
+    let added = library::files_add(&*f.state, &target(), &sources, None)
+        .unwrap()
+        .added;
     let start = Arc::new(Barrier::new(3));
     let workers: Vec<_> = added
         .into_iter()
@@ -238,6 +242,7 @@ fn rename_cannot_replace_a_destination_reserved_by_an_in_progress_copy() {
     let original_source = f.source("保留原稿.ai", b"original design");
     let original = library::files_add(&*f.state, &target(), &[original_source], None)
         .unwrap()
+        .added
         .remove(0);
     let source = f.source("占用名称.ai", b"copied design");
     let (started_tx, started_rx) = mpsc::channel();
@@ -266,7 +271,7 @@ fn rename_cannot_replace_a_destination_reserved_by_an_in_progress_copy() {
         renamed.expect("重命名被复制字节阶段阻塞").unwrap_err().code,
         "exists"
     );
-    let copied = copied.unwrap();
+    let copied = copied.unwrap().added;
     assert_eq!(copied.len(), 1);
     assert_eq!(fs::read(&copied[0].path).unwrap(), b"copied design");
     assert_eq!(fs::read(&original.path).unwrap(), b"original design");
@@ -310,7 +315,7 @@ fn copy_completion_uses_the_projects_current_client_after_a_transfer() {
     transferring.join().unwrap();
     started.unwrap();
     transferred.expect("项目转移被文件复制阻塞").unwrap();
-    let copied = copied.unwrap();
+    let copied = copied.unwrap().added;
     assert_eq!(copied.len(), 1);
     assert_eq!(copied[0].client_id.as_deref(), Some("c2"));
     let notes = f

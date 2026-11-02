@@ -58,6 +58,18 @@ export function createSeed(base = today()): MockData {
     activities.push({ id: `activity-${payment.id}`, clientId: project.clientId, projectId: project.id, projectTitle: project.title, clientName: project.clientName,
       kind: 'payment', body: payment.kind === 'refund' ? '记录了退款' : '记录了收款', meta: { kind: payment.kind, amountCents: payment.amountCents, method: payment.method }, createdAt: payment.createdAt });
   });
+  const recentTime = base === today() ? new Date() : parseISO(`${base}T12:00:00`);
+  const recentEvents: Pick<T.Activity, 'kind' | 'body' | 'meta'>[] = [
+    { kind: 'file', body: '添加了 3 个文件', meta: { names: ['初稿.webp', '源文件.psd', '参考图.jpg'] } },
+    { kind: 'status', body: '更新了项目状态', meta: { from: 'active', to: 'review' } },
+    { kind: 'note', body: '客户确认了配色，明天发送第二版。', meta: {} },
+    { kind: 'payment', body: '记录了收款', meta: { kind: 'income', amountCents: 5000, method: '微信' } },
+    { kind: 'created', body: '创建了项目', meta: {} },
+  ];
+  recentEvents.forEach((event, index) => {
+    const project = projects[index];
+    activities.push({ ...event, id: `activity-recent-${index}`, clientId: project.clientId, projectId: project.id, projectTitle: project.title, clientName: project.clientName, createdAt: new Date(recentTime.getTime() - (index + 1) * 60000).toISOString() });
+  });
   const files: T.FileEntry[] = [];
   const fileAssets: Record<string, string> = {};
   const coverProjects = projects.filter((_, index) => index % 5 < 3);

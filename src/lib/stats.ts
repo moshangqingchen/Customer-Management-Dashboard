@@ -1,6 +1,6 @@
-import { addMonths, endOfMonth, endOfQuarter, endOfYear, format, parseISO, startOfMonth, startOfQuarter, startOfYear, subMonths, subYears } from 'date-fns';
+import { addMonths, differenceInCalendarDays, endOfMonth, endOfQuarter, endOfYear, format, parseISO, startOfMonth, startOfQuarter, startOfYear, subMonths, subYears } from 'date-fns';
 import type { PaymentWithContext, Project } from '../api/types';
-import { today } from './dates';
+import { dateOffset, today } from './dates';
 import { outstanding } from './money';
 
 export interface DateRange { from: string | null; to: string | null }
@@ -20,6 +20,20 @@ export function periodRange(period: StatsPeriod, base = today()): DateRange {
   if (period === 'thisMonth' || period === 'lastMonth') return { from: today(startOfMonth(month)), to: today(endOfMonth(month)) };
   if (period === 'thisQuarter') return { from: today(startOfQuarter(current)), to: today(endOfQuarter(current)) };
   return { from: today(startOfYear(year)), to: today(endOfYear(year)) };
+}
+/** Compare only elapsed dates. Month-to-date aligns calendar days, clamped at month end. */
+export function comparisonRanges(period: StatsPeriod | 'custom', range: DateRange, base = today()): { current: DateRange; previous: DateRange } {
+  if (!range.from || !range.to) return { current: range, previous: { from: null, to: null } };
+  const current = { from: range.from, to: range.to > base ? base : range.to };
+  if (current.to < current.from) return { current, previous: { from: current.from, to: current.to } };
+  if (period === 'thisMonth') {
+    const previousMonth = subMonths(parseISO(current.from), 1);
+    const lastDay = today(endOfMonth(previousMonth));
+    const aligned = `${format(previousMonth, 'yyyy-MM')}-${current.to.slice(8, 10)}`;
+    return { current, previous: { from: today(startOfMonth(previousMonth)), to: aligned > lastDay ? lastDay : aligned } };
+  }
+  const length = differenceInCalendarDays(parseISO(current.to), parseISO(current.from)) + 1;
+  return { current, previous: { from: dateOffset(-length, current.from), to: dateOffset(-1, current.from) } };
 }
 /** Cash receipts follow paidAt; project costs, deals and outstanding follow createdAt.
  * Cancelled projects are excluded from every metric. Leads are not counted as deals.

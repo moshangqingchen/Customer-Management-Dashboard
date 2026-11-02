@@ -4,7 +4,7 @@
   "version": "2.0.0",
   "identifier": "com.moshangqingchen.clientdesk",
   "build": {
-    "devUrl": "http://localhost:1420",
+    "devUrl": "http://127.0.0.1:1420",
     "beforeDevCommand": "npm.cmd run dev",
     "beforeBuildCommand": "npm.cmd run build",
     "frontendDist": "../dist"

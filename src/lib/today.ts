@@ -1,9 +1,9 @@
-import { format, formatDistance, parseISO } from 'date-fns';
+import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import type { PaymentWithContext, Project } from '../api/types';
 import { isDueSoon, isOpen, isOverdue, today, weekEnd, weekStart } from './dates';
 import { outstanding } from './money';
-import { monthlyStats } from './stats';
+import { comparisonRanges, incomeStats, monthlyStats, periodRange } from './stats';
 
 export const workingStatuses = ['active', 'review', 'lead'] as const;
 export function attentionProjects(projects: readonly Project[], base = today()): Project[] {
@@ -22,7 +22,8 @@ export function incomeChange(current: number, previous: number): IncomeChange {
 }
 export function todayOverview(projects: readonly Project[], payments: readonly PaymentWithContext[], base = today()) {
   const months = monthlyStats(projects, payments, 6, base);
-  const current = months.at(-1)?.receivedCents ?? 0; const previous = months.at(-2)?.receivedCents ?? 0;
+  const ranges = comparisonRanges('thisMonth', periodRange('thisMonth', base), base);
+  const current = incomeStats(projects, payments, ranges.current).receivedCents; const previous = incomeStats(projects, payments, ranges.previous).receivedCents;
   const unpaid = projects.filter(p => outstanding(p.priceCents, p.receivedCents, p.status) > 0)
     .sort((a, b) => outstanding(b.priceCents, b.receivedCents, b.status) - outstanding(a.priceCents, a.receivedCents, a.status) || a.id.localeCompare(b.id));
   return { attention: attentionProjects(projects, base), activeCount: projects.filter(p => p.status === 'active').length,
@@ -37,4 +38,4 @@ export function heroContent(now: Date, dark = false) {
   const day = Math.floor(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / 86400000);
   return { image: `hero-${dark ? 'night' : period}`, greeting: period === 'morning' ? '早上好' : period === 'afternoon' ? '下午好' : '晚上好', message: dailyMessages[day % dailyMessages.length], date: format(now, 'EEEE，M月d日', { locale: zhCN }).replace('星期', '周') };
 }
-export const activityTime = (date: string, now = new Date()) => formatDistance(parseISO(date), now, { locale: zhCN, addSuffix: true });
+export { relativeActivityTime as activityTime } from './activity';

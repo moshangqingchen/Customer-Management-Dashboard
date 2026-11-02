@@ -10,8 +10,8 @@ import { useFileDrop } from './useFileDrop';
 
 const native = vi.hoisted(() => ({ listen: vi.fn(), stop: vi.fn() }));
 vi.mock('@tauri-apps/api/webview', () => ({ getCurrentWebview: () => ({ onDragDropEvent: native.listen }) }));
-vi.mock('../api/client', () => ({ api: { files: { add: vi.fn().mockResolvedValue([]) } }, isTauri: true }));
-vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
+vi.mock('../api/client', () => ({ api: { files: { add: vi.fn().mockResolvedValue({ added: [], failed: [] }) } }, isTauri: true }));
+vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn(), warning: vi.fn() } }));
 afterEach(() => { vi.clearAllMocks(); vi.unstubAllGlobals(); });
 
 function provider() {
@@ -28,6 +28,10 @@ describe('Tauri文件拖放', () => {
     const { queryClient, wrapper } = provider(); const { unmount } = renderHook(() => useFileDrop(), { wrapper });
     await waitFor(() => expect(native.listen).toHaveBeenCalledTimes(1));
     const payload = { type: 'over' as const, position: new PhysicalPosition(80, 120) };
+    act(() => { listener?.({ event: 'tauri://drag-enter', id: 0, payload: { ...payload, type: 'enter', paths: ['D:/原稿/名片.pdf'] } }); });
+    expect(atPoint).toHaveBeenCalledWith(40, 60); expect(target.dataset.dropActive).toBe('true');
+    act(() => { listener?.({ event: 'tauri://drag-leave', id: 0, payload: { type: 'leave' } }); });
+    expect(target.hasAttribute('data-drop-active')).toBe(false);
     act(() => { listener?.({ event: 'tauri://drag-over', id: 1, payload }); });
     expect(atPoint).toHaveBeenCalledWith(40, 60); expect(target.dataset.dropActive).toBe('true');
     act(() => { listener?.({ event: 'tauri://drag-drop', id: 2, payload: { ...payload, type: 'drop', paths: ['D:/原稿/名片.pdf'] } }); });

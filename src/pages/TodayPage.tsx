@@ -12,7 +12,7 @@ import { TodayProjects } from '../components/today/TodayProjects';
 import { TodayIncome, TodayPayments, TodayActivity } from '../components/today/TodaySidebar';
 
 export function TodayPage() {
-  const projects = useProjects(); const payments = useAllPayments(); const activities = useRecentActivities(10);
+  const projects = useProjects(); const payments = useAllPayments(); const activities = useRecentActivities(8);
   const navigate = useNav(s => s.navigate); const theme = useUI(s => s.theme);
   const nav = useNav();
   const newProject = useUI(s => s.setNewProjectOpen); const newClient = useUI(s => s.setNewClientOpen);

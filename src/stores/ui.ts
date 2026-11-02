@@ -13,11 +13,11 @@ interface UIState {
   setCommandOpen: (open: boolean) => void; setNewProjectOpen: (open: boolean) => void; setNewClientOpen: (open: boolean) => void;
 }
 export const useUI = create<UIState>()(persist((set) => ({
-  theme: 'system', sidebarCollapsed: false, tagsCollapsed: false, panelWidth: 600,
+  theme: 'system', sidebarCollapsed: false, tagsCollapsed: false, panelWidth: 620,
   projectView: 'list', fileView: 'grid', commandOpen: false, newProjectOpen: false, newClientOpen: false,
   setTheme: theme => set({ theme }), toggleSidebar: () => set(s => ({ sidebarCollapsed: !s.sidebarCollapsed })),
   toggleTags: () => set(s => ({ tagsCollapsed: !s.tagsCollapsed })),
-  setPanelWidth: width => set({ panelWidth: Math.max(480, Math.min(880, width)) }),
+  setPanelWidth: width => set({ panelWidth: Math.max(520, Math.min(900, width)) }),
   setProjectView: projectView => set({ projectView }), setFileView: fileView => set({ fileView }),
   setCommandOpen: commandOpen => set({ commandOpen }), setNewProjectOpen: newProjectOpen => set({ newProjectOpen }),
   setNewClientOpen: newClientOpen => set({ newClientOpen }),

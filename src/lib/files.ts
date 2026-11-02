@@ -1,4 +1,4 @@
-import type { FileKind } from '../api/types';
+import type { FileEntry, FileKind, Project } from '../api/types';
 const extensions: Record<FileKind, string[]> = {
   image: 'png jpg jpeg webp gif bmp svg'.split(' '), design: 'psd psb ai cdr sketch fig xd indd eps afdesign afphoto'.split(' '),
   pdf: ['pdf'], doc: 'doc docx xls xlsx ppt pptx txt md wps et dps csv'.split(' '), archive: ['zip', 'rar', '7z'], video: 'mp4 mov avi mkv webm'.split(' '), other: [],
@@ -18,3 +18,29 @@ export function middleEllipsis(name: string, maxLength = 28): string {
   return `${chars.slice(0, Math.max(1, maxLength - suffix - 1)).join('')}…${chars.slice(-suffix).join('')}`;
 }
 export const canThumbnail = (kind: FileKind, bytes: number) => kind === 'image' && bytes <= 25 * 1024 * 1024;
+
+export interface FileGroup { key: string; label: string; files: FileEntry[]; }
+/** Client aggregates retain project boundaries even when subfolder names match. */
+export function groupFiles(files: readonly FileEntry[], includeProjects = false, projects: readonly Pick<Project, 'id' | 'title'>[] = []): FileGroup[] {
+  const result = new Map<string, FileGroup>();
+  const projectNames = new Map(projects.map(project => [project.id, project.title]));
+  for (const file of files) {
+    const folder = file.folderGroup.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+    const owner = includeProjects ? file.projectId ?? 'client' : '';
+    const key = `${owner}:${folder}`;
+    const ownerLabel = file.projectId ? projectNames.get(file.projectId) ?? '项目文件' : '_客户资料';
+    const label = includeProjects ? `${ownerLabel}${folder ? ` / ${folder}` : ''}` : folder || '根目录';
+    let group = result.get(key);
+    if (!group) { group = { key, label, files: [] }; result.set(key, group); }
+    group.files.push(file);
+  }
+  return [...result.values()].sort((a, b) => a.label.localeCompare(b.label, 'zh-CN')).map(group => ({ ...group, files: [...group.files].sort((a, b) => b.modifiedAt.localeCompare(a.modifiedAt) || a.name.localeCompare(b.name, 'zh-CN')) }));
+}
+
+export function destinationFolders(files: readonly FileEntry[], templates: readonly string[] = []): string[] {
+  const folders = new Set<string>(['', ...templates]);
+  for (const file of files) {
+    if (file.folderGroup) folders.add(file.folderGroup);
+  }
+  return [...folders];
+}

@@ -12,6 +12,9 @@ import { NewProjectDialog } from '../project/NewProjectDialog';
 import { NewClientDialog } from '../client/NewClientDialog';
 import { PlaceholderPage } from '../../pages/PlaceholderPage';
 import { TodayPage } from '../../pages/TodayPage';
+import { ProjectsPage } from '../../pages/ProjectsPage';
+import { ClientsPage } from '../../pages/ClientsPage';
+import { ProjectDetail } from '../project/ProjectDetail';
 
 const DesignSystemPage = import.meta.env.DEV ? lazy(() => import('../../pages/DesignSystemPage')) : null;
 export function AppShell() {
@@ -38,7 +41,7 @@ export function AppShell() {
         <span className="ml-2 text-xs text-fg-3">每一份创意，都有迹可循</span><span className="ml-auto text-xs text-fg-3">本地工作空间</span>
       </div>}
       <main id="main-content" className="min-h-0 flex-1 overflow-y-auto"><div key={route.page} className="page-enter min-h-full">
-        {route.page === 'today' ? <TodayPage /> : route.page === 'design-system' && DesignSystemPage ? <Suspense fallback={<div className="p-8"><Skeleton className="h-60" /></div>}><DesignSystemPage /></Suspense> : <PlaceholderPage />}
+        {route.params.projectFullPage && route.params.projectId ? <div className="mx-auto max-w-[1100px] p-7"><ProjectDetail key={route.params.projectId} projectId={route.params.projectId} initialPayment={route.params.payment} onDeleted={() => nav.navigate('projects')} /></div> : route.page === 'today' ? <TodayPage /> : route.page === 'projects' ? <ProjectsPage /> : route.page === 'clients' ? <ClientsPage /> : route.page === 'design-system' && DesignSystemPage ? <Suspense fallback={<div className="p-8"><Skeleton className="h-60" /></div>}><DesignSystemPage /></Suspense> : <PlaceholderPage />}
       </div></main>
     </div>
     <EntityPreview /><CommandPalette /><NewProjectDialog /><NewClientDialog />
