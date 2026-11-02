@@ -1,0 +1,26 @@
+import { Download, Wallet } from 'lucide-react';
+import type { Project } from '../../api/types';
+import type { ClientRank, IncomeLedgerEntry, OutstandingEntry } from '../../lib/stats';
+import { useNav } from '../../stores/nav';
+import { Avatar, Button, Card, DueChip, EmptyState, Money, Section, Select } from '../ui';
+
+const head = 'px-3 py-3 text-left text-xs font-medium text-fg-2';
+const cell = 'max-w-48 truncate px-3 py-3 text-sm';
+export function OutstandingTable({ entries, onPayment }: { entries: OutstandingEntry[]; onPayment: (project: Project) => void }) {
+  const navigate = useNav(state => state.navigate);
+  return <Card className="min-w-0 p-5"><Section title="待收款项目" description="当前周期创建的项目，按待收金额排序">
+    {!entries.length ? <EmptyState illustrationName="empty-today" title="这一期的款项都收齐了" description="好好创作，也记得及时收款。" /> : <div className="overflow-x-auto"><table className="w-full min-w-[680px] table-fixed"><thead className="bg-subtle"><tr>{['客户 / 项目', '报价', '已收', '待收', '截止日', ''].map((label, index) => <th key={index} className={head} style={{ width: index === 0 ? '28%' : undefined }}>{label}</th>)}</tr></thead><tbody>{entries.map(({ project, outstandingCents }) => <tr key={project.id} className="border-t border-line hover:bg-hover"><td className={cell}><button type="button" onClick={() => navigate('projects', { projectId: project.id })} className="block w-full text-left" title={`${project.clientName} · ${project.title}`}><span className="block truncate font-medium text-primary">{project.title}</span><span className="block truncate text-xs text-fg-2">{project.clientName}</span></button></td><td className={cell}><Money cents={project.priceCents} /></td><td className={cell}><Money cents={project.receivedCents} /></td><td className={cell}><Money cents={outstandingCents} className="font-semibold text-warning-fg" /></td><td className={cell}><DueChip date={project.dueDate} status={project.status} /></td><td className="px-2 py-3"><Button size="sm" variant="soft" onClick={() => onPayment(project)} icon={<Wallet size={14} />}>记一笔</Button></td></tr>)}</tbody></table></div>}
+  </Section></Card>;
+}
+export function PaymentsTable({ entries, methods, method, onMethod, onExport, exporting }: { entries: IncomeLedgerEntry[]; methods: string[]; method: string; onMethod: (method: string) => void; onExport: () => void; exporting: boolean }) {
+  const navigate = useNav(state => state.navigate);
+  return <Card className="min-w-0 p-5"><Section title="收款流水" action={<div className="flex flex-wrap items-center gap-2"><Select label="筛选收款方式" className="w-36" value={method || '__all__'} onChange={value => onMethod(value === '__all__' ? '' : value)} options={[{ value: '__all__', label: '全部方式' }, ...methods.map(value => ({ value, label: value }))]} /><Button size="sm" disabled={exporting || !entries.length} onClick={onExport} icon={<Download size={15} />}>{exporting ? '正在导出…' : '导出 CSV'}</Button></div>}>
+    {!entries.length ? <EmptyState illustrationName="empty-search" title="这一期还没有收款记录" description="可以切换时间范围或收款方式，查看其他记录。" /> : <div className="overflow-x-auto"><table className="w-full min-w-[640px] table-fixed"><thead className="bg-subtle"><tr>{['日期', '客户', '项目', '方式', '金额', '备注'].map((label, index) => <th key={label} className={head} style={{ width: index === 2 ? '25%' : undefined }}>{label}</th>)}</tr></thead><tbody>{entries.map(entry => <tr key={entry.id} className="border-t border-line hover:bg-hover"><td className={cell}>{entry.paidAt}</td><td className={cell}><button type="button" className="max-w-full truncate text-primary" title={entry.clientName} onClick={() => navigate('clients', { clientId: entry.clientId })}>{entry.clientName}</button></td><td className={cell}><button type="button" className="max-w-full truncate text-primary" title={entry.projectTitle} onClick={() => navigate('projects', { projectId: entry.projectId })}>{entry.projectTitle}</button></td><td className={cell}>{entry.method || '未填写'}</td><td className={cell}><Money cents={entry.netCents} className={entry.kind === 'refund' ? 'text-danger-fg' : 'font-medium'} />{entry.kind === 'refund' && <span className="ml-1 text-xs text-danger-fg">退款</span>}</td><td className={cell} title={entry.note}>{entry.note || '—'}</td></tr>)}</tbody></table></div>}
+  </Section></Card>;
+}
+export function ClientRanking({ entries }: { entries: ClientRank[] }) {
+  const navigate = useNav(state => state.navigate);
+  return <Card className="p-5"><Section title="客户排行" description="本周期实收前 10 名，已扣除退款">
+    {!entries.length ? <EmptyState illustrationName="empty-clients" title="等待第一位客户上榜" description="记录收款后，就能看到合作的收获。" /> : <ol className="grid gap-x-8 sm:grid-cols-2">{entries.map((entry, index) => <li key={entry.clientId}><button type="button" className="flex min-h-16 w-full items-center gap-3 rounded-md px-2 text-left hover:bg-hover" onClick={() => navigate('clients', { clientId: entry.clientId })}><span className="w-5 shrink-0 text-sm font-semibold text-fg-2 tabular-nums">{index + 1}</span><Avatar name={entry.clientName} id={entry.clientId} size="sm" /><span className="min-w-0 flex-1 truncate" title={entry.clientName}>{entry.clientName}</span><Money cents={entry.receivedCents} className="shrink-0 font-semibold" /></button></li>)}</ol>}
+  </Section></Card>;
+}

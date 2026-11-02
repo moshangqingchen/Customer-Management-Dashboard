@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useFileDrop } from '../../hooks/useFileDrop';
 import { useHotkeys } from '../../hooks/useHotkeys';
+import { checkForUpdates } from '../../hooks/useUpdater';
 import { useNav } from '../../stores/nav';
 import { useUI } from '../../stores/ui';
 import { IconButton, Skeleton } from '../ui';
@@ -10,7 +11,11 @@ import { CommandPalette } from './CommandPalette';
 import { EntityPreview } from './EntityPreview';
 import { NewProjectDialog } from '../project/NewProjectDialog';
 import { NewClientDialog } from '../client/NewClientDialog';
-import { PlaceholderPage } from '../../pages/PlaceholderPage';
+import { IncomePage } from '../../pages/IncomePage';
+import { FilesPage } from '../../pages/FilesPage';
+import { SnippetsPage } from '../../pages/SnippetsPage';
+import { SettingsPage } from '../../pages/SettingsPage';
+import { UpdateDialog } from './UpdateDialog';
 import { TodayPage } from '../../pages/TodayPage';
 import { ProjectsPage } from '../../pages/ProjectsPage';
 import { ClientsPage } from '../../pages/ClientsPage';
@@ -20,6 +25,10 @@ const DesignSystemPage = import.meta.env.DEV ? lazy(() => import('../../pages/De
 export function AppShell() {
   const nav = useNav(); const ui = useUI(); const route = nav.entries[nav.index];
   useFileDrop();
+  useEffect(() => {
+    const timer = setTimeout(() => { void checkForUpdates(true); }, 10_000);
+    return () => clearTimeout(timer);
+  }, []);
   useHotkeys({
     'ctrl+k': () => ui.setCommandOpen(!ui.commandOpen),
     'ctrl+n': () => { ui.setCommandOpen(false); ui.setNewClientOpen(false); ui.setNewProjectOpen(true); },
@@ -41,9 +50,9 @@ export function AppShell() {
         <span className="ml-2 text-xs text-fg-3">每一份创意，都有迹可循</span><span className="ml-auto text-xs text-fg-3">本地工作空间</span>
       </div>}
       <main id="main-content" className="min-h-0 flex-1 overflow-y-auto"><div key={route.page} className="page-enter min-h-full">
-        {route.params.projectFullPage && route.params.projectId ? <div className="mx-auto max-w-[1100px] p-7"><ProjectDetail key={route.params.projectId} projectId={route.params.projectId} initialPayment={route.params.payment} onDeleted={() => nav.navigate('projects')} /></div> : route.page === 'today' ? <TodayPage /> : route.page === 'projects' ? <ProjectsPage /> : route.page === 'clients' ? <ClientsPage /> : route.page === 'design-system' && DesignSystemPage ? <Suspense fallback={<div className="p-8"><Skeleton className="h-60" /></div>}><DesignSystemPage /></Suspense> : <PlaceholderPage />}
+        {route.params.projectFullPage && route.params.projectId ? <div className="mx-auto max-w-[1100px] p-7"><ProjectDetail key={route.params.projectId} projectId={route.params.projectId} initialPayment={route.params.payment} onDeleted={() => nav.navigate('projects')} /></div> : route.page === 'today' ? <TodayPage /> : route.page === 'projects' ? <ProjectsPage /> : route.page === 'clients' ? <ClientsPage /> : route.page === 'income' ? <IncomePage /> : route.page === 'files' ? <FilesPage /> : route.page === 'snippets' ? <SnippetsPage /> : route.page === 'settings' ? <SettingsPage /> : route.page === 'design-system' && DesignSystemPage ? <Suspense fallback={<div className="p-8"><Skeleton className="h-60" /></div>}><DesignSystemPage /></Suspense> : null}
       </div></main>
     </div>
-    <EntityPreview /><CommandPalette /><NewProjectDialog /><NewClientDialog />
+    <EntityPreview /><CommandPalette /><NewProjectDialog /><NewClientDialog /><UpdateDialog />
   </div>;
 }

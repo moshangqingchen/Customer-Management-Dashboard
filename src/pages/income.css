@@ -1,0 +1,8 @@
+.income-stats .stat-card { container-type: inline-size; }
+.income-stats .stat-value { font-size: clamp(20px, 12cqi, 32px); line-height: 1.3; overflow-wrap: anywhere; }
+@media (min-width: 1700px) { .income-stats { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+@media (max-width: 1279px) {
+  .income-stats .stat-card { align-items: flex-start; gap: 12px; padding: 16px; }
+  .income-stats .stat-icon { width: 36px; height: 36px; border-radius: 10px; }
+  .income-stats .stat-value { font-size: clamp(18px, 11cqi, 28px); }
+}

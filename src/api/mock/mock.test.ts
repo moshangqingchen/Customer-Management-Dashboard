@@ -3,7 +3,7 @@ import { mockApi as api, addBrowserFiles, thumbnail } from './index';
 import { reset, state, storageKey } from './store';
 import { createSeed } from './seed';
 import { toApiError } from '../error';
-import { today, dateOffset } from '../../lib/dates';
+import { today, dateOffset, dayDifference, isOpen, weekEnd, weekStart } from '../../lib/dates';
 import { sanitize } from './files';
 import { designAssetId, designImageForPath } from './designAssets';
 import * as designAssets from './designAssets';
@@ -35,6 +35,16 @@ describe('浏览器 Mock 种子与持久化', () => {
     expect((await api.files.recent(1))[0].path.startsWith('E:/设计文件库/')).toBe(true);
     const saved = JSON.parse(localStorage.getItem(storageKey) ?? '{}') as { libraryRoot: string };
     expect(saved.libraryRoot).toBe('E:/设计文件库');
+  });
+  it.each(['2030-03-15', '2030-03-17', '2032-02-29'])('自然截止日与更新时间可复现并保留本周样例：%s', base => {
+    const seed = createSeed(base);
+    expect(createSeed(base).projects).toEqual(seed.projects);
+    const dates = seed.projects.flatMap(project => project.dueDate ? [project.dueDate] : []);
+    expect(dates.every(date => dayDifference(date, base) >= -60 && dayDifference(date, base) <= 30)).toBe(true);
+    expect(new Set(dates.map(date => date.slice(-2))).size).toBeGreaterThan(12);
+    expect(seed.projects.some(project => isOpen(project.status) && project.dueDate && project.dueDate >= weekStart(base) && project.dueDate <= weekEnd(base))).toBe(true);
+    expect(seed.projects.every(project => project.updatedAt >= project.createdAt && project.updatedAt.slice(0, 10) <= base)).toBe(true);
+    expect(seed.projects.every(project => !project.completedAt || project.completedAt >= project.createdAt.slice(0, 10))).toBe(true);
   });
   it('返回数据是副本，调用方不可绕过持久化修改内部数据', async () => {
     const records = await api.clients.list(); records[0].name = '外部修改'; records[0].accounts[0].handle = '外部修改';

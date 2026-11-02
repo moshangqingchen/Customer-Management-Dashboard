@@ -8,10 +8,15 @@ param(
 
 $ErrorActionPreference = "Stop"
 $projectRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
+if (![string]::IsNullOrWhiteSpace($UpdaterEndpoint)) {
+  $endpointUri = [Uri]$UpdaterEndpoint
+  if (!$endpointUri.IsAbsoluteUri -or $endpointUri.Scheme -ne 'https') { throw 'UpdaterEndpoint must use an absolute HTTPS URL.' }
+}
 
 Push-Location $projectRoot
 try {
   npm.cmd version $Version --no-git-tag-version --allow-same-version | Out-Null
+  if ($LASTEXITCODE -ne 0) { throw 'Updating package.json failed.' }
 
   $tauriConfigPath = Join-Path $projectRoot "src-tauri\tauri.conf.json"
   $tauriConfig = Get-Content -Raw -Encoding UTF8 -LiteralPath $tauriConfigPath | ConvertFrom-Json

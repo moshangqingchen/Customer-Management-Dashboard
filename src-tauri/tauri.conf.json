@@ -13,13 +13,22 @@
     "windows": [{ "label": "main", "title": "客户工作台", "width": 1440, "height": 900, "minWidth": 1100, "minHeight": 700, "center": true, "decorations": true, "dragDropEnabled": true }],
     "security": {
       "assetProtocol": { "enable": true, "scope": [] },
-      "csp": "default-src 'self'; connect-src ipc: http://ipc.localhost; img-src 'self' data: blob: asset: http://asset.localhost; style-src 'self' 'unsafe-inline'; font-src 'self' data:"
+      "csp": "default-src 'self'; connect-src ipc: http://ipc.localhost; img-src 'self' data: blob: asset: http://asset.localhost; style-src 'self' 'unsafe-inline'; font-src 'self' data:",
+      "devCsp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost http://127.0.0.1:1420 ws://127.0.0.1:1420; img-src 'self' data: blob: asset: http://asset.localhost; style-src 'self' 'unsafe-inline'; font-src 'self' data:"
     }
   },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "targets": ["nsis"],
     "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.ico"],
-    "windows": { "nsis": { "installMode": "currentUser", "languages": ["SimpChinese"] } }
+    "windows": { "nsis": { "installMode": "currentUser", "languages": ["SimpChinese"], "installerIcon": "icons/icon.ico", "uninstallerIcon": "icons/icon.ico" } }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEY4NjQ3NTdCQTlFMUQ2QUYKUldTdjF1R3BlM1ZrK0ZkMFN4OThaUVU5a1k3VEtkM2ZRL3VibzdHcXBvdnlEa2EzaWlPRnhjTU0K",
+      "endpoints": ["https://github.com/moshangqingchen/Customer-Management-Dashboard/releases/latest/download/latest.json"],
+      "windows": { "installMode": "passive" }
+    }
   }
 }

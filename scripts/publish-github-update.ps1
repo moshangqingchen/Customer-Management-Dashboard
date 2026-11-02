@@ -12,7 +12,8 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$projectRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
+. (Join-Path $PSScriptRoot 'release-common.ps1')
+Enable-ReleaseProxy
 $gh = Get-Command gh -ErrorAction SilentlyContinue
 
 function Get-GitHubHeaders {
@@ -27,7 +28,7 @@ function Get-GitHubHeaders {
   @{
     Authorization = "Bearer $($credential.password)"
     Accept = "application/vnd.github+json"
-    "User-Agent" = "Customer-Management-Dashboard-Updater"
+    "User-Agent" = "Client-Desk-Updater"
     "X-GitHub-Api-Version" = "2022-11-28"
   }
 }
@@ -41,7 +42,7 @@ function Publish-WithGitHubApi(
 ) {
   $headers = Get-GitHubHeaders
   $apiBase = "https://api.github.com/repos/$RepositoryName"
-  $repo = Invoke-RestMethod -Headers $headers -Uri $apiBase
+  $repo = Invoke-RestMethod -Proxy 'http://127.0.0.1:10090' -Headers $headers -Uri $apiBase
   if ($repo.visibility -ne "public") {
     throw "The updater repository must be public so installed apps can download updates without a login."
   }
@@ -49,7 +50,7 @@ function Publish-WithGitHubApi(
     throw "The current GitHub credential cannot publish releases to $RepositoryName."
   }
 
-  $releases = @(Invoke-RestMethod -Headers $headers -Uri "$apiBase/releases?per_page=100")
+  $releases = @(Invoke-RestMethod -Proxy 'http://127.0.0.1:10090' -Headers $headers -Uri "$apiBase/releases?per_page=100")
   $release = $releases | Where-Object { $_.tag_name -eq $Tag } | Select-Object -First 1
   if ($release -and !$release.draft) {
     throw "Release $Tag is already published. Refusing to replace live updater assets; publish a new version instead."
@@ -65,25 +66,25 @@ function Publish-WithGitHubApi(
   } | ConvertTo-Json
 
   if ($release) {
-    $release = Invoke-RestMethod -Method Patch -Headers $headers -ContentType "application/json" `
+    $release = Invoke-RestMethod -Proxy 'http://127.0.0.1:10090' -Method Patch -Headers $headers -ContentType "application/json" `
       -Uri "$apiBase/releases/$($release.id)" -Body $draftBody
   }
   else {
-    $release = Invoke-RestMethod -Method Post -Headers $headers -ContentType "application/json" `
+    $release = Invoke-RestMethod -Proxy 'http://127.0.0.1:10090' -Method Post -Headers $headers -ContentType "application/json" `
       -Uri "$apiBase/releases" -Body $draftBody
   }
 
-  $assets = @(Invoke-RestMethod -Headers $headers -Uri "$apiBase/releases/$($release.id)/assets?per_page=100")
+  $assets = @(Invoke-RestMethod -Proxy 'http://127.0.0.1:10090' -Headers $headers -Uri "$apiBase/releases/$($release.id)/assets?per_page=100")
   foreach ($file in $Files) {
     $assetName = Split-Path -Leaf $file
     $existing = $assets | Where-Object { $_.name -eq $assetName }
     foreach ($asset in $existing) {
-      Invoke-RestMethod -Method Delete -Headers $headers -Uri $asset.url
+      Invoke-RestMethod -Proxy 'http://127.0.0.1:10090' -Method Delete -Headers $headers -Uri $asset.url
     }
 
     $escapedName = [Uri]::EscapeDataString($assetName)
     $contentType = if ($assetName -eq "latest.json") { "application/json" } else { "application/octet-stream" }
-    Invoke-WebRequest -Method Post -Headers $headers -ContentType $contentType -InFile $file `
+    Invoke-WebRequest -Proxy 'http://127.0.0.1:10090' -Method Post -Headers $headers -ContentType $contentType -InFile $file `
       -Uri "https://uploads.github.com/repos/$RepositoryName/releases/$($release.id)/assets?name=$escapedName" `
       -UseBasicParsing | Out-Null
     Write-Host "Uploaded $assetName"
@@ -96,24 +97,28 @@ function Publish-WithGitHubApi(
     prerelease = $false
     make_latest = "true"
   } | ConvertTo-Json
-  Invoke-RestMethod -Method Patch -Headers $headers -ContentType "application/json" `
+  Invoke-RestMethod -Proxy 'http://127.0.0.1:10090' -Method Patch -Headers $headers -ContentType "application/json" `
     -Uri "$apiBase/releases/$($release.id)" -Body $publishBody | Out-Null
 }
 
 if ($gh) {
   & $gh.Source auth status | Out-Null
   if ($LASTEXITCODE -ne 0) { throw "GitHub CLI is not logged in. Run 'gh auth login' first." }
+  $repositoryJson = & $gh.Source api "repos/$Repository"
+  if ($LASTEXITCODE -ne 0) { throw 'Cannot read the release repository.' }
+  $repositoryInfo = $repositoryJson | ConvertFrom-Json
+  if ($repositoryInfo.visibility -ne 'public') { throw 'The updater repository must be public.' }
+  if ($repositoryInfo.permissions.push -ne $true) { throw 'The current GitHub credential cannot publish releases.' }
 }
 
 $endpoint = "https://github.com/$Repository/releases/latest/download/latest.json"
-$assetName = "startup-customer-workbench-$Version-x64-setup.exe"
+$assetName = "client-desk-$Version-x64-setup.exe"
 $downloadUrl = "https://github.com/$Repository/releases/download/v$Version/$assetName"
 
 Push-Location $projectRoot
 try {
   & (Join-Path $PSScriptRoot "set-version.ps1") -Version $Version -UpdaterEndpoint $endpoint
-  npm.cmd run tauri:build:signed
-  if ($LASTEXITCODE -ne 0) { throw "Signed Tauri build failed." }
+  & (Join-Path $PSScriptRoot 'build-tauri-signed.ps1')
 
   & (Join-Path $PSScriptRoot "create-update-manifest.ps1") `
     -DownloadUrl $downloadUrl `
@@ -126,6 +131,9 @@ try {
   $installer = Join-Path $releaseDir $assetName
   $signature = "$installer.sig"
   $tag = "v$Version"
+  $releaseTitle = '{0} {1}' -f (Get-ReleaseConfig).productName, $Version
+  $notesPath = Join-Path $releaseDir 'release-notes.txt'
+  [System.IO.File]::WriteAllText($notesPath, $Notes, (New-Object System.Text.UTF8Encoding $false))
 
   if ($gh) {
     $releaseJson = & $gh.Source release view $tag --repo $Repository --json isDraft 2>$null
@@ -134,13 +142,13 @@ try {
       if (!$existingRelease.isDraft) {
         throw "Release $tag is already published. Refusing to replace live updater assets; publish a new version instead."
       }
-      & $gh.Source release edit $tag --repo $Repository --title "版本 $Version" --notes $Notes --draft
+      & $gh.Source release edit $tag --repo $Repository --title $releaseTitle --notes-file $notesPath --draft
     }
     else {
       & $gh.Source release create $tag `
         --repo $Repository `
-        --title "版本 $Version" `
-        --notes $Notes `
+        --title $releaseTitle `
+        --notes-file $notesPath `
         --draft
     }
     if ($LASTEXITCODE -ne 0) { throw "Creating or updating the draft GitHub release failed." }
@@ -158,7 +166,7 @@ try {
     Publish-WithGitHubApi `
       -RepositoryName $Repository `
       -Tag $tag `
-      -ReleaseTitle "版本 $Version" `
+      -ReleaseTitle $releaseTitle `
       -ReleaseNotes $Notes `
       -Files @($installer, $signature, $manifest)
   }

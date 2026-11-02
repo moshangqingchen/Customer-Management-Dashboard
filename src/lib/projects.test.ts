@@ -20,6 +20,21 @@ describe('项目筛选与看板', () => {
     expect(group).toHaveLength(5); expect(group.at(-1)).toMatchObject({ totalCents: 200, hiddenCount: 1 });
     expect(groupBoard(input, true, '2026-11-02').at(-1)?.projects).toHaveLength(3);
   });
+  it('默认智能排序先未结后归档，空截止日最后，归档按完成或更新时间倒序', () => {
+    const make = (id: string, patch: Partial<Project>): Project => ({ ...projects[0], id, pinned: false, ...patch });
+    const input = [
+      make('old-done', { status: 'done', dueDate: '2026-01-01', completedAt: '2026-01-02' }),
+      make('no-date', { status: 'lead', dueDate: null }),
+      make('later', { status: 'review', dueDate: '2026-11-10' }),
+      make('new-cancelled', { status: 'cancelled', updatedAt: '2026-11-01T12:00:00Z', completedAt: null }),
+      make('first', { status: 'active', dueDate: '2026-11-03' }),
+      make('delivered', { status: 'delivered', dueDate: '2026-11-04' }),
+    ];
+    expect(sortProjects(input).map(project => project.id)).toEqual(['first', 'delivered', 'later', 'no-date', 'new-cancelled', 'old-done']);
+    expect(input[0].id).toBe('old-done');
+    expect(sortProjects(input, 'dueDate')[0].id).toBe('old-done');
+    expect(sortProjects([...input, make('pinned-done', { status: 'done', pinned: true })])[0].id).toBe('first');
+  });
   it('所有排序保持星标置顶，3000项目组合筛选小于50ms', () => {
     const input = Array.from({ length: 3000 }, (_, i) => ({ ...projects[i % projects.length], id: `p${i}` }));
     const start = performance.now();

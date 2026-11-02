@@ -11,9 +11,9 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$projectRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
+. (Join-Path $PSScriptRoot 'release-common.ps1')
 $tauriConfigPath = Join-Path $projectRoot "src-tauri\tauri.conf.json"
-$tauriConfig = Get-Content -Raw -Encoding UTF8 -LiteralPath $tauriConfigPath | ConvertFrom-Json
+$tauriConfig = Get-ReleaseConfig
 $version = [string]$tauriConfig.version
 $productName = [string]$tauriConfig.productName
 
@@ -23,16 +23,16 @@ $installer = Join-Path $bundleDir $installerPattern
 $signatureFile = "$installer.sig"
 
 if (!(Test-Path -LiteralPath $installer)) {
-  throw "Installer not found: $installer. Run npm.cmd run tauri:build:signed first."
+  throw "Installer not found: $installer. Run scripts/build-tauri-signed.ps1 first."
 }
 
 if (!(Test-Path -LiteralPath $signatureFile)) {
-  throw "Signature not found: $signatureFile. Run npm.cmd run tauri:build:signed first."
+  throw "Signature not found: $signatureFile. Run scripts/build-tauri-signed.ps1 first."
 }
 
 $signature = (Get-Content -Raw -Encoding UTF8 -LiteralPath $signatureFile).Trim()
 if ([string]::IsNullOrWhiteSpace($AssetName)) {
-  $AssetName = "startup-customer-workbench-$version-x64-setup.exe"
+  $AssetName = "client-desk-$version-x64-setup.exe"
 }
 
 $downloadUri = [Uri]$DownloadUrl

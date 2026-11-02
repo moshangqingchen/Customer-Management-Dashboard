@@ -20,6 +20,9 @@ release/
 .env.*
 !.env.example
 src-tauri/updater-private.key
+src-tauri/updater-private.key.*
+!src-tauri/updater-private.key.pub
+*.unsigned-build.json
 
 # Logs and temporary files
 *.log

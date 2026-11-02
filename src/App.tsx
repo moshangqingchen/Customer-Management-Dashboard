@@ -1,6 +1,6 @@
 import { Component, useEffect, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useLibraryStatus } from './hooks/queries';
+import { useLibraryStatus, useSettings } from './hooks/queries';
 import { applyTheme, useUI } from './stores/ui';
 import { Button, Skeleton, ToastProvider } from './components/ui';
 import { AppShell } from './components/layout/AppShell';
@@ -16,6 +16,8 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: boolean 
 }
 export function App() {
   const theme = useUI(s => s.theme); const library = useLibraryStatus(); const queryClient = useQueryClient();
+  const settings = useSettings();
+  useEffect(() => { if (settings.data) useUI.getState().setTheme(settings.data.theme); }, [settings.data]);
   useEffect(() => {
     const resetMock = () => { void queryClient.resetQueries(); };
     window.addEventListener('mock-reset', resetMock);

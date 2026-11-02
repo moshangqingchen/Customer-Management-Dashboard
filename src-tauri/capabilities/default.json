@@ -3,5 +3,5 @@
   "identifier": "default",
   "description": "主窗口权限，包含拖放和焦点事件监听及窗口状态保存",
   "windows": ["main"],
-  "permissions": ["core:default", "core:event:allow-listen", "core:event:allow-unlisten", "window-state:default"]
+  "permissions": ["core:default", "core:event:allow-listen", "core:event:allow-unlisten", "window-state:default", "updater:default", "process:allow-restart"]
 }

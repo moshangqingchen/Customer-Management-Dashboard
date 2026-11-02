@@ -17,7 +17,7 @@ export function ProjectsPage() {
   const nav = useNav(); const route = nav.entries[nav.index]; const ui = useUI();
   const projects = useProjects(); const tags = useTags(); const clients = useClients(); const settings = useSettings();
   const update = useUpdateProject(); const status = useSetProjectStatus(); const remove = useDeleteProject(); const restore = useRestoreTrash(); const folder = useOpenFolder(); const setTags = useSetProjectTags();
-  const [sort, setSort] = useState<ProjectSort>('dueDate'); const [allDone, setAllDone] = useState(false);
+  const [sort, setSort] = useState<ProjectSort>('smart'); const [allDone, setAllDone] = useState(false);
   const [tagProjectId, setTagProjectId] = useState<string>(); const [deleting, setDeleting] = useState<Project>();
   const filters = useMemo(() => routeProjectFilters(route.params), [route.params]);
   const visible = useMemo(() => sortProjects(filterProjects(projects.data ?? [], filters), sort), [projects.data, filters, sort]);

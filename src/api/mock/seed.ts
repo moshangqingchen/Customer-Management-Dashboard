@@ -13,6 +13,8 @@ const platforms = ['淘宝', '闲鱼', '小红书', '微信', '抖音', '转介�
 const methods = ['微信', '支付宝', '淘宝', '闲鱼', '银行转账', '现金', '其他'];
 const statuses: T.ProjectStatus[] = ['active', 'review', 'lead', 'active', 'review', 'delivered', 'done', 'cancelled'];
 const timestamp = (value: string) => `${value}T08:30:00.000Z`;
+// A fixed integer mix keeps examples reproducible without repeating the same day of each month.
+const offset = (index: number, salt: number, span: number) => ((index + 1) * 37 + salt * 19 + index * index * 7) % span;
 
 export function createSeed(base = today()): MockData {
   const clients: StoredClient[] = names.map((name, index) => {
@@ -28,15 +30,24 @@ export function createSeed(base = today()): MockData {
   const projects: StoredProject[] = titles.map((title, index) => {
     const client = clients[index % clients.length];
     const historical = index >= 8;
-    const created = historical ? format(addMonths(parseISO(base), -((index - 8) % 11 + 1)), 'yyyy-MM-05') : dateOffset(-15 - index, base);
-    const createdAt = timestamp(created);
+    const initialCreated = historical ? dateOffset(offset(index, 2, 24), format(addMonths(parseISO(base), -((index - 8) % 11 + 1)), 'yyyy-MM-01')) : dateOffset(-5 - offset(index, 3, 21), base);
     const status = historical ? (index % 9 === 0 ? 'cancelled' : index % 5 === 0 ? 'delivered' : 'done') : statuses[index];
+    const closed = status === 'done' || status === 'cancelled';
+    const finished = dateOffset(-1 - offset(index, 4, 59), base);
+    const created = closed && initialCreated > dateOffset(-5, finished) ? dateOffset(-5 - offset(index, 9, 10), finished) : initialCreated;
+    const createdAt = timestamp(created);
+    const dueDate = index < 3 ? dateOffset(-[1, 3, 2][index], base)
+      : index < 5 ? dateOffset(1, base)
+      : index === 5 ? base
+      : closed ? dateOffset(-1 - offset(index, 5, 59), base)
+      : index % 2 === 0 ? null : dateOffset(3 + offset(index, 6, 28), base);
+    const updated = closed ? finished : dateOffset(-offset(index, 7, 6), base);
     return { id: `project-${index + 1}`, clientId: client.id, clientName: client.name, title, status, pinned: index === 1 || index === 5,
       brief: '请保持画面简洁，突出核心信息。交付高清成品与可编辑源文件，包含两轮修改。', sourcePlatform: platforms[index % platforms.length], sourceOrderNo: index % 3 === 0 ? `TB2026${String(10000 + index)}` : '',
-      startDate: created, dueDate: index < 3 ? dateOffset(-index - 1, base) : index < 5 ? dateOffset(1, base) : index % 4 === 0 || historical && status === 'delivered' ? null : historical || ['done', 'cancelled'].includes(status) ? dateOffset(7, created) : dateOffset(5 + index, base),
-      deliveredAt: ['delivered', 'done'].includes(status) ? dateOffset(5, created) : null, completedAt: status === 'done' ? dateOffset(7, created) : null,
+      startDate: created, dueDate,
+      deliveredAt: status === 'done' ? dateOffset(-1, finished) : status === 'delivered' ? dateOffset(-offset(index, 8, 5), base) : null, completedAt: status === 'done' ? finished : null,
       priceCents: [128000, 360000, 68000, 240000, 96000, 48000, 180000, 280000][index % 8], costCents: index % 3 === 0 ? 20000 + index * 500 : 0,
-      tagIds: [`tag-${index % 10 + 1}`, `tag-${(index + 2) % 10 + 1}`], folder: null, createdAt, updatedAt: timestamp(dateOffset(historical ? 7 : 1, created)),
+      tagIds: [`tag-${index % 10 + 1}`, `tag-${(index + 2) % 10 + 1}`], folder: null, createdAt, updatedAt: timestamp(updated),
       receivedCents: 0, paymentCount: 0, fileCount: 0, coverPath: null, deletedAt: null, deletedWithClient: false };
   });
   const payments: T.Payment[] = projects.filter(p => p.status !== 'lead').map((project, index) => ({

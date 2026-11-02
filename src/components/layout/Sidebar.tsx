@@ -8,6 +8,7 @@ import { useNav, pageLabels, type Page, type RouteParams } from '../../stores/na
 import { useUI } from '../../stores/ui';
 import { IconButton, Kbd } from '../ui';
 import { Brand } from './Brand';
+import { useUpdater } from '../../hooks/useUpdater';
 
 export const primaryPages: { page: Page; icon: LucideIcon }[] = [
   { page: 'today', icon: CalendarDays }, { page: 'projects', icon: FolderKanban },
@@ -19,6 +20,7 @@ export function Sidebar() {
   const { data: projects = [] } = useProjects(); const { data: clients = [] } = useClients();
   const { data: tags = [] } = useTags(); const { data: library } = useLibraryStatus(); const updateSettings = useUpdateSettings();
   const collapsed = ui.sidebarCollapsed; const connected = library?.state === 'ready';
+  const updateAvailable = useUpdater(s => !!s.available);
   const dark = ui.theme === 'dark' || (ui.theme === 'system' && document.documentElement.dataset.theme === 'dark');
   const views = [
     { view: 'pinned' as const, label: '星标', icon: Star, count: projects.filter(p => p.pinned).length + clients.filter(c => c.pinned).length },
@@ -60,7 +62,7 @@ export function Sidebar() {
         {connected ? <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-success-fg/15"><Check size={16} /></span> : <FolderOpen size={22} />}
         <div className="min-w-0"><p className="font-medium">{connected ? '文件库已连接' : '文件库未就绪'}</p><p className="mt-0.5 truncate text-[11px] opacity-80">{connected ? '本地文件，安心保存' : '请检查文件库位置'}</p></div>
       </div>}
-      <div className={cn('flex items-center gap-1', collapsed && 'flex-col')}>{navItem('settings', '设置', Settings)}
+      <div className={cn('flex items-center gap-1', collapsed && 'flex-col')}><div className="relative min-w-0 flex-1">{navItem('settings', '设置', Settings)}{updateAvailable && <span role="status" aria-label="有新版本可用" title="有新版本可用，请在设置中查看" className="pointer-events-none absolute top-2 right-2 size-2 rounded-full bg-danger" />}</div>
         {!collapsed && <div role="group" aria-label="外观主题" className="flex shrink-0 gap-0.5 rounded-full bg-subtle p-1">
           <IconButton label="切换浅色主题" aria-pressed={!dark} className={cn('size-8 rounded-full', !dark && 'bg-surface text-accent shadow-sm')} onClick={() => setTheme('light')}><Sun size={17} /></IconButton>
           <IconButton label="切换深色主题" aria-pressed={dark} className={cn('size-8 rounded-full', dark && 'bg-surface text-accent shadow-sm')} onClick={() => setTheme('dark')}><Moon size={17} /></IconButton>

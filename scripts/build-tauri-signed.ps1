@@ -1,6 +1,8 @@
 $ErrorActionPreference = "Stop"
 
-$projectRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
+. (Join-Path $PSScriptRoot 'release-common.ps1')
+$null = Get-ReleaseConfig
+Enable-ReleaseProxy
 $privateKeyPath = Join-Path $projectRoot "src-tauri\updater-private.key"
 
 if (!(Test-Path -LiteralPath $privateKeyPath) -and [string]::IsNullOrWhiteSpace($env:TAURI_SIGNING_PRIVATE_KEY)) {
@@ -19,10 +21,12 @@ if ($null -eq $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD) {
 }
 
 try {
-  npm.cmd run tauri:build -- --ci
+  Push-Location -LiteralPath $projectRoot
+  npm.cmd run tauri -- build --ci
   if ($LASTEXITCODE -ne 0) { throw "Signed Tauri build failed." }
 }
 finally {
+  Pop-Location
   if ($null -eq $previousPrivateKey) { Remove-Item Env:TAURI_SIGNING_PRIVATE_KEY -ErrorAction SilentlyContinue }
   else { $env:TAURI_SIGNING_PRIVATE_KEY = $previousPrivateKey }
   if ($null -eq $previousPassword) { Remove-Item Env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD -ErrorAction SilentlyContinue }

@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient, type QueryKey } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { api, type ActivityFilter, type GroupPatch, type NoteInput, type SnippetInput, type SnippetPatch, type TagPatch, type TrashType } from '../api/client';
-import type { Activity, Client, ClientInput, ClientPatch, FileEntry, FileTarget, MutationResult, Payment, PaymentInput, PaymentPatch, Project, ProjectInput, ProjectPatch, ProjectStatus, Settings, TagColor } from '../api/types';
+import type { Activity, Client, ClientInput, ClientPatch, FileEntry, FileTarget, MutationResult, Payment, PaymentInput, PaymentPatch, Project, ProjectInput, ProjectPatch, ProjectStatus, Settings, SnippetGroup, TagColor } from '../api/types';
 import { today } from '../lib/dates';
+import { useUI } from '../stores/ui';
 
 export const queryKeys = {
   app: ['app'] as const, library: ['library'] as const, clients: ['clients'] as const,
@@ -167,17 +168,37 @@ export const useRevealFile = () => useAction((path: string) => api.files.reveal(
 export const useOpenFolder = () => useAction((target: FileTarget) => api.files.openFolder(target), (q, _r, target) => fileKeys(q, [], target));
 export const useCreateSnippetGroup = () => useAction((name: string) => api.snippetGroups.create(name), () => [queryKeys.snippetGroups]);
 export const useUpdateSnippetGroup = () => useAction(({ id, patch }: { id: string; patch: GroupPatch }) => api.snippetGroups.update(id, patch), () => [queryKeys.snippetGroups]);
+export function useReorderSnippetGroups() {
+  const q = useQueryClient();
+  return useMutation({
+    mutationFn: async (ids: string[]) => { for (const [sort, id] of ids.entries()) await api.snippetGroups.update(id, { sort }); },
+    onMutate: async ids => {
+      await q.cancelQueries({ queryKey: queryKeys.snippetGroups });
+      const previous = q.getQueryData<SnippetGroup[]>(queryKeys.snippetGroups);
+      q.setQueryData<SnippetGroup[]>(queryKeys.snippetGroups, old => ids.flatMap((id, sort) => { const group = old?.find(value => value.id === id); return group ? [{ ...group, sort }] : []; }));
+      return previous;
+    },
+    onError: (error, _ids, previous) => { q.setQueryData(queryKeys.snippetGroups, previous); errorToast(error); },
+    onSettled: () => q.invalidateQueries({ queryKey: queryKeys.snippetGroups }),
+  });
+}
 export const useDeleteSnippetGroup = () => useAction((id: string) => api.snippetGroups.delete(id), () => [queryKeys.snippetGroups, queryKeys.snippets]);
 export const useCreateSnippet = () => useAction((input: SnippetInput) => api.snippets.create(input), () => [queryKeys.snippets]);
 export const useUpdateSnippet = () => useAction(({ id, patch }: { id: string; patch: SnippetPatch }) => api.snippets.update(id, patch), () => [queryKeys.snippets]);
 export const useDeleteSnippet = () => useAction((id: string) => api.snippets.delete(id), () => [queryKeys.snippets]);
 export const useMarkSnippetUsed = () => useAction((id: string) => api.snippets.markUsed(id), () => [queryKeys.snippets]);
 export const useUpdateSettings = () => useAction((patch: Partial<Settings>) => api.settings.update(patch), () => [queryKeys.settings]);
-export const useSetLibraryRoot = () => useAction((path: string) => api.library.setRoot(path), () => [queryKeys.library, queryKeys.files, queryKeys.projects, queryKeys.project()]);
+export const useSetLibraryRoot = () => useAction((path: string) => api.library.setRoot(path), () => [queryKeys.library, queryKeys.files, queryKeys.projects, queryKeys.project(), queryKeys.clients, queryKeys.client(), queryKeys.backups]);
 export const usePickFolder = () => useAction((title?: string) => api.library.pickFolder(title));
 export const useOpenLibrary = () => useAction(() => api.library.openRoot());
 export const useCreateBackup = () => useAction(() => api.backups.create(), () => [queryKeys.backups]);
-export function useRestoreBackup() { const q = useQueryClient(); return useMutation({ mutationFn: (fileName: string) => api.backups.restore(fileName), onError: errorToast, onSuccess: () => q.invalidateQueries() }); }
+export function useRestoreBackup() {
+  const q = useQueryClient();
+  return useMutation({ mutationFn: (fileName: string) => api.backups.restore(fileName), onError: errorToast, onSuccess: async () => {
+    const settings = await api.settings.get(); useUI.getState().setTheme(settings.theme);
+    await q.resetQueries();
+  } });
+}
 export const useRestoreTrash = () => useAction(({ type, id }: { type: TrashType; id: string }) => api.trash.restore(type, id), (q, _r, a) => [...(a.type === 'project' ? projectKeys(q, a.id) : [queryKeys.projects, queryKeys.project(), queryKeys.clients, queryKeys.client(a.id), queryKeys.activities, queryKeys.tags]), queryKeys.trash, queryKeys.allPayments, queryKeys.files]);
 export const usePurgeTrash = () => useAction(({ type, id }: { type: TrashType; id: string }) => api.trash.purge(type, id), () => [queryKeys.trash, queryKeys.tags, queryKeys.activities]);
 export const useSaveTextFile = () => useAction(({ defaultName, content }: { defaultName: string; content: string }) => api.app.saveTextFile(defaultName, content));

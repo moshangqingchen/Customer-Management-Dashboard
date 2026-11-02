@@ -1,5 +1,6 @@
-$ErrorActionPreference = "Stop"
-$projectRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
+﻿$ErrorActionPreference = "Stop"
+. (Join-Path $PSScriptRoot 'release-common.ps1')
+$null = Get-ReleaseConfig
 
 function Read-Json([string]$Path) {
   Get-Content -Raw -Encoding UTF8 -LiteralPath $Path | ConvertFrom-Json
@@ -33,6 +34,9 @@ if (!$cargoPackage.Success -or $cargoPackage.Groups[1].Value -ne $version) {
 if ($capability.permissions -notcontains "updater:default") {
   throw "The main window is missing updater:default permission."
 }
+if ($capability.permissions -notcontains 'process:allow-restart') { throw 'Missing process:allow-restart permission.' }
+$publicKey = (Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $projectRoot 'src-tauri/updater-private.key.pub')).Trim()
+if ($tauriConfig.plugins.updater.pubkey -ne $publicKey) { throw 'Updater public key does not match the existing key.' }
 if ($tauriConfig.bundle.createUpdaterArtifacts -ne $true) {
   throw "createUpdaterArtifacts must be enabled."
 }
@@ -67,6 +71,11 @@ if (!(Test-Path -LiteralPath $bundleInstaller)) { throw "Signed bundle not found
 $bundleHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $bundleInstaller).Hash
 $releaseHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $releaseInstaller).Hash
 if ($bundleHash -ne $releaseHash) { throw "The release installer does not match the signed bundle." }
+
+$cargoManifest = Join-Path $projectRoot 'src-tauri/Cargo.toml'
+$publicKeyPath = Join-Path $projectRoot 'src-tauri/updater-private.key.pub'
+cargo run --manifest-path "$cargoManifest" --example verify_update --offline -- "$releaseInstaller" "$releaseSignature" "$publicKeyPath"
+if ($LASTEXITCODE -ne 0) { throw '安装包签名的完整加密验证失败，拒绝继续发布。' }
 
 Write-Host "Update release $version verified successfully."
 Write-Host "Endpoint: $endpoint"
