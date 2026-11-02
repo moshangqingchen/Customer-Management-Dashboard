@@ -36,6 +36,20 @@ describe('浏览器 Mock 种子与持久化', () => {
     const saved = JSON.parse(localStorage.getItem(storageKey) ?? '{}') as { libraryRoot: string };
     expect(saved.libraryRoot).toBe('E:/设计文件库');
   });
+  it('重新加载Mock模块后从localStorage恢复文件库、客户、项目与收款', async () => {
+    await api.library.setRoot('E:/持久化验收库');
+    const { client, project } = await emptyProject();
+    await api.payments.add({ projectId: project.id, amountCents: 2500, paidAt: today() });
+    const originalMockControl = window.__mock;
+    try {
+      vi.resetModules();
+      const { mockApi: restarted } = await import('./index');
+      expect((await restarted.library.status()).root).toBe('E:/持久化验收库');
+      expect((await restarted.clients.get(client.id)).name).toBe('测试客户');
+      expect(await restarted.projects.get(project.id)).toMatchObject({ title: '测试项目', receivedCents: 2500, paymentCount: 1 });
+      expect(await restarted.payments.list(project.id)).toHaveLength(1);
+    } finally { window.__mock = originalMockControl; }
+  });
   it.each(['2030-03-15', '2030-03-17', '2032-02-29'])('自然截止日与更新时间可复现并保留本周样例：%s', base => {
     const seed = createSeed(base);
     expect(createSeed(base).projects).toEqual(seed.projects);

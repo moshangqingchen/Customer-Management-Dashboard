@@ -22,6 +22,30 @@ afterEach(() => { queryClient.clear(); vi.unstubAllGlobals(); Object.assign(Elem
 function mount(page: 'income' | 'files') { render(<QueryClientProvider client={queryClient}>{page === 'income' ? <IncomePage /> : <FilesPage />}</QueryClientProvider>); return userEvent.setup(); }
 
 describe('收入与文件工作页', () => {
+  it('跨期欠款始终显示当前待收、项目数和金额降序，其他指标随周期改变', async () => {
+    state().projects = []; state().payments = []; state().activities = [];
+    const client = await mockApi.clients.create({ name: '跨期收款客户' });
+    const older = await mockApi.projects.create({ clientId: client.id, title: '往年未收齐项目', priceCents: 30000, costCents: 1000 });
+    const current = await mockApi.projects.create({ clientId: client.id, title: '本月未收齐项目', priceCents: 20000, costCents: 2000 });
+    const cancelled = await mockApi.projects.create({ clientId: client.id, title: '已取消欠款项目', priceCents: 90000, costCents: 80000 });
+    state().projects.find(project => project.id === older.id)!.createdAt = `${Number(today().slice(0, 4)) - 1}-01-01T10:00:00Z`;
+    await mockApi.projects.setStatus(cancelled.id, 'cancelled');
+    await mockApi.payments.add({ projectId: current.id, amountCents: 5000, paidAt: today(), method: '微信' });
+    const user = mount('income');
+    const pendingCard = (await screen.findByText('当前待收')).closest('.stat-card');
+    expect(pendingCard?.textContent).toContain('¥450');
+    expect(pendingCard?.textContent).toContain('共 2 个项目未收齐');
+    expect(pendingCard?.textContent).not.toContain('较上期');
+    const pendingSection = screen.getByRole('heading', { name: '待收款项目' }).closest('section')!;
+    const rows = within(pendingSection).getAllByRole('row');
+    expect(rows[1].textContent).toContain(older.title); expect(rows[2].textContent).toContain(current.title);
+    expect(within(pendingSection).queryByText(cancelled.title)).toBeNull();
+    expect(screen.getByText('成本').closest('.stat-card')?.textContent).toContain('¥20');
+    await user.click(screen.getByRole('button', { name: '去年' }));
+    expect(screen.getByText('当前待收').closest('.stat-card')?.textContent).toContain('¥450');
+    expect(screen.getByText('成本').closest('.stat-card')?.textContent).toContain('¥10');
+    expect(within(pendingSection).getAllByRole('row')).toHaveLength(3);
+  });
   it('收入呈现退款，导出当前方式流水，并可在本页完成收款', async () => {
     state().projects = []; state().payments = []; state().activities = [];
     const client = await mockApi.clients.create({ name: '收入验收客户' });
@@ -31,7 +55,7 @@ describe('收入与文件工作页', () => {
     const save = vi.spyOn(mockApi.app, 'saveTextFile').mockResolvedValue('流水.csv');
     const user = mount('income');
     await screen.findByText('−¥10');
-    expect(screen.getByText('实收').closest('.stat-card')?.textContent).toContain('¥90');
+    expect(screen.getByText('实收', { selector: '.stat-label' }).closest('.stat-card')?.textContent).toContain('¥90');
     await user.click(screen.getByRole('button', { name: '导出 CSV' }));
     await waitFor(() => expect(save).toHaveBeenCalledOnce());
     expect(save.mock.calls[0][1]).toContain(',-10.00,"退款",');

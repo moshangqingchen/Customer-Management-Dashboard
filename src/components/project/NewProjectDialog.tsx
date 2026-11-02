@@ -30,7 +30,7 @@ export function NewProjectDialog() {
       if (e.key === 'Enter' && e.ctrlKey && !e.defaultPrevented) { e.preventDefault(); void save(true); }
     }}>
       <label className="block space-y-2"><span className="font-medium">项目名称 <span className="text-danger-fg">*</span></span>
-        <Input ref={titleRef} autoFocus value={form.title} onChange={e => patch('title', e.target.value)} placeholder="例如：冬季新品宣传海报" required maxLength={200} /></label>
+        <Input ref={titleRef} value={form.title} onChange={e => patch('title', e.target.value)} placeholder="例如：冬季新品宣传海报" required maxLength={200} /></label>
       <div className="space-y-2" role="group" aria-label="客户"><p className="font-medium">客户 <span className="text-danger-fg">*</span></p>
         <Combobox value={form.clientId} onChange={id => patch('clientId', id)} options={clients.map(c => ({ value: c.id, label: c.name }))}
           placeholder="搜索客户，或输入新客户名称" onCreate={async name => { const client = await createClient.mutateAsync({ name }); return client.id; }} /></div>

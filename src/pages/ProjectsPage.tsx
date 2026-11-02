@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useMemo, useState } from 'react';
 import { FolderOpen, LayoutGrid, List, Plus, Search, Star, Tags, Trash2, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Project } from '../api/types';
@@ -8,10 +8,12 @@ import { routeProjectFilters } from '../lib/projects';
 import { statuses, statusMeta } from '../lib/status';
 import { useNav } from '../stores/nav';
 import { useUI } from '../stores/ui';
-import { Button, ConfirmDialog, Dialog, EmptyState, Input, Kanban, Skeleton, TagPicker } from '../components/ui';
+import { Button, ConfirmDialog, Dialog, EmptyState, Input, Skeleton, TagPicker } from '../components/ui';
 import type { MenuItem } from '../components/ui/Menus';
 import { ProjectFilters } from '../components/project/ProjectFilters';
 import { ProjectsTable } from '../components/project/ProjectsTable';
+
+const Kanban = lazy(() => import('../components/ui/Kanban').then(module => ({ default: module.Kanban })));
 
 export function ProjectsPage() {
   const nav = useNav(); const route = nav.entries[nav.index]; const ui = useUI();
@@ -41,7 +43,7 @@ export function ProjectsPage() {
     </header>
     <ProjectFilters filters={filters} onChange={changeFilters} sort={sort} onSort={setSort} tags={tags.data ?? []} clients={clients.data ?? []} settings={settings.data} />
     {projects.isPending || tags.isPending || clients.isPending ? <div aria-label="项目加载中" className="space-y-3">{[0, 1, 2, 3].map(index => <Skeleton key={index} className="h-16" />)}</div> : projects.isError || tags.isError || clients.isError ? <EmptyState title="项目暂时读取失败" description="请重新加载后继续。" action={<Button onClick={() => { void projects.refetch(); void tags.refetch(); void clients.refetch(); }}>重新加载</Button>} /> : visible.length === 0 ? <EmptyState illustrationName={projects.data?.length ? 'empty-search' : 'empty-projects'} title={projects.data?.length ? '没有找到符合条件的项目' : '从第一个项目开始'} description="每一个好点子，都值得一个自己的位置。" action={<Button onClick={() => projects.data?.length ? changeFilters({}) : ui.setNewProjectOpen(true)}>{projects.data?.length ? '清除筛选' : '新建项目'}</Button>} /> : ui.projectView === 'list' ? <ProjectsTable projects={visible} tags={tags.data ?? []} onOpen={open} onPin={pin} menu={menu} selectedId={route.params.projectId} /> : <>
-      <Kanban projects={visible} tags={tags.data ?? []} showAllDone={allDone} onOpen={open} contextMenu={menu} onTagClick={tagId => nav.navigate('projects', { tagId })} onStatusChange={(id, value) => status.mutate({ id, status: value })} />
+      <Suspense fallback={<div role="status" aria-label="正在加载看板" className="grid grid-cols-5 gap-3">{[0, 1, 2, 3, 4].map(index => <Skeleton key={index} className="h-80" />)}</div>}><Kanban projects={visible} tags={tags.data ?? []} showAllDone={allDone} onOpen={open} contextMenu={menu} onTagClick={tagId => nav.navigate('projects', { tagId })} onStatusChange={(id, value) => status.mutate({ id, status: value })} /></Suspense>
       <div className="flex items-center justify-between text-xs text-fg-2"><p>拖动卡片右上角手柄切换状态，也可以把文件拖入项目。</p><Button variant="ghost" size="sm" onClick={() => setAllDone(!allDone)}>{allDone ? '仅显示近 30 天完成' : '查看全部已完成项目'}</Button></div>
     </>}
     <Dialog open={!!tagProject} onOpenChange={value => { if (!value) setTagProjectId(undefined); }} title="项目标签" description={tagProject?.title}>{tagProject && <TagPicker tags={tags.data ?? []} value={tagProject.tagIds} onChange={tagIds => setTags.mutate({ projectId: tagProject.id, tagIds })} />}</Dialog>

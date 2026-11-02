@@ -59,7 +59,7 @@ describe('今日工作台交互', () => {
     await user.click(main.getByRole('button', { name: new RegExp(`^${title}\\s*[\\d¥]`) }));
     const nav = useNav.getState();
     expect(nav.entries[nav.index]).toEqual({ page, params });
-    expect(screen.getByRole('heading', { name: page === 'income' ? '收入' : '项目' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: page === 'income' ? '收入' : '项目' })).toBeTruthy();
   });
 
   it('关注项目打开真实详情面板，并保留今日页面', async () => {
@@ -109,8 +109,9 @@ describe('今日工作台交互', () => {
     expect(screen.getByRole('heading', { name: /欢迎来到客户工作台/ })).toBeTruthy();
     expect(screen.getByText('今天没有着急的事')).toBeTruthy();
     await user.click(screen.getByRole('button', { name: '新建第一个客户' }));
-    const dialog = await screen.findByRole('dialog', { name: '新建客户' });
-    await user.type(within(dialog).getByRole('textbox', { name: /客户名称/ }), '第一位新客户');
+    const name = await screen.findByRole('textbox', { name: /客户名称/ });
+    const dialog = screen.getByRole('dialog', { name: '新建客户' });
+    await user.type(name, '第一位新客户');
     await user.click(within(dialog).getByRole('button', { name: '创建客户' }));
     await waitFor(async () => expect((await mockApi.clients.list()).some(client => client.name === '第一位新客户')).toBe(true));
     expect(useUI.getState().newClientOpen).toBe(false);

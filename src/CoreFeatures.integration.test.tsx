@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -13,6 +13,7 @@ const originalScrollIntoView = Element.prototype.scrollIntoView;
 const originalHasPointerCapture = Element.prototype.hasPointerCapture;
 const originalSetPointerCapture = Element.prototype.setPointerCapture;
 const originalReleasePointerCapture = Element.prototype.releasePointerCapture;
+const originalElementFromPoint = Object.getOwnPropertyDescriptor(document, 'elementFromPoint');
 beforeEach(() => {
   reset(); query = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   useNav.setState({ entries: [{ page: 'today', params: {} }], index: 0 });
@@ -27,6 +28,8 @@ afterEach(() => {
   query.clear(); vi.unstubAllGlobals(); vi.restoreAllMocks();
   Element.prototype.scrollIntoView = originalScrollIntoView; Element.prototype.hasPointerCapture = originalHasPointerCapture;
   Element.prototype.setPointerCapture = originalSetPointerCapture; Element.prototype.releasePointerCapture = originalReleasePointerCapture;
+  if (originalElementFromPoint) Object.defineProperty(document, 'elementFromPoint', originalElementFromPoint);
+  else Reflect.deleteProperty(document, 'elementFromPoint');
 });
 async function ready() {
   await mockApi.library.setRoot('D:/客户工作台');
@@ -36,19 +39,19 @@ async function ready() {
 }
 
 describe('核心业务完整组件集成', () => {
-  it('新建客户 → 为其新建项目 → 记收款 → 改状态，动态完整保留', async () => {
+  it('新建客户 → 为其新建项目 → 拖入3个文件 → 记2笔收款 → 完成，全程在项目面板且动态完整保留', async () => {
     const errors = vi.spyOn(console, 'error'); const user = await ready();
     await user.keyboard('{Control>}{Shift>}N{/Shift}{/Control}');
+    await user.type(await screen.findByRole('textbox', { name: /客户名称/ }), '朝雾甜品工作室');
     let dialog = screen.getByRole('dialog', { name: '新建客户' });
-    await user.type(within(dialog).getByRole('textbox', { name: /客户名称/ }), '朝雾甜品工作室');
     await user.click(within(dialog).getByRole('button', { name: '创建客户' }));
     await screen.findByRole('heading', { name: '合作项目' });
     const client = (await mockApi.clients.list()).find(value => value.name === '朝雾甜品工作室');
     expect(client).toBeTruthy();
     expect(useNav.getState().entries[useNav.getState().index]).toEqual({ page: 'clients', params: { clientId: client!.id } });
     await user.click(screen.getByRole('button', { name: '为他新建项目' }));
-    dialog = await screen.findByRole('dialog', { name: '新建项目' });
-    expect(within(dialog).getByRole('combobox', { name: '选择客户' }).textContent).toContain(client!.name);
+    expect((await screen.findByRole('combobox', { name: '选择客户' })).textContent).toContain(client!.name);
+    dialog = screen.getByRole('dialog', { name: '新建项目' });
     await user.type(within(dialog).getByRole('textbox', { name: /项目名称/ }), '朝雾冬季菜单设计');
     const quote = within(dialog).getByRole('textbox', { name: '金额（元）' });
     await user.clear(quote); await user.type(quote, '1280');
@@ -57,10 +60,27 @@ describe('核心业务完整组件集成', () => {
     await within(panel).findByRole('heading', { name: '朝雾冬季菜单设计' });
     const project = (await mockApi.projects.list()).find(value => value.title === '朝雾冬季菜单设计');
     expect(project?.clientId).toBe(client!.id);
+    const filesArea = await within(panel).findByLabelText('文件区');
+    Object.defineProperty(document, 'elementFromPoint', { configurable: true, value: vi.fn(() => filesArea) });
+    const files = [new File(['图片'], '冬季菜单.png', { type: 'image/png' }), new File(['源文件'], '冬季菜单.psd'), new File(['说明'], '印刷说明.pdf')];
+    fireEvent.drop(filesArea, { clientX: 30, clientY: 40, dataTransfer: { types: ['Files'], files } });
+    await within(panel).findByRole('button', { name: '打开文件：冬季菜单.png' });
+    expect((await within(panel).findByRole('img', { name: '冬季菜单.png' })).getAttribute('src')).toContain('.webp');
+    expect(within(panel).getByRole('button', { name: '打开文件：冬季菜单.psd' })).toBeTruthy();
+    expect(within(panel).getByRole('button', { name: '打开文件：印刷说明.pdf' })).toBeTruthy();
+    await waitFor(async () => expect((await mockApi.projects.get(project!.id)).fileCount).toBe(3));
     await user.click(within(panel).getByRole('button', { name: '记一笔' }));
     expect((within(panel).getByRole('textbox', { name: '金额（元）' }) as HTMLInputElement).value).toBe('1280');
+    const amount = within(panel).getByRole('textbox', { name: '金额（元）' });
+    await user.clear(amount); await user.type(amount, '500');
+    await user.click(within(panel).getByRole('button', { name: '记录收款' }));
+    await waitFor(async () => expect((await mockApi.projects.get(project!.id)).receivedCents).toBe(50000));
+    await user.click(within(panel).getByRole('button', { name: '记一笔' }));
+    expect((within(panel).getByRole('textbox', { name: '金额（元）' }) as HTMLInputElement).value).toBe('780');
     await user.click(within(panel).getByRole('button', { name: '记录收款' }));
     await waitFor(async () => expect((await mockApi.projects.get(project!.id)).receivedCents).toBe(128000));
+    expect(await mockApi.payments.list(project!.id)).toHaveLength(2);
+    expect(screen.getByRole('dialog', { name: '项目详情' })).toBe(panel);
     await user.click(within(panel).getByRole('combobox', { name: '项目详情状态' }));
     await user.click(await screen.findByRole('option', { name: '已交付' }));
     await within(panel).findByText('已交付且已收清，可以标记完成');
@@ -69,14 +89,17 @@ describe('核心业务完整组件集成', () => {
     panel = screen.getByRole('dialog', { name: '项目详情' });
     await user.click(within(panel).getByRole('tab', { name: '动态' }));
     await within(panel).findByText('创建了项目');
-    expect(within(panel).getByText('记录了收款 ¥1,280')).toBeTruthy();
+    expect(within(panel).getByText('记录了收款 ¥500')).toBeTruthy();
+    expect(within(panel).getByText('记录了收款 ¥780')).toBeTruthy();
+    expect(within(panel).getByText('添加了 3 个文件')).toBeTruthy();
     expect(within(panel).getAllByText('已交付').length).toBeGreaterThan(0);
     const events = await mockApi.activities.list({ projectId: project!.id });
     expect(events.filter(value => value.kind === 'status').map(value => value.meta.to)).toEqual(['done', 'delivered']);
     expect(events.some(value => value.kind === 'created')).toBe(true);
-    expect(events.some(value => value.kind === 'payment' && value.meta.amountCents === 128000)).toBe(true);
+    expect(events.filter(value => value.kind === 'payment').map(value => value.meta.amountCents).sort()).toEqual([50000, 78000]);
+    expect(events.find(value => value.kind === 'file')?.meta.names).toEqual(files.map(file => file.name));
     expect(errors).not.toHaveBeenCalled();
-  });
+  }, 10_000);
 
   it('跨页只保留一个项目面板，客户跳转与后退前进恢复选择，整页复用详情', async () => {
     const user = await ready(); const values = await mockApi.projects.list(); const first = values[0]; const second = values[1];

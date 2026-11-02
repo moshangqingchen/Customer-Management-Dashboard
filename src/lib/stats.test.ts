@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { comparisonRanges, incomeCsv, incomeLedger, metricChange, outstandingProjects, periodRange } from './stats';
+import { comparisonRanges, incomeCsv, incomeLedger, incomeStats, metricChange, outstandingProjects, periodRange } from './stats';
+import { filterProjects } from './filters';
 import { todayOverview } from './today';
 import { createSeed } from '../api/mock/seed';
 
@@ -58,7 +59,7 @@ describe('同期收入比较', () => {
 });
 
 describe('收入明细与导出', () => {
-  it('流水按付款日期筛选并保留退款负数，待收按创建日期筛选且排除取消', () => {
+  it('流水按付款日期筛选并保留退款负数，当前待收包含跨期项目且排除取消', () => {
     const seed = createSeed('2026-11-02');
     const first = { ...seed.projects[0], status: 'active' as const, createdAt: '2026-11-01T10:00:00Z', priceCents: 10000, receivedCents: 8000 };
     const cancelled = { ...first, id: 'cancelled', status: 'cancelled' as const, receivedCents: 0 };
@@ -68,8 +69,31 @@ describe('收入明细与导出', () => {
     const rows = [payment, refund, { ...payment, id: 'other-method', method: '支付宝' }, { ...payment, id: 'cancelled-pay', projectId: cancelled.id }, { ...payment, id: 'outside', paidAt: '2026-10-31' }];
     const range = { from: '2026-11-01', to: '2026-11-30' };
     expect(incomeLedger([first, cancelled, old], rows, range, '微信').map(row => row.netCents).sort((a, b) => a - b)).toEqual([-2000, 10000]);
-    expect(outstandingProjects([first, cancelled, old], range)).toEqual([{ project: first, outstandingCents: 2000 }]);
+    expect(outstandingProjects([first, cancelled, old])).toEqual([{ project: old, outstandingCents: 10000 }, { project: first, outstandingCents: 2000 }]);
     expect(rows[0]).not.toHaveProperty('netCents');
+  });
+  it('今日页、侧栏与收入页的当前待收合计和项目口径一致，切换周期不变', () => {
+    const seed = createSeed('2026-11-02');
+    const base = seed.projects[0];
+    const projects = [
+      { ...base, id: 'old', status: 'active' as const, createdAt: '2025-01-01T10:00:00Z', priceCents: 10000, receivedCents: 4000 },
+      { ...base, id: 'refunded', status: 'delivered' as const, createdAt: '2026-11-01T10:00:00Z', priceCents: 8000, receivedCents: -1000 },
+      { ...base, id: 'cancelled', status: 'cancelled' as const, priceCents: 999999, receivedCents: 0 },
+      { ...base, id: 'overpaid', status: 'done' as const, priceCents: 1000, receivedCents: 2000 },
+    ];
+    const pending = outstandingProjects(projects);
+    const sidebarProjects = filterProjects(projects, { outstanding: true });
+    const sidebarCents = sidebarProjects.reduce((sum, project) => sum + project.priceCents - project.receivedCents, 0);
+    const overview = todayOverview(projects, [], '2026-11-02');
+    expect(pending.map(entry => entry.project.id)).toEqual(['refunded', 'old']);
+    expect(sidebarProjects.map(project => project.id).sort()).toEqual(pending.map(entry => entry.project.id).sort());
+    expect(overview.unpaid.map(project => project.id)).toEqual(pending.map(entry => entry.project.id));
+    expect(overview.outstandingCents).toBe(15000);
+    expect(sidebarCents).toBe(overview.outstandingCents);
+    for (const range of [periodRange('thisMonth', '2026-11-02'), periodRange('lastYear', '2026-11-02'), { from: '2030-01-01', to: '2030-01-31' }, periodRange('all')]) {
+      expect(incomeStats(projects, [], range).outstandingCents).toBe(sidebarCents);
+    }
+    expect(projects[0].id).toBe('old');
   });
   it('CSV保留换行与引号，退款输出负数，文本公式不会被表格执行', () => {
     const seed = createSeed('2026-11-02'); const project = seed.projects[0];

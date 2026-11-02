@@ -33,7 +33,7 @@ export function CommandPalette() {
   return <Dialog open={ui.commandOpen} onOpenChange={ui.setCommandOpen} title={paymentMode ? '选择收款项目' : '搜索与命令'} description="使用上下方向键选择，按回车执行。">
     <Command shouldFilter={false} label="搜索与命令" className="-mx-2">
       <div className="flex items-center gap-2 border-b border-line px-3 pb-3"><Search size={18} className="text-fg-2" />
-        <Command.Input autoFocus value={search} onValueChange={setSearch} placeholder={paymentMode ? '搜索要记收款的项目…' : '搜索客户、项目、话术或命令…'} className="h-9 flex-1 bg-transparent text-sm outline-none" aria-label="搜索客户、项目、话术或命令" />
+        <Command.Input value={search} onValueChange={setSearch} placeholder={paymentMode ? '搜索要记收款的项目…' : '搜索客户、项目、话术或命令…'} className="h-9 flex-1 bg-transparent text-sm outline-none" aria-label="搜索客户、项目、话术或命令" />
       </div>
       <Command.List label="搜索结果" className="max-h-[420px] overflow-y-auto py-2 [&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:text-fg-2 [&_[cmdk-item]]:flex [&_[cmdk-item]]:cursor-pointer [&_[cmdk-item]]:items-center [&_[cmdk-item]]:gap-2 [&_[cmdk-item]]:rounded-md [&_[cmdk-item]]:px-3 [&_[cmdk-item]]:py-2 [&_[cmdk-item][data-selected=true]]:bg-accent-soft [&_[cmdk-item][data-selected=true]]:text-accent">
         <Command.Empty className="px-3 py-10 text-center text-fg-2">没有找到相关内容</Command.Empty>

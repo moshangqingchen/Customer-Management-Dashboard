@@ -38,6 +38,19 @@ async function readyApp() {
 }
 
 describe('基础工作台完整流程', () => {
+  it('命令面板首次及再次打开都聚焦输入，Esc关闭后恢复到搜索按钮', async () => {
+    const user = await readyApp();
+    const opener = screen.getByRole('button', { name: '搜索与命令' });
+    for (const _opening of [0, 1]) {
+      await user.click(opener);
+      const input = await screen.findByRole('combobox', { name: '搜索与命令' });
+      await waitFor(() => expect(document.activeElement).toBe(input));
+      await user.keyboard('{Escape}');
+      await waitFor(() => expect(screen.queryByRole('dialog', { name: '搜索与命令' })).toBeNull());
+      await waitFor(() => expect(document.activeElement).toBe(opener));
+    }
+  });
+
   it('首次选择文件库后进入工作台，页面快捷键和导航历史互通且无渲染错误', async () => {
     const errors = vi.spyOn(console, 'error');
     const user = renderApp();
@@ -47,14 +60,14 @@ describe('基础工作台完整流程', () => {
     const pages = ['项目', '客户', '收入', '文件', '话术'];
     for (const [index, page] of pages.entries()) {
       await user.keyboard(`{Control>}${index + 2}{/Control}`);
-      expect(screen.getByRole('heading', { name: page })).toBeTruthy();
+      expect(await screen.findByRole('heading', { name: page })).toBeTruthy();
     }
     await user.keyboard('{Alt>}{ArrowLeft}{/Alt}');
-    expect(screen.getByRole('heading', { name: '文件' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: '文件' })).toBeTruthy();
     await user.keyboard('{Alt>}{ArrowRight}{/Alt}');
-    expect(screen.getByRole('heading', { name: '话术' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: '话术' })).toBeTruthy();
     await user.click(screen.getByRole('button', { name: '设置' }));
-    expect(screen.getByRole('heading', { name: '设置' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: '设置' })).toBeTruthy();
     act(() => window.__mock.reset());
     await screen.findByRole('button', { name: '选择文件库位置' });
     expect(errors).not.toHaveBeenCalled();
@@ -63,8 +76,8 @@ describe('基础工作台完整流程', () => {
   it('客户支持保存并继续；项目可创建客户并回车保存，中文候选回车不提交', async () => {
     const user = await readyApp();
     await user.keyboard('{Control>}{Shift>}N{/Shift}{/Control}');
+    const name = await screen.findByRole('textbox', { name: /客户名称/ });
     let dialog = screen.getByRole('dialog', { name: '新建客户' });
-    const name = within(dialog).getByRole('textbox', { name: /客户名称/ });
     await user.type(name, '青山工作室');
     fireEvent.keyDown(name, { key: 'Enter', ctrlKey: true, isComposing: true });
     expect(await mockApi.clients.list()).toHaveLength(14);
@@ -73,8 +86,9 @@ describe('基础工作台完整流程', () => {
     await waitFor(() => expect((within(screen.getByRole('dialog')).getByRole('textbox', { name: /客户名称/ }) as HTMLInputElement).value).toBe(''));
     await user.keyboard('{Escape}');
     await user.keyboard('{Control>}n{/Control}');
+    const title = await screen.findByRole('textbox', { name: /项目名称/ });
     dialog = screen.getByRole('dialog', { name: '新建项目' });
-    await user.type(within(dialog).getByRole('textbox', { name: /项目名称/ }), '海风夏日海报');
+    await user.type(title, '海风夏日海报');
     await user.click(within(dialog).getByRole('combobox', { name: '选择客户' }));
     await user.type(screen.getByPlaceholderText('输入名称搜索…'), '海风咖啡');
     await user.keyboard('{Enter}');
@@ -92,7 +106,7 @@ describe('基础工作台完整流程', () => {
     const snippet = (await mockApi.snippets.list())[0];
     const copy = vi.spyOn(navigator.clipboard, 'writeText');
     await user.keyboard('{Control>}k{/Control}');
-    await user.type(screen.getByRole('combobox', { name: '搜索与命令' }), snippet.title);
+    await user.type(await screen.findByRole('combobox', { name: '搜索与命令' }), snippet.title);
     await user.keyboard('{Enter}');
     await waitFor(() => expect(copy).toHaveBeenCalledWith(snippet.body));
     await waitFor(() => expect(useUI.getState().commandOpen).toBe(false));

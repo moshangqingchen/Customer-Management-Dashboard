@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -97,7 +97,7 @@ describe('项目列表与看板交互', () => {
     expect(localStorage.getItem('clientdesk.ui.v1')).toContain('"projectView":"list"');
   });
 
-  it('键盘拖动到空看板列会持久化状态，Escape取消拖动', async () => {
+  it('键盘拖动到空看板列会持久化状态，Escape取消拖动，重新挂载仍位于目标列', async () => {
     const { first } = await sampleProjects();
     const columns = ['洽谈中', '进行中', '待确认', '已交付', '已完成'];
     vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
@@ -121,5 +121,11 @@ describe('项目列表与看板交互', () => {
     await user.keyboard('[ArrowRight][Escape]');
     await waitFor(() => expect(nextHandle.getAttribute('aria-pressed')).not.toBe('true'));
     expect((await mockApi.projects.get(first.id)).status).toBe('review');
+    cleanup(); queryClient.clear();
+    queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+    mount();
+    const targetColumn = await screen.findByRole('region', { name: '待确认' });
+    await within(targetColumn).findByRole('button', { name: '打开项目：测试项目甲' });
+    expect(within(screen.getByRole('region', { name: '进行中' })).queryByRole('button', { name: '打开项目：测试项目甲' })).toBeNull();
   });
 });

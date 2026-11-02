@@ -59,7 +59,7 @@ describe('收入统计', () => {
   const projects = [project(), project({ id: 'p2', clientId: 'c2', status: 'cancelled', costCents: 99999 }), project({ id: 'p3', status: 'lead', priceCents: 20000, costCents: 0, receivedCents: 0 }), project({ id: 'p4', clientId: 'c2', priceCents: 200000, costCents: 20000, createdAt: '2026-10-01T12:00:00Z' })];
   const payments = [payment(), payment({ id: 'refund', kind: 'refund', amountCents: 10000 }), payment({ id: 'cancelled', projectId: 'p2', amountCents: 999999 }), payment({ id: 'old-project', projectId: 'p4', clientId: 'c2', clientName: '周先生', amountCents: 80000 }), payment({ id: 'october', amountCents: 12000, paidAt: '2026-10-20' })];
   it('按付款日期汇总含退款，成本按创建周期，排除取消', () => {
-    expect(incomeStats(projects, payments, { from: '2026-11-01', to: '2026-11-30' })).toEqual({ receivedCents: 120000, outstandingCents: 80000, costCents: 10000, profitCents: 110000, expectedProfitCents: 110000, dealCount: 1, averageOrderCents: 100000 });
+    expect(incomeStats(projects, payments, { from: '2026-11-01', to: '2026-11-30' })).toEqual({ receivedCents: 120000, outstandingCents: 240000, costCents: 10000, profitCents: 110000, expectedProfitCents: 110000, dealCount: 1, averageOrderCents: 100000 });
   });
   it('空集无NaN，月序列补零，排行扣退款', () => {
     expect(incomeStats([], []).averageOrderCents).toBe(0);

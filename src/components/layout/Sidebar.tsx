@@ -2,7 +2,7 @@ import { CalendarDays, FolderKanban, Users, ChartNoAxesCombined, Files, Messages
 import type { LucideIcon } from 'lucide-react';
 import { useClients, useLibraryStatus, useProjects, useTags, useUpdateSettings } from '../../hooks/queries';
 import { isOverdue } from '../../lib/dates';
-import { outstanding } from '../../lib/money';
+import { outstandingProjects } from '../../lib/stats';
 import { cn } from '../../lib/cn';
 import { useNav, pageLabels, type Page, type RouteParams } from '../../stores/nav';
 import { useUI } from '../../stores/ui';
@@ -25,7 +25,7 @@ export function Sidebar() {
   const views = [
     { view: 'pinned' as const, label: '星标', icon: Star, count: projects.filter(p => p.pinned).length + clients.filter(c => c.pinned).length },
     { view: 'overdue' as const, label: '逾期', icon: TriangleAlert, count: projects.filter(p => isOverdue(p.dueDate, p.status)).length },
-    { view: 'outstanding' as const, label: '待收款', icon: Wallet, count: projects.filter(p => outstanding(p.priceCents, p.receivedCents, p.status) > 0).length },
+    { view: 'outstanding' as const, label: '待收款', icon: Wallet, count: outstandingProjects(projects).length },
   ];
   function navItem(page: Page, label: string, Icon: LucideIcon, params: RouteParams = {}, count?: number, shortcut?: number) {
     const { projectId: _projectId, clientId: _clientId, payment: _payment, ...viewParams } = route.params;

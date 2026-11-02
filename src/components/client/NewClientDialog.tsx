@@ -29,7 +29,7 @@ export function NewClientDialog() {
       if (e.key === 'Enter' && e.nativeEvent.isComposing) { e.preventDefault(); return; }
       if (e.key === 'Enter' && e.ctrlKey && !e.defaultPrevented) { e.preventDefault(); void save(true); }
     }}>
-      <label className="block space-y-2"><span className="font-medium">客户名称 <span className="text-danger-fg">*</span></span><Input ref={nameRef} autoFocus required maxLength={100} value={form.name} onChange={e => patch('name', e.target.value)} placeholder="姓名或店铺名称" /></label>
+      <label className="block space-y-2"><span className="font-medium">客户名称 <span className="text-danger-fg">*</span></span><Input ref={nameRef} required maxLength={100} value={form.name} onChange={e => patch('name', e.target.value)} placeholder="姓名或店铺名称" /></label>
       <div className="grid grid-cols-2 gap-4">{([
         ['company', '公司 / 店铺'], ['phone', '电话'], ['wechat', '微信'], ['email', '邮箱'],
       ] as const).map(([key, label]) => <label key={key} className="block space-y-2"><span className="font-medium">{label}</span><Input type={key === 'email' ? 'email' : key === 'phone' ? 'tel' : 'text'} value={form[key]} onChange={e => patch(key, e.target.value)} /></label>)}</div>

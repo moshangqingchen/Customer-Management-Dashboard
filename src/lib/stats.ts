@@ -45,7 +45,8 @@ export function comparisonRanges(period: StatsPeriod | 'custom', range: DateRang
   const length = differenceInCalendarDays(end, start) + 1;
   return { current, previous: { from: dateOffset(-length, current.from), to: dateOffset(-1, current.from) } };
 }
-/** Cash receipts follow paidAt; project costs, deals and outstanding follow createdAt.
+/** Cash receipts follow paidAt; project costs and deals follow createdAt.
+ * Outstanding is the current balance across all eligible projects, regardless of period.
  * Cancelled projects are excluded from every metric. Leads are not counted as deals.
  * Average order value is quoted revenue / deals, independent of payment timing. */
 export function incomeStats(projects: readonly Project[], payments: readonly PaymentWithContext[], range: DateRange = { from: null, to: null }): IncomeStats {
@@ -57,7 +58,7 @@ export function incomeStats(projects: readonly Project[], payments: readonly Pay
   const costCents = cohort.reduce((sum, project) => sum + project.costCents, 0);
   return {
     receivedCents, costCents, profitCents: receivedCents - costCents,
-    outstandingCents: cohort.reduce((sum, project) => sum + outstanding(project.priceCents, project.receivedCents, project.status), 0),
+    outstandingCents: outstandingProjects(eligible).reduce((sum, entry) => sum + entry.outstandingCents, 0),
     expectedProfitCents: cohort.reduce((sum, project) => sum + project.priceCents - project.costCents, 0),
     dealCount: deals.length,
     averageOrderCents: deals.length ? Math.round(deals.reduce((sum, project) => sum + project.priceCents, 0) / deals.length) : 0,
@@ -81,15 +82,16 @@ export function clientRanking(projects: readonly Project[], payments: readonly P
   return [...ranks.values()].sort((a, b) => b.receivedCents - a.receivedCents || a.clientName.localeCompare(b.clientName, 'zh-CN')).slice(0, Math.max(0, limit));
 }
 
-/** The ledger, pending table and exports share the same period and eligible projects. */
+/** The ledger and exports share the same period and eligible projects. */
 export function incomeLedger(projects: readonly Project[], payments: readonly PaymentWithContext[], range: DateRange, method = ''): IncomeLedgerEntry[] {
   const ids = new Set(projects.filter(project => project.status !== 'cancelled').map(project => project.id));
   return payments.filter(payment => ids.has(payment.projectId) && inRange(payment.paidAt, range) && (!method || payment.method === method))
     .map(payment => ({ ...payment, netCents: payment.kind === 'refund' ? -payment.amountCents : payment.amountCents }))
     .sort((a, b) => b.paidAt.localeCompare(a.paidAt) || b.createdAt.localeCompare(a.createdAt) || a.id.localeCompare(b.id));
 }
-export function outstandingProjects(projects: readonly Project[], range: DateRange): OutstandingEntry[] {
-  return projects.filter(project => inRange(project.createdAt, range)).map(project => ({ project, outstandingCents: outstanding(project.priceCents, project.receivedCents, project.status) }))
+/** Current pending projects: shared by Today, Sidebar and Income, without a date cohort. */
+export function outstandingProjects(projects: readonly Project[]): OutstandingEntry[] {
+  return projects.map(project => ({ project, outstandingCents: outstanding(project.priceCents, project.receivedCents, project.status) }))
     .filter(entry => entry.outstandingCents > 0).sort((a, b) => b.outstandingCents - a.outstandingCents || a.project.id.localeCompare(b.project.id));
 }
 export function metricChange(current: number, previous: number, inverse = false): { label: string; tone: 'success' | 'danger' | 'neutral' } {

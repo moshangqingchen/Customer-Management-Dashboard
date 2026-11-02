@@ -2,8 +2,7 @@ import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import type { PaymentWithContext, Project } from '../api/types';
 import { isDueSoon, isOpen, isOverdue, today, weekEnd, weekStart } from './dates';
-import { outstanding } from './money';
-import { comparisonRanges, incomeStats, monthlyStats, periodRange } from './stats';
+import { comparisonRanges, incomeStats, monthlyStats, outstandingProjects, periodRange } from './stats';
 
 export const workingStatuses = ['active', 'review', 'lead'] as const;
 export function attentionProjects(projects: readonly Project[], base = today()): Project[] {
@@ -24,11 +23,10 @@ export function todayOverview(projects: readonly Project[], payments: readonly P
   const months = monthlyStats(projects, payments, 6, base);
   const ranges = comparisonRanges('thisMonth', periodRange('thisMonth', base), base);
   const current = incomeStats(projects, payments, ranges.current).receivedCents; const previous = incomeStats(projects, payments, ranges.previous).receivedCents;
-  const unpaid = projects.filter(p => outstanding(p.priceCents, p.receivedCents, p.status) > 0)
-    .sort((a, b) => outstanding(b.priceCents, b.receivedCents, b.status) - outstanding(a.priceCents, a.receivedCents, a.status) || a.id.localeCompare(b.id));
+  const unpaid = outstandingProjects(projects);
   return { attention: attentionProjects(projects, base), activeCount: projects.filter(p => p.status === 'active').length,
-    dueCount: dueThisWeek(projects, base).length, outstandingCents: unpaid.reduce((sum, p) => sum + outstanding(p.priceCents, p.receivedCents, p.status), 0),
-    unpaid: unpaid.slice(0, 5), months, current, change: incomeChange(current, previous),
+    dueCount: dueThisWeek(projects, base).length, outstandingCents: unpaid.reduce((sum, entry) => sum + entry.outstandingCents, 0),
+    unpaid: unpaid.slice(0, 5).map(entry => entry.project), months, current, change: incomeChange(current, previous),
     groups: workingStatuses.map(status => ({ status, projects: projects.filter(p => p.status === status).sort((a, b) => (a.dueDate ?? '9999').localeCompare(b.dueDate ?? '9999') || a.id.localeCompare(b.id)) })),
   };
 }
