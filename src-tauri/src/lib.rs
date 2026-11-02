@@ -1,89 +1,190 @@
-pub mod cloud;
+pub mod backup;
 pub mod commands;
 pub mod db;
-pub mod domain;
-pub mod import_service;
+pub mod error;
+pub mod library;
 pub mod models;
-pub mod service;
+pub mod repo;
 
-pub fn run() {
+use error::{AppError, Result};
+use rusqlite::Connection;
+use std::{
+    path::{Path, PathBuf},
+    sync::{Mutex, MutexGuard},
+};
+use tauri::{AppHandle, Manager};
+
+const DB_FILE: &str = "client-desk.db";
+
+pub struct AppState {
+    connection: Mutex<Connection>,
+    filesystem: Mutex<()>,
+    data_dir: PathBuf,
+}
+
+/// Database snapshots are owned values; filesystem work must happen after `read` returns.
+pub trait Database {
+    fn read<T>(&self, run: impl FnOnce(&Connection) -> Result<T>) -> Result<T>;
+    fn file_guard(&self) -> Result<MutexGuard<'_, ()>>;
+
+    fn before_file_copy(&self, _source: &Path) {}
+}
+
+impl Database for Connection {
+    fn read<T>(&self, run: impl FnOnce(&Connection) -> Result<T>) -> Result<T> {
+        run(self)
+    }
+
+    fn file_guard(&self) -> Result<MutexGuard<'_, ()>> {
+        static FILESYSTEM: Mutex<()> = Mutex::new(());
+        FILESYSTEM
+            .lock()
+            .map_err(|_| AppError::new("io", "文件操作异常，请重新打开应用"))
+    }
+}
+
+impl AppState {
+    pub fn open(data_dir: PathBuf) -> Result<Self> {
+        std::fs::create_dir_all(&data_dir)?;
+        let connection = Mutex::new(db::open(&data_dir.join(DB_FILE))?);
+        Ok(Self {
+            connection,
+            filesystem: Mutex::new(()),
+            data_dir,
+        })
+    }
+
+    fn lock(&self) -> Result<MutexGuard<'_, Connection>> {
+        self.connection
+            .lock()
+            .map_err(|_| AppError::new("db", "数据库连接异常，请重新打开应用"))
+    }
+
+    fn backup_connection(&self) -> Result<Connection> {
+        // A dedicated SQLite connection keeps backup I/O off the command mutex.
+        db::open(&self.data_dir.join(DB_FILE))
+    }
+}
+
+impl Database for AppState {
+    fn read<T>(&self, run: impl FnOnce(&Connection) -> Result<T>) -> Result<T> {
+        let db = self.lock()?;
+        run(&db)
+    }
+
+    fn file_guard(&self) -> Result<MutexGuard<'_, ()>> {
+        self.filesystem
+            .lock()
+            .map_err(|_| AppError::new("io", "文件操作异常，请重新打开应用"))
+    }
+}
+
+fn register_library_path(app: &AppHandle, root: Option<&Path>) -> Result<()> {
+    if let Some(root) = root {
+        app.asset_protocol_scope()
+            .allow_directory(root, true)
+            .map_err(|e| {
+                AppError::new("libraryUnavailable", format!("无法授权文件库缩略图（{e}）"))
+            })?;
+    }
+    Ok(())
+}
+
+pub fn run() -> tauri::Result<()> {
     tauri::Builder::default()
-        .setup(|app| {
-            use tauri::Manager;
-
-            #[cfg(desktop)]
-            app.handle()
-                .plugin(tauri_plugin_updater::Builder::new().build())?;
-
-            let app_data = app.path().app_data_dir()?;
-            let service = service::AppService::new(app_data.join("workbench.db"))
-                .map_err(|error| Box::<dyn std::error::Error>::from(error.to_string()))?;
-            if let Ok(documents) = app.path().document_dir() {
-                let default_backup = documents.join("创业客户管理工作台备份");
-                if let Err(error) = service.create_daily_backup(&default_backup) {
-                    eprintln!("自动备份失败：{error}");
+        .plugin(tauri_plugin_single_instance::init(|app, _, _| {
+            if let Some(window) = app.get_webview_window("main") {
+                if let Err(error) = window
+                    .unminimize()
+                    .and_then(|()| window.show())
+                    .and_then(|()| window.set_focus())
+                {
+                    eprintln!("无法聚焦已有窗口（{error}）");
                 }
             }
-            app.manage(service);
+        }))
+        .plugin(tauri_plugin_window_state::Builder::default().build())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_opener::init())
+        .setup(|app| {
+            let state = AppState::open(app.path().app_data_dir()?)?;
+            if let Err(error) = state
+                .read(|db| repo::settings::read::<PathBuf>(db, "libraryRoot"))
+                .and_then(|root| register_library_path(app.handle(), root.as_deref()))
+            {
+                eprintln!("文件库授权失败（{error}）");
+            }
+            if let Err(error) = state
+                .backup_connection()
+                .and_then(|db| backup::auto(&db, &state.data_dir))
+            {
+                eprintln!("自动备份失败（{error}）");
+            }
+            app.manage(state);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            commands::choose_directory,
-            commands::choose_file,
-            commands::choose_save_file,
-            commands::read_image_data_url,
-            commands::preview_customer_spreadsheet,
-            commands::get_settings,
-            commands::get_app_preference,
-            commands::set_app_preference,
-            commands::set_library_root,
-            commands::validate_library_root,
-            commands::get_storage_health,
-            commands::migrate_library_root,
-            commands::set_backup_dir,
-            commands::list_customers,
-            commands::list_source_factories,
-            commands::create_source_factory,
-            commands::update_source_factory,
-            commands::delete_source_factory,
-            commands::list_source_factory_projects,
-            commands::create_source_factory_project,
-            commands::delete_source_factory_project,
-            commands::list_source_quotes,
-            commands::create_source_quote,
-            commands::update_source_quote,
-            commands::delete_source_quote,
-            commands::create_customer,
-            commands::update_customer,
-            commands::list_orders,
-            commands::sync_managed_library,
-            commands::create_order,
-            commands::update_order,
-            commands::update_order_status,
-            commands::delete_order,
-            commands::delete_customer,
-            commands::add_payment,
-            commands::delete_payment,
-            commands::retry_order_folder,
-            commands::list_files,
-            commands::list_order_folder_files,
-            commands::add_order_file,
-            commands::delete_file,
-            commands::search,
-            commands::dashboard,
-            commands::import_customers,
-            commands::apply_customer_import,
-            commands::run_backup,
-            commands::get_backup_status,
-            commands::export_full,
-            commands::inspect_full_archive,
-            commands::restore_full_archive,
-            commands::restore_backup,
-            commands::export_cloud_read_model,
-            commands::open_in_explorer,
-            commands::open_external_url,
-            commands::restart_app,
+            commands::app_info,
+            commands::library_status,
+            commands::library_set_root,
+            commands::library_open_root,
+            commands::clients_list,
+            commands::client_get,
+            commands::client_create,
+            commands::client_update,
+            commands::client_delete,
+            commands::projects_list,
+            commands::project_get,
+            commands::project_create,
+            commands::project_update,
+            commands::project_set_status,
+            commands::project_duplicate,
+            commands::project_delete,
+            commands::payments_list,
+            commands::payments_all,
+            commands::payment_add,
+            commands::payment_update,
+            commands::payment_delete,
+            commands::tags_list,
+            commands::tag_create,
+            commands::tag_update,
+            commands::tag_delete,
+            commands::tag_merge,
+            commands::client_set_tags,
+            commands::project_set_tags,
+            commands::activities_list,
+            commands::activities_recent,
+            commands::activity_add_note,
+            commands::activity_update_note,
+            commands::activity_delete,
+            commands::files_list,
+            commands::files_recent,
+            commands::files_add,
+            commands::files_pick_and_add,
+            commands::file_open,
+            commands::file_reveal,
+            commands::file_rename,
+            commands::file_trash,
+            commands::folder_open,
+            commands::pick_folder,
+            commands::snippet_groups_list,
+            commands::snippet_group_create,
+            commands::snippet_group_update,
+            commands::snippet_group_delete,
+            commands::snippets_list,
+            commands::snippet_create,
+            commands::snippet_update,
+            commands::snippet_delete,
+            commands::snippet_mark_used,
+            commands::settings_get,
+            commands::settings_update,
+            commands::backups_list,
+            commands::backup_create,
+            commands::backup_restore,
+            commands::trash_list,
+            commands::trash_restore,
+            commands::trash_purge,
+            commands::save_text_file,
         ])
         .run(tauri::generate_context!())
-        .expect("error while running application");
 }

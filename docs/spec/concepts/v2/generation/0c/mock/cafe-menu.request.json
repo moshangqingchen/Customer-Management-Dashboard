@@ -1,0 +1,16 @@
+{
+  "asset": "cafe-menu",
+  "requested_size": [
+    1024,
+    1024
+  ],
+  "tool": "image_gen__imagegen",
+  "args": {
+    "prompt": "Use case: ads-marketing\nAsset type: finished Chinese cafe printed menu design, square 1024×1024.\nReference image 1 is ONLY a commercial finish reference from the project board. Generate the full standalone menu design, no application UI.\nPrimary request: warm brown artisan coffee shop menu design. Cream paper menu sheet fills most of frame, deep coffee brown refined serif-like Chinese headings, orderly left-aligned menu rows and prices, small tasteful line drawings of coffee utensils and a cup of latte in lower right, tactile paper, warm natural shadows. Sophisticated local cafe identity, beautifully spaced grid and readable hierarchy.\nText (verbatim, simplified Chinese): title「咖啡菜单」. Menu rows「美式咖啡 18」「拿铁咖啡 26」「卡布奇诺 26」「摩卡咖啡 28」. Small bottom text「现磨咖啡 · 慢享时光」. Use only these short texts, correctly rendered and aligned, no tiny filler. All text and layout generated in image. No watermark, no QR code, no app UI.",
+    "referenced_image_paths": [
+      "D:/project development/创业客户管理工作台/docs/spec/concepts/v2/A-projects.png"
+    ],
+    "transparent_background": false
+  },
+  "status": "prepared"
+}

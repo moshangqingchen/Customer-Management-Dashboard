@@ -1,0 +1,19 @@
+{
+  "id": "today-light-correction",
+  "destination": "docs/spec/concepts/today-light.png",
+  "intent": "move sidebar count 3 from 星标 to 逾期",
+  "tool": "image_gen.imagegen",
+  "requestedSize": "1536x1024 via prompt",
+  "parameters": {
+    "prompt": "Use case: precise-object-edit\nInput image: the attached today-light.png is the edit target.\n请只修正这张“客户工作台”今日页截图左侧栏的一处计数位置：在“视图”分组中，把“星标”行右边灰色小徽标“3”移到下一行“逾期”的右侧，让“星标”行没有数字，“逾期”行右侧显示“3”，“待收款”行右侧仍然是“5”。灰色小徽标样式、大小和横向位置不变，只下移一行。\n除此之外保持原图所有像素构图、侧栏、文字、字号、颜色、项目、金额、头像、图表、列表、留白、按钮与全部位置不变。主区“需要关注”标题旁的“3”以及“进行中 3”等其它数字完全保留。保持1536×1024横版PNG，白色背景不透明，无水印。只做这一处计数徽标位置编辑，所有最终内容仍由图片模型生成。",
+    "transparent_background": false,
+    "referenced_image_paths": [
+      "D:\\project development\\创业客户管理工作台\\docs\\spec\\concepts\\today-light.png"
+    ]
+  },
+  "model": null,
+  "quality": null,
+  "asyncSupport": "not exposed or verified",
+  "state": "prepared",
+  "preparedAt": "2026-11-02T11:34:07.344Z"
+}

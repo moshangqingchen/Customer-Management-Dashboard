@@ -1,0 +1,21 @@
+{
+  "asset": "icon-2",
+  "status": "prepared",
+  "tool": "image_gen__imagegen",
+  "requestedSize": "1024x1024 (prompt only; tool has no size argument)",
+  "requestedFormat": "PNG",
+  "requestedCount": 1,
+  "parameters": {
+    "prompt": "Use case: logo-brand\nAsset type: Windows 应用「客户工作台」图标候选方案2「文件夹 + 勾」，单张正方形 PNG，请输出 1024×1024 像素。\nPrimary request: 一个精致、简洁、适合正式发布 Windows 桌面应用的图标。居中的朱红圆角方形 squircle 底板占画布宽高约88%，四周留等距透明空白，背景真实透明。底板以 #C94A12 到 #E0601E 的朱红为主，扁平现代，仅极轻柔高光。正中一个简洁、饱满、米白色 #FFF7EB 文件夹轮廓，文件夹的前片上有一个朱红小对勾。文件夹与对勾之间有清楚的负空间，轮廓清晰，粗细足够在16px和32px缩小时辨认。\nComposition/framing: 正面平视、完全正交、居中对称的应用图标构图，单个完整图标，不画多方案，不出现设备或底座。\nStyle/medium: 干净的二维扁平图标，克制的柔和高光，锐利清楚边缘，少量细节；温暖、安静、专业。\nColor palette: 朱红 #C94A12—#E0601E 与米白色，除此不增加装饰色。\nConstraints: 真正透明背景，保留alpha通道；无透视，无投影到地面，无外部光晕，无边框文字，无说明，无字母，无汉字，无水印。不要桌面截图，不要照片，不要3D渲染。",
+    "transparent_background": true
+  },
+  "model": null,
+  "quality": null,
+  "usage": null,
+  "cost": null,
+  "currency": null,
+  "asyncSupport": "Not exposed by built-in tool; cannot verify",
+  "taskId": null,
+  "idempotencyKey": "Not supported by exposed tool",
+  "createdAt": "2026-11-02T11:06:17.279Z"
+}

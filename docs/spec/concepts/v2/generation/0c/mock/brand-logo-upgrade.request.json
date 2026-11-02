@@ -1,0 +1,16 @@
+{
+  "asset": "brand-logo-upgrade",
+  "requested_size": [
+    1024,
+    1024
+  ],
+  "tool": "image_gen__imagegen",
+  "args": {
+    "prompt": "Use case: logo-brand\nAsset type: finished brand identity proposal presentation board, square 1024×1024.\nReference image 1 is ONLY visual reference for the dark-blue brand upgrade thumbnail on the project board. Generate the full standalone commercial design, no application UI.\nPrimary request: premium corporate brand-mark upgrade proposal board on deep navy blue, a simple original elegant white geometric leaf-like monogram centered slightly left, flowing restrained blue and violet curved panels with subtle dimensional lighting. Confident minimal mark, beautiful precise typography, substantial negative space, credible Chinese brand studio presentation.\nText (verbatim, simplified Chinese): headline「品牌标志升级」, subheading「视觉识别 · 全新焕新」. Text large and clearly legible, white and pale blue. Keep elegant and concise, not busy. All lettering and final layout generated in the image. No existing famous logo, no watermark, no QR code, no app UI, no mockup monitor.",
+    "referenced_image_paths": [
+      "D:/project development/创业客户管理工作台/docs/spec/concepts/v2/A-projects.png"
+    ],
+    "transparent_background": false
+  },
+  "status": "prepared"
+}

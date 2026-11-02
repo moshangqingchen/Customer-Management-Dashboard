@@ -1,0 +1,147 @@
+# 客户工作台 v2 · 视觉与交互设计系统（方向 A「晴空」）
+
+> 2026-11-02 用户看过第一版后说「ui太丑了，我要年轻化的」，给出参考（自己的「素材管理」应用：浅色通透、蓝紫主色、日系插画横幅、彩色图标块卡片），要求「比这个更好看更大气」。用户从两个年轻化方向中选定 **A「晴空」**。
+> **视觉基准图**：`docs/spec/concepts/v2/A-today.png`（今日页）与 `docs/spec/concepts/v2/A-projects.png`（项目看板）。实现应在布局、比例、配色、氛围上与之高度一致；图中个别文字/状态色错误以本文件为准。
+
+## 1. 气质
+
+**年轻、通透、明亮、大气，同时是好用的工作软件。** 像一间洒满午后阳光的设计工作室：白色悬浮卡片、柔和的蓝紫渐变、淡彩图标块、日系插画和一只橘猫，让人愿意每天打开。
+
+关键词：晴空蓝紫 · 白色悬浮卡片 · 大圆角 · 柔和彩色阴影 · 淡彩图标块 · 大标题大数字 · 插画与吉祥物 · 留白舒展。
+
+仍然要守住的（工作软件底线）：列表与表格信息密度适中、对齐整齐；状态/金额/截止日一眼可读；颜色有语义（状态、标签、逾期），装饰色不与语义色混淆；文字对比度达标。
+
+不要：满屏高饱和色块、每张卡片不同底色、霓虹/赛博风、玻璃拟态到看不清字、emoji 当图标、居中对齐的数据表。
+
+## 2. 色彩 Token（CSS 变量，`[data-theme="light"|"dark"]`）
+
+### 2.1 中性与表面
+
+| token | 浅色 | 深色 | 用途 |
+|---|---|---|---|
+| `--bg-app` | `#F5F6FB` | `#0E1022` | 应用底色（其上叠背景光斑） |
+| `--bg-sidebar` | `#FFFFFF` | `#151833` | 悬浮侧栏面板 |
+| `--bg-surface` | `#FFFFFF` | `#171A36` | 卡片、面板、弹窗 |
+| `--bg-subtle` | `#F3F4FA` | `#1D2142` | 输入框底、表头、次级区块 |
+| `--bg-hover` | `#EEF0FB` | `#232850` | 悬停 |
+| `--bg-active` | `#E7EAFF` | `#2A3062` | 选中 |
+| `--border` | `#E6E8F2` | `#262B52` | 默认边框 |
+| `--border-strong` | `#D5D9EA` | `#343A6A` | 输入框、强调分隔 |
+| `--text` | `#1E1B4B` | `#ECEEFF` | 主文字（深靛） |
+| `--text-2` | `#4A4E72` | `#B4B8DA` | 次要文字 |
+| `--text-3` | `#8A8FB0` | `#7D82AA` | 辅助/占位（仅用于非关键文字） |
+
+**背景光斑**：`--bg-app` 之上固定 3 个大尺寸模糊径向渐变（不随滚动）：左上 `#E3E6FF`、右上 `#DDF2FE`、右下极淡 `#FFEDE6`，透明度 50–70%；深色主题换成 `#2A2F7A`、`#0E3A5C`、`#3A2340`，透明度 25–35%。
+
+### 2.2 品牌主色（晴空渐变）
+
+| token | 浅色 | 深色 |
+|---|---|---|
+| `--primary` | `#5B5FEF` | `#8B8FFF` |
+| `--primary-hover` | `#4B4FE0` | `#A0A4FF` |
+| `--primary-soft` | `#EEF0FF` | `rgb(139 143 255 / .16)` |
+| `--primary-fg` | `#FFFFFF` | `#0E1022` |
+| `--primary-gradient` | `linear-gradient(135deg,#6366F1 0%,#5B8DEF 55%,#38BDF8 100%)` | `linear-gradient(135deg,#7C7FFF 0%,#6AA0FF 55%,#4CC9FF 100%)` |
+| `--primary-shadow` | `0 8px 20px -8px rgb(99 102 241 / .55)` | `0 8px 24px -8px rgb(76 201 255 / .35)` |
+| `--focus-ring` | `rgb(99 102 241 / .40)` | `rgb(139 143 255 / .55)` |
+
+主渐变用于：主按钮、选中导航左侧 3px 指示条、今日横幅主按钮、当月收入柱、应用标志、关键进度条。其余强调用 `--primary` 实色或 `--primary-soft` 底。
+
+### 2.3 淡彩图标块（统计卡片、快捷入口、文件类型、空状态点缀）
+
+48×48（小号 36×36），圆角 14（小号 10），淡底 + 实色线性图标：
+
+| 名称 | 浅色底 / 图标 | 深色底 / 图标 |
+|---|---|---|
+| violet | `#EEF0FF` / `#6366F1` | `rgb(99 102 241 / .18)` / `#A5A8FF` |
+| sky | `#E6F6FE` / `#0EA5E9` | `rgb(14 165 233 / .18)` / `#6CCBF5` |
+| mint | `#E7F8F1` / `#10B981` | `rgb(16 185 129 / .18)` / `#5FD9AE` |
+| peach | `#FFF1EA` / `#F97316` | `rgb(249 115 22 / .18)` / `#FFA66B` |
+| rose | `#FFEEF2` / `#F43F5E` | `rgb(244 63 94 / .18)` / `#FF8AA0` |
+| amber | `#FFF7E0` / `#F59E0B` | `rgb(245 158 11 / .18)` / `#FFC95C` |
+
+### 2.4 语义色
+
+danger `#EF4444`（逾期、删除、退款）· warning `#F59E0B`（即将到期）· success `#10B981`（已收清、已完成）· info `#3B82F6`。chip 形式：12% 淡底 + 实色文字（深色主题 20% 淡底 + 提亮文字），永远带文字。
+
+项目状态 pill（圆点 + 文字，淡底胶囊）：洽谈中 `#8B5CF6` · 进行中 `#3B82F6` · 待确认 `#F59E0B` · 已交付 `#14B8A6` · 已完成 `#10B981` · 已取消 `#94A3B8`。看板列头用同色圆点。
+
+标签调色板（11 色，名称不变）：`red #F43F5E` · `orange #F97316` · `amber #F59E0B` · `lime #84CC16` · `green #10B981` · `teal #14B8A6` · `cyan #06B6D4` · `blue #3B82F6` · `violet #8B5CF6` · `pink #EC4899` · `gray #94A3B8`。
+
+客户头像：圆形，姓名首字，按 `hash(id) % 6` 取 2.3 节的淡彩块配色（底 + 字色）。
+
+## 3. 字体与字号（整体比第一版放大一档）
+
+- 拉丁与数字：Inter Variable（本地打包）；金额/数字列 `tabular-nums`。中文回退 `"Microsoft YaHei UI", "PingFang SC", "Noto Sans SC", sans-serif`。
+- 字号阶梯（px/行高）：`12/18` 辅助 · `13/20` 次要 · **`14/22` 正文默认** · `15/24` 强调正文/输入 · `17/26` 卡片标题 · **`26/34` 页面标题** · **`32/40` 统计大数字** · **`40/50` 今日问候**（横幅标题，可两行）。
+- 字重：400 正文、500 按钮/标签/表头、600 标题与数字、700 仅用于今日问候与统计大数字。
+
+## 4. 尺寸、间距、圆角、阴影
+
+- 4px 网格；页面内边距 28；卡片内边距 20–24；卡片间距 16–20。
+- 控件高：小 32 · 默认 38 · 大 44。列表行 48（紧凑 40）。看板卡片宽 260–280。
+- 侧栏：宽 248，**悬浮面板**（距窗口边 12px，圆角 20，`--bg-sidebar`，`--shadow-md`）；折叠 72。
+- 项目详情面板 620（可拖 520–900）。客户列表 340。
+- 圆角：`--r-sm 8` chip/小控件 · `--r-md 12` 按钮/输入 · `--r-lg 16` 卡片 · `--r-xl 20` 侧栏/弹窗/面板 · `--r-2xl 24` 今日横幅。pill 全圆。
+- 阴影（带淡蓝紫色调）：
+  - `--shadow-sm: 0 1px 2px rgb(30 27 75 / .04), 0 4px 12px -6px rgb(79 70 229 / .10)` 卡片默认
+  - `--shadow-md: 0 2px 4px rgb(30 27 75 / .04), 0 12px 32px -12px rgb(79 70 229 / .18)` 悬停卡片、侧栏、下拉
+  - `--shadow-lg: 0 24px 60px -16px rgb(30 27 75 / .28)` 弹窗、侧滑面板、拖拽中的卡片
+  - 深色主题：阴影加深为纯黑系，并给卡片 1px `--border` 描边。
+- 卡片：白底 + `--shadow-sm` + 1px 极淡边框 `--border`（浅色可 60% 透明）；悬停上浮 1px + `--shadow-md`。
+
+## 5. 招牌元素
+
+### 5.1 今日横幅（Hero）
+- 主区顶部整宽，高 280（窗口高 < 820 时 220），圆角 24，溢出裁切。
+- 插画按时段切换（本地时间）：05–11 点 `hero-morning`、11–18 点 `hero-afternoon`、18–05 点 `hero-night`；深色主题始终用 `hero-night`。图片 `object-fit: cover; object-position: right center`。
+- 左侧 45% 叠一层从 `--bg-surface`（90%→0%）到透明的横向渐变，保证文字可读；文字：问候大标题（早上好/下午好/晚上好 + 换行 + 每日轮换的一句话，如「今天也闪闪发光」「慢慢来，比较快」「收个尾就去休息吧」）、一句数据总结、渐变主按钮「新建项目」+ 白色次按钮「查看全部项目 →」。
+- 首次使用（无项目）时文案改为欢迎与引导。
+
+### 5.2 统计卡片
+4 张等宽：左淡彩图标块，右上标题（13/20 `--text-2`），下方大数字（32/40, 700）；可带环比小 chip（success/danger 淡底）。整卡可点击跳转对应筛选。
+
+### 5.3 吉祥物「团子」
+一只圆滚滚的橘猫，出现在：今日横幅插画、所有空状态、首次启动页、文件库离线告警。性格：慵懒、可爱、偶尔认真。
+
+### 5.4 应用标志
+蓝紫渐变（`--primary-gradient`）圆角方形 + 白色文件夹轮廓 + 文件夹前片上的对勾（参考 `docs/spec/concepts/v2/A-today.png` 左上角）。SVG 精确绘制：`src-tauri/icons/app-icon.svg`（+ 16/32px 简化版），侧栏与首次启动页用同一 SVG 组件。
+
+## 6. 动效
+
+- 时长：`140ms` 悬停/按压 · `200ms` 弹出层 · `260ms` 侧滑面板/页面切换。缓动 `cubic-bezier(.2,.8,.2,1)`。
+- 卡片悬停上浮 1px；主按钮悬停亮度 +6% 且阴影加深；按压 scale .98。
+- 页面切换：内容淡入 + 上移 8px。横幅插画首次进入有 400ms 轻微放大（1.03→1）淡入。
+- 看板拖拽：拖起 scale 1.02 + 旋转 2° + `--shadow-lg`；目标列底色 `--primary-soft` + 虚线描边。
+- 数字（统计卡片）首次出现时 600ms 滚动计数。
+- 复制成功：图标切换为 ✓ 1.2s。
+- `prefers-reduced-motion` 时全部降为淡入淡出、取消计数动画。
+
+## 7. 组件规范（`src/components/ui/`）
+
+所有组件基于 Radix + Tailwind，只用 token 工具类，不写死颜色。
+
+- **Button**：`primary`（渐变底 + `--primary-shadow`）、`secondary`（白底 + 边框，悬停 `--bg-hover`）、`ghost`、`soft`（`--primary-soft` 底 + `--primary` 字）、`danger`；尺寸 sm/md/lg；`IconButton` 必须有 label（tooltip + aria-label）。
+- **IconTile**（新增）：淡彩图标块，`tone`= violet/sky/mint/peach/rose/amber，`size`= sm/md。
+- **StatCard**（新增）：图标块 + 标题 + 大数字 + 可选环比 chip，可点击。
+- **HeroBanner**（新增）：见 5.1。
+- **Input / Textarea / NumberInput / DateInput / InlineEdit / Select / Combobox / TagPicker**：输入框高 38、圆角 12、`--bg-subtle` 底，聚焦白底 + 主色描边 + focus ring。
+- **StatusPill / StatusSelect / TagPill / PaymentBadge / DueChip / Avatar / Money / ProgressBar**（进度条 6px 圆头，填充用主渐变；已收清用 success 色）。
+- **Card / Section**（标题 17/26 600 + 右侧「查看全部 →」链接）、**Table**（行 48，悬停 `--bg-hover`，选中行左侧 3px 主渐变条）、**Kanban**、**SidePanel**（圆角 20 悬浮于右侧，距边 12px）、**Dialog / ConfirmDialog**（圆角 20）、**DropdownMenu / ContextMenu / Tooltip / Tabs**（胶囊式分段 Tabs：`--bg-subtle` 槽 + 白色滑块）、**Toast**（白卡片 + 左侧彩色图标块，支持「撤销」）。
+- **EmptyState**：吉祥物插画（160–200px 高）+ 标题 + 描述 + 操作按钮。
+- **Skeleton**（带微光流动）、**CopyButton**、**FileTile / FileRow**（缩略图圆角 12；非图片用对应淡彩图标块 + 扩展名徽标）、**Kbd**。
+
+## 8. 插画与图标资源
+
+- 线性图标：`lucide-react`，描边 1.75，尺寸 18（默认）/ 16（紧凑）/ 20（导航与图标块内）。
+- 位图插画（AI 生成，日系动漫风，与 `A-today.png` 同一角色与画风）放在 `src/assets/illustrations/`（webp）：
+  - `hero-morning.webp` / `hero-afternoon.webp` / `hero-night.webp`：今日横幅，主体在右侧，左侧留出柔和空白。
+  - `welcome.webp`：首次启动页。
+  - 空状态（吉祥物团子，透明背景）：`empty-today.webp`（今天没有急事：团子在窗台晒太阳睡觉）、`empty-projects.webp`（还没有项目：团子推着空纸箱）、`empty-clients.webp`（还没有客户：团子举着欢迎小旗）、`empty-files.webp`（还没有文件：团子钻进空文件夹）、`empty-snippets.webp`（还没有话术：团子叼着对话气泡）、`empty-search.webp`（没有搜索结果：团子拿放大镜）、`library-offline.webp`（文件库离线：团子抱着断开的插头）。
+- 深色主题下空状态插画加一层柔和的圆形浅色光晕底，保证可读。
+- Mock 示例设计稿缩略图：`src/api/mock/assets/` 下 8 张 AI 生成的海报/包装/品牌设计样张（webp，每张 ≤ 150KB），风格参考 `A-projects.png` 卡片里的缩略图。
+
+## 9. 概念图
+
+- `docs/spec/concepts/v2/A-today.png`、`A-projects.png`：**当前视觉基准**。
+- `docs/spec/concepts/v2/B-*.png`、`docs/spec/concepts/*.png`（旧「暖纸·朱印」方向）：已废弃，仅存档。

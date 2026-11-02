@@ -1,0 +1,15 @@
+{
+  "status": "prepared",
+  "tool": "image_gen__imagegen",
+  "prompt": "Use case: logo-brand\nAsset type: Windows desktop application icon concept for 客户工作台.\nGenerate ONE square 1024×1024 PNG image with a genuinely transparent background around the icon. A front-facing squircle tile occupies about 88% of the canvas, centered with even margins. The squircle is vermilion red #C94A12–#E0601E. In its center are exactly three slightly offset, overlapping ivory project cards, like stacked project-management cards. The top card has one short vermilion vertical bar at its left and exactly two thin gray horizontal lines representing text. No readable lettering. Flat modern graphic, crisp edges, clean geometry, restrained softness only, balanced proportions, strong immediately recognizable silhouette readable at 16px and 32px.\nNo perspective, no isometric view, no 3D extrusion, no ground shadow, no device, no caption, no watermark, no surrounding border, no extra symbols. The outer area must be truly transparent, not a drawn checkerboard.",
+  "transparent_background": true,
+  "requested_size": "1024x1024 (prompt only; tool exposes no size argument)",
+  "requested_format": "PNG",
+  "requested_count": 1,
+  "model": null,
+  "quality": null,
+  "async_support": "Not exposed by the builtin tool; cannot verify",
+  "idempotency_key": "Not exposed by the builtin tool",
+  "server_task_id": null,
+  "destination": "docs/spec/concepts/icons/icon-3.png"
+}

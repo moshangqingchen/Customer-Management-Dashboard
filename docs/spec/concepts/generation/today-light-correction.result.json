@@ -1,0 +1,34 @@
+{
+  "status": "completed",
+  "tool": "image_gen.imagegen",
+  "sourcePath": "C:\\Users\\Administrator\\.codex\\generated_images\\01a19bec-2249-7d70-867a-1cff28b5ec82\\exec-58a3d4a7-f86d-4dc2-97ed-ea58397c9c0d.png",
+  "destination": "docs/spec/concepts/today-light.png",
+  "reference": "docs/spec/concepts/generation/today-light-v1.png",
+  "requestedSize": "1536x1024 via prompt",
+  "actualSize": [
+    1536,
+    1024
+  ],
+  "format": "PNG",
+  "count": 1,
+  "transparent_background": false,
+  "responseKeys": [
+    "image_url",
+    "output_hint"
+  ],
+  "model": null,
+  "quality": null,
+  "usage": null,
+  "cost": null,
+  "currency": null,
+  "costNote": "内置工具未返回模型、usage、价格或账单；费用及币种无法查询，不代表免费。",
+  "serverTaskId": null,
+  "statusQueryUrl": null,
+  "downloadUrl": null,
+  "asyncSupport": "工具未暴露可核实的异步接口",
+  "sha256": "C05CE269941F70A3626B5470BEE5AE0FFB7FDB1C00288A5BEB6105744DB6845A",
+  "visualReview": "已用view_image目检。侧栏星标无计数、逾期为3、待收款为5；关注3项、收入8640与6柱、待收5行及其他主要布局保持。原图直接复制，未在本地编辑。",
+  "deviations": [
+    "字体与控件比规格13px级别偏大，概念图不作像素级密度保证。"
+  ]
+}

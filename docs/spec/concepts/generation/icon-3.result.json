@@ -1,0 +1,27 @@
+﻿{
+    "status":  "completed",
+    "tool":  "image_gen__imagegen",
+    "source_path":  "C:\\Users\\Administrator\\.codex\\generated_images\\01a19bef-fd1e-7471-9982-d94568b260a3\\exec-69c3bd51-5e91-4639-b1e4-6c3236ea8760.png",
+    "destination":  "docs/spec/concepts/icons/icon-3.png",
+    "model":  null,
+    "quality":  null,
+    "usage":  null,
+    "cost":  null,
+    "currency":  null,
+    "cost_note":  "Tool returned no usage or billing data; amount and currency cannot be confirmed, not asserted free.",
+    "transparent_background_requested":  true,
+    "requested_size":  "1024x1024 via prompt",
+    "actual_size":  "1254x1254",
+    "count":  1,
+    "format":  "PNG",
+    "response_keys":  [
+                          "image_url",
+                          "output_hint"
+                      ],
+    "server_task_id":  null,
+    "status_query_url":  null,
+    "result_download_url":  null,
+    "async_support":  "Not exposed by builtin tool; cannot verify",
+    "validation":  "PNG readable, 32bpp ARGB, corner alpha 0. Visual review: exactly 3 ivory cards, top card contains red vertical bar and 2 gray lines; minor colored edge speckling in transparent margin; size differs from requested 1024x1024. No local resizing or image editing.",
+    "sha256":  "5758B5E709ECC2F1C9A24D2E9AE2D0A541C68A63E168928B80074351EA45191B"
+}

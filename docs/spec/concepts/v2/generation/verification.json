@@ -1,0 +1,11 @@
+{
+  "status": "passed",
+  "image_count": 4,
+  "expected_dimensions": "1536x1024",
+  "format": "PNG",
+  "png_command": "Add-Type -AssemblyName System.Drawing; $conceptFiles = @(Get-ChildItem -LiteralPath 'docs/spec/concepts/v2' -Filter '*.png' -File | Sort-Object Name); if ($conceptFiles.Count -ne 4) { throw 'Expected 4 final PNGs' }; foreach ($conceptFile in $conceptFiles) { $conceptImage = [System.Drawing.Image]::FromFile($conceptFile.FullName); try { if ($conceptImage.Width -ne 1536 -or $conceptImage.Height -ne 1024 -or $conceptImage.RawFormat.Guid -ne [System.Drawing.Imaging.ImageFormat]::Png.Guid) { throw ('Invalid image: ' + $conceptFile.Name) }; Write-Output ('{0}: {1}x{2} PNG' -f $conceptFile.Name,$conceptImage.Width,$conceptImage.Height) } finally { $conceptImage.Dispose() } }; Write-Output 'PASS: 4/4 final PNGs, 1536x1024'",
+  "png_exit_code": 0,
+  "png_stdout": "A-projects.png: 1536x1024 PNG\r\nA-today.png: 1536x1024 PNG\r\nB-projects.png: 1536x1024 PNG\r\nB-today.png: 1536x1024 PNG\r\nPASS: 4/4 final PNGs, 1536x1024\r\n",
+  "sha256_stdout": "A-today.png: SHA-256 matches original\nA-projects.png: SHA-256 matches original\nB-today.png: SHA-256 matches original\nB-projects.png: SHA-256 matches original\nPASS: 4/4 files identical to generated originals",
+  "checked_at": "2026-11-02T12:06:59.642Z"
+}

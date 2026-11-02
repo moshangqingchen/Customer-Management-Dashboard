@@ -1,0 +1,17 @@
+{
+  "asset": "A-projects",
+  "status": "generated-needs-correction",
+  "source_path": "C:\\Users\\Administrator\\.codex\\generated_images\\01a19c0e-3f54-7be0-90f7-f94c3e433447\\exec-a677415b-f9fd-491d-a971-24939e3abb71.png",
+  "output_path": "D:\\project development\\创业客户管理工作台\\docs\\spec\\concepts\\v2\\generation\\A-projects-initial.png",
+  "width": 1536,
+  "height": 1024,
+  "format": "PNG",
+  "sha256": "8b9d2c1dab5afc095c7e8520159fd53de9c0ea6b0b0fc9ecbaa5123a1a4f51f2",
+  "quality": "not exposed by tool",
+  "usage": null,
+  "cost": null,
+  "currency": null,
+  "server_task_id": null,
+  "correction_reason": "Sidebar hallucinated cloud sync copy; active column extra-count footer inconsistent with three visible projects",
+  "completed_at": "2026-11-02T11:57:56.297Z"
+}

@@ -1,0 +1,36 @@
+{
+  "status": "completed",
+  "tool": "image_gen.imagegen",
+  "sourcePath": "C:\\Users\\Administrator\\.codex\\generated_images\\01a19bec-2249-7d70-867a-1cff28b5ec82\\exec-197ae07e-96e8-4724-a082-e5610a271cb4.png",
+  "destination": "docs/spec/concepts/projects-dark.png",
+  "reference": "docs/spec/concepts/projects-light.png",
+  "requestedSize": "1536x1024 via prompt",
+  "actualSize": [
+    1536,
+    1024
+  ],
+  "format": "PNG",
+  "pixelFormat": "24bpp RGB",
+  "count": 1,
+  "transparent_background": false,
+  "responseKeys": [
+    "image_url",
+    "output_hint"
+  ],
+  "model": null,
+  "quality": null,
+  "usage": null,
+  "cost": null,
+  "currency": null,
+  "costNote": "内置工具未返回模型、usage、价格或账单；费用及币种无法查询，不代表免费。",
+  "serverTaskId": null,
+  "statusQueryUrl": null,
+  "downloadUrl": null,
+  "asyncSupport": "工具未暴露可核实的异步接口",
+  "sha256": "628498BA809CED5A20BF7FB5122FFC1E34FC8AA76377E9A45C75BD1935561C08",
+  "visualReview": "以projects-light原图直接编辑为暖黑深色主题，三栏、9行项目、钱卡、6文件卡与海报内容保留，主要中文文字和金额可读。未作本地编辑。",
+  "deviations": [
+    "沿用浅色概念图的列表密度和日期样例偏差，详见交付报告；不是业务数据验收截图。",
+    "生成图片中的颜色与组件像素尺寸为近似表现，最终以DESIGN.md tokens及实际实现为准。"
+  ]
+}

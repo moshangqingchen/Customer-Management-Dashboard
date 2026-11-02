@@ -1,0 +1,19 @@
+{
+  "asset": "A-projects",
+  "status": "completed",
+  "source_path": "C:\\Users\\Administrator\\.codex\\generated_images\\01a19c0e-3f54-7be0-90f7-f94c3e433447\\exec-05b7a5ca-c6d7-41b7-a870-e706083aa9e9.png",
+  "output_path": "D:\\project development\\创业客户管理工作台\\docs\\spec\\concepts\\v2\\A-projects.png",
+  "width": 1536,
+  "height": 1024,
+  "format": "PNG",
+  "bytes": 1844538,
+  "sha256": "612c7d19ed92df8f45cb9b81a31aea371af45586899cca6a978fe7d809d7252a",
+  "copied_without_modification": true,
+  "quality": "not exposed by tool",
+  "usage": null,
+  "cost": null,
+  "currency": null,
+  "server_task_id": null,
+  "completed_at": "2026-11-02T12:02:25.407Z",
+  "source_request": "A-projects-correction.request.json"
+}

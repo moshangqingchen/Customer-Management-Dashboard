@@ -1,5 +1,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    startup_customer_workbench_lib::run();
+    if let Err(error) = client_desk_lib::run() {
+        eprintln!("客户工作台启动失败（{error}）");
+        std::process::exit(1);
+    }
 }

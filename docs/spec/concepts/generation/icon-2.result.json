@@ -1,0 +1,35 @@
+{
+  "asset": "icon-2",
+  "status": "completed",
+  "savedPath": "docs/spec/concepts/icons/icon-2.png",
+  "sourcePath": "C:\\Users\\Administrator\\.codex\\generated_images\\01a19bef-e140-7ff0-82ee-20a2e80f5c7b\\exec-a2072c76-206d-49c8-a07c-8495b4f16896.png",
+  "actualWidth": 1254,
+  "actualHeight": 1254,
+  "format": "PNG",
+  "pixelFormat": "Format32bppArgb",
+  "transparency": {
+    "cornerAlpha": 0,
+    "centerAlpha": 253
+  },
+  "sha256": "2F2AC651639092EA1E619AA3CE2EBA4BC6C31B0FE6A0D4451186C8E77EDD9D5C",
+  "returnedKeys": [
+    "image_url",
+    "output_hint"
+  ],
+  "model": "无法确认；内置工具未返回",
+  "quality": "无法确认；内置工具未返回",
+  "usage": null,
+  "cost": "无法查询，不能认定免费或实际扣款",
+  "currency": "无法确认",
+  "count": 1,
+  "taskId": null,
+  "statusQueryUrl": null,
+  "downloadUrl": null,
+  "asyncSupport": "工具未暴露异步任务接口，无法核实；仅一次提交",
+  "deviations": [
+    "提示词请求1024×1024，原图实际1254×1254，按要求未在本地缩放或编辑。",
+    "底板占宽高约82%，略低于请求约88%；不影响概念辨认。"
+  ],
+  "visualReview": "正面朱红圆角方形、米白文件夹、朱红对勾均清晰，无文字无水印，透明背景。",
+  "finishedAt": "2026-11-02T11:07:23.137Z"
+}

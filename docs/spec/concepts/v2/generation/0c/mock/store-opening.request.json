@@ -1,0 +1,16 @@
+{
+  "asset": "store-opening",
+  "requested_size": [
+    1024,
+    1024
+  ],
+  "tool": "image_gen__imagegen",
+  "args": {
+    "prompt": "Use case: ads-marketing\nAsset type: finished Chinese coffee shop opening poster, square 1024×1024.\nReference image 1 is ONLY reference for the coffee-store opening thumbnail on the project board. Generate full standalone commercial poster, no application UI.\nPrimary request: a refined cafe grand opening poster, warm espresso-brown tones and cream highlights. A photorealistic white ceramic latte cup and saucer in foreground right, beautiful heart latte art, scattered coffee beans on warm wood, softly blurred cozy cafe background, faint green leaves at edge. Inviting premium local cafe advertising.\nText (verbatim, simplified Chinese): very large main headline「开业」, secondary「新品咖啡」, small「全场 8 折」. Elegant cream typography clearly readable on dark brown upper-left area, generous spacing, strong visual hierarchy. All text and final layout generated in image. No watermark, no QR code, no app UI, no extra text.",
+    "referenced_image_paths": [
+      "D:/project development/创业客户管理工作台/docs/spec/concepts/v2/A-projects.png"
+    ],
+    "transparent_background": false
+  },
+  "status": "prepared"
+}

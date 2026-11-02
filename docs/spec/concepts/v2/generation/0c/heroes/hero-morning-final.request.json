@@ -1,0 +1,15 @@
+{
+  "tool": "image_gen.imagegen",
+  "requestedSize": [
+    1536,
+    1024
+  ],
+  "transparent_background": false,
+  "referenced_image_paths": [
+    "D:/project development/创业客户管理工作台/docs/spec/concepts/v2/A-today.png",
+    "D:/project development/创业客户管理工作台/docs/spec/concepts/v2/generation/0c/heroes/hero-afternoon.original.png"
+  ],
+  "prompt": "Create ONE polished Japanese anime studio illustration, requested resolution1536x1024. Reference image1 A-today defines exact character identity and paint style; reference image2 afternoon defines the REQUIRED SMALL SUBJECT SCALE and pulled-back wide composition. Do NOT reproduce any UI.\nKeep exactly the same young adult female designer: long soft chestnut hair half tied, white large headphones, pale lavender cardigan over white shirt, warm brown eyes. Same chubby orange striped tabby with white muzzle/chest/paws.\nCreate early MORNING variation of reference2: gold and pink dawn through windows, tidy desk with closed sketchbook and swatch fan. The woman is STANDING upright behind a waist-height desk, NO CHAIR. She holds steaming coffee in her left hand and checks smartphone in right, pleasant morning expression. Her head and shoulders, both hands and cup/phone fully visible above waist-level desk; lower body hidden behind desk. The same orange cat stretches on the desktop beside her, fully visible.\nMOST IMPORTANT: Use a very pulled-back WIDE establishing shot. Woman visible above desk only350pixels tall. Top of her hair at y=330, desktop at y=690, cat entire body in y=590..740. Her entire silhouette above desk and cat/props should all fit y=300..800. Main scene SMALL, same scale as reference2 or smaller. Do not enlarge the woman to fill canvas. The top250pixels and bottom220pixels contain only plain expendable background and desk front. ALL action in RIGHT55percent. LEFT45percent is clean empty pale gold/lavender wall gradient for text overlay, no props. Natural anatomy, no text, no UI, no watermark.",
+  "status": "prepared",
+  "reason": "站姿稿主体跨度过高，以已验收午后图比例定向重构图。"
+}

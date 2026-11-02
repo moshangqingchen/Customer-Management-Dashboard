@@ -1,0 +1,16 @@
+{
+  "asset": "product-detail-sofa",
+  "requested_size": [
+    1024,
+    1024
+  ],
+  "tool": "image_gen__imagegen",
+  "args": {
+    "prompt": "Use case: ads-marketing\nAsset type: finished Chinese home furnishings ecommerce detail-page hero panel, square 1024×1024.\nReference image 1 is ONLY reference for the light sofa interior thumbnail on the project board; create full standalone product detail design, no application UI.\nPrimary request: premium light-colored sofa product detail hero. A beautiful ivory modular sofa with soft cushions, staged in a sunlit minimal warm-white living room, beige rug, natural oak side table, one leafy plant, gauzy curtains, realistic fabric texture. Sophisticated photorealistic interior photography, soft architectural shadows, quietly luxurious and breathable. Product sofa occupies middle and lower two-thirds; tasteful clean headline area at top left.\nText (verbatim, simplified Chinese): headline「森临家居」, subtitle「舒适生活 由此开始」. Keep words correct and readable, restrained charcoal-gray typography, ample whitespace. All lettering and final layout generated in image. No watermark, no QR code, no app UI, no product catalog grid.",
+    "referenced_image_paths": [
+      "D:/project development/创业客户管理工作台/docs/spec/concepts/v2/A-projects.png"
+    ],
+    "transparent_background": false
+  },
+  "status": "prepared"
+}

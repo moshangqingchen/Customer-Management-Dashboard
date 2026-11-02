@@ -1,0 +1,19 @@
+{
+  "id": "projects-dark",
+  "destination": "docs/spec/concepts/projects-dark.png",
+  "tool": "image_gen.imagegen",
+  "requestedSize": "1536x1024 (prompt only; no size parameter exposed)",
+  "parameters": {
+    "prompt": "Use case: style-transfer\nAsset type: 客户工作台 v2，项目列表加项目详情面板，同一画面的深色主题高保真产品截图。\nInput images: Image 1 is the edit target, the completed projects-light.png interface. Use exactly this UI as the source.\nPrimary request: 只把这张浅色桌面界面改为匹配的深色主题；保持同一1536×1024横版构图与PNG格式。全部版面、三栏尺寸、九行项目顺序、标题、中文文字、金额、日期、文件名、图标与6张文件卡片的位置保持原样。保留三张海报缩略图本身的颜色内容。不添加或删除任何UI。画面仍然是平视真实桌面应用截图，中文清晰，13px级紧凑密度。\nColor transformation:\n主区背景 #FAFAF9 → #141312。\n侧栏 #F3F2EF → #1A1918。\n白色面板、卡片、控件表面 → #1F1E1C。\n表头/输入框次层底色 #262523，悬停与选中行 #2B2A27 / #33312E。\n细边框 → #2F2D2A，强边框 #3D3A36。\n主文字 → #F2F1EF，次文字 → #B5B1AB，辅助文字 → #7F7A74，清晰可读，不要浅灰字在浅底。\n品牌强调色 #C94A12 → #FF8048，仅用于原图中同样的主按钮、小朱印、选中项目导航、链接与选中行2px竖线。主按钮文字用深色 #1F0E05。\n状态pill保留语义：进行中蓝、待确认琥珀、洽谈中紫灰、已交付青、已完成绿；改为20%暗淡底与提亮文字，逾期文字仍红色，收款正数仍绿色。\n钱卡片背景为#1F1E1C，保持“报价 ¥1,280”“成本 ¥200”“预计利润 ¥1,080”“已收 ¥800”“待收 ¥480”及62.5%细进度条、两笔收款、记一笔按钮。文件区分组“过程稿”“交付成品”、3海报+PSD+AI+PDF全部保留。\nConstraints: 这是指定源图的主题编辑，必须保存所有几何布局、结构与数据；只更换UI表面和文字颜色。用轻微深色阴影与1px边界分层，不要装饰渐变、玻璃拟态、霓虹色、设备外壳、透视、手、说明性标注或水印。所有文字、版面和最终画面都由生图工具直接生成。",
+    "transparent_background": false,
+    "referenced_image_paths": [
+      "D:\\project development\\创业客户管理工作台\\docs\\spec\\concepts\\projects-light.png"
+    ]
+  },
+  "model": null,
+  "quality": null,
+  "asyncSupport": "not exposed or verified",
+  "idempotencyKey": "not supported by tool schema",
+  "state": "prepared",
+  "preparedAt": "2026-11-02T11:31:26.806Z"
+}

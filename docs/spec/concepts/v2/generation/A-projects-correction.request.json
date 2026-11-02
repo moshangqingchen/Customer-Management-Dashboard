@@ -1,0 +1,21 @@
+{
+  "local_request_id": "0b-A-projects-correction-1793620676522",
+  "asset": "A-projects",
+  "operation": "targeted-correction",
+  "status": "completed",
+  "tool": "image_gen.imagegen",
+  "requested_size_in_prompt": "1536x1024",
+  "requested_format_in_prompt": "PNG",
+  "transparent_background": false,
+  "quantity": 1,
+  "quality_parameter": "not exposed by tool",
+  "idempotency_parameter": "not exposed by tool",
+  "async_api": "Tool exposes no async submit/status/result interface; async support cannot be confirmed",
+  "prompt": "Use case: ui-mockup / precise-object-edit / text-localization\nEdit the supplied A-projects-initial.png into ONE final 1536x1024 PNG. This is the same premium Chinese local Windows app 客户工作台. Preserve the entire image exactly as much as possible: all five kanban columns, palette, typography, positions, titles, amounts, counts, illustrations, filters, project selection, the slightly rotated dragged card and its shadow.\n\nMake ONLY these small corrections:\n1. In the bottom-left green sidebar status card retain the heading 文件库已连接. Replace the small incorrect cloud-sync description with two clear Simplified Chinese lines: 本地文件库可用 and 打开文件库. Replace the cloud-outline icon in this same status card with a simple folder outline icon. This product stores files locally and offers no cloud sync, so there must be no 云端 or 同步 wording anywhere. Keep the green status check, pale green card, its size and placement.\n2. At the very bottom of the 进行中 column, replace the inaccurate footer 查看更多 1 个项目 with 共 3 个项目. There are already three project cards in this column and its header correctly says 3. Keep every other column's existing footer unchanged.\n\nDo not redesign, restyle or reflow anything. Do not change the four sidebar tag names, five column headings, quote values or payment progress. Do not introduce a new header, banner or panel. All text stays sharp and accurate Simplified Chinese. No external frame, watermark or added annotations. Produce the full final app screenshot through image editing, not a separate text patch.\n\r\n",
+  "referenced_image_paths": [
+    "D:/project development/创业客户管理工作台/docs/spec/concepts/v2/generation/A-projects-initial.png"
+  ],
+  "output_path": "docs/spec/concepts/v2/A-projects.png",
+  "submitted_at": "2026-11-02T11:57:56.522Z",
+  "completed_at": "2026-11-02T12:02:25.407Z"
+}

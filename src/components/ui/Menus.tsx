@@ -1,0 +1,10 @@
+import * as Dropdown from '@radix-ui/react-dropdown-menu';
+import * as Context from '@radix-ui/react-context-menu';
+import type { ReactNode } from 'react';
+import { cn } from '../../lib/cn';
+
+export interface MenuItem { label: string; onSelect: () => void; icon?: ReactNode; danger?: boolean; disabled?: boolean; shortcut?: string; separator?: boolean }
+const itemClass = 'flex min-h-9 cursor-pointer items-center gap-2 rounded-sm px-3 text-base outline-none data-[highlighted]:bg-hover data-[disabled]:pointer-events-none data-[disabled]:opacity-40';
+function ItemContent({ item }: { item: MenuItem }) { return <>{item.icon}<span className="flex-1">{item.label}</span>{item.shortcut && <span className="pl-4 text-micro text-fg-2">{item.shortcut}</span>}</>; }
+export function DropdownMenu({ trigger, children, items, label = '更多操作' }: { trigger?: ReactNode; children?: ReactNode; items: MenuItem[]; label?: string }) { return <Dropdown.Root><Dropdown.Trigger asChild aria-label={label}>{trigger ?? children}</Dropdown.Trigger><Dropdown.Portal><Dropdown.Content align="end" sideOffset={6} className="z-[90] min-w-44 rounded-lg border border-line bg-surface p-1 shadow-md animate-pop">{items.map((item, index) => <div key={index}>{item.separator && <Dropdown.Separator className="my-1 h-px bg-line" />}<Dropdown.Item disabled={item.disabled} onSelect={item.onSelect} className={cn(itemClass, item.danger && 'text-danger-fg')}><ItemContent item={item} /></Dropdown.Item></div>)}</Dropdown.Content></Dropdown.Portal></Dropdown.Root>; }
+export function ContextMenu({ children, items }: { children: ReactNode; items: MenuItem[] }) { return <Context.Root><Context.Trigger asChild>{children}</Context.Trigger><Context.Portal><Context.Content className="z-[90] min-w-44 rounded-lg border border-line bg-surface p-1 shadow-md animate-pop">{items.map((item, index) => <div key={index}>{item.separator && <Context.Separator className="my-1 h-px bg-line" />}<Context.Item disabled={item.disabled} onSelect={item.onSelect} className={cn(itemClass, item.danger && 'text-danger-fg')}><ItemContent item={item} /></Context.Item></div>)}</Context.Content></Context.Portal></Context.Root>; }

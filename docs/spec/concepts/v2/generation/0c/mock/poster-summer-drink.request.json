@@ -1,0 +1,16 @@
+{
+  "asset": "poster-summer-drink",
+  "requested_size": [
+    1024,
+    1024
+  ],
+  "tool": "image_gen__imagegen",
+  "args": {
+    "prompt": "Use case: ads-marketing\nAsset type: finished Chinese commercial poster, square 1024×1024.\nReference image 1 is ONLY a visual reference for the polished lemon drink thumbnail on the project board; create the full standalone poster, no application UI.\nPrimary request: a refined summer new-product lemon drink advertisement. A tall clear glass of iced sparkling lemon drink with vivid lemon slices and condensation, fresh leaves, a few sliced lemons in foreground; airy pale mint and sky-blue backdrop, sunshine, premium food photography with crisp editorial typography.\nText (verbatim, simplified Chinese): large headline「夏季新品」, smaller「清爽柠檬饮」「限时上市」. Main headline occupies upper left and remains legible at thumbnail size; the glass on right. Attractive professional commercial hierarchy, careful spacing, natural lighting, clean bright high-end finish. All lettering and layout generated in the image. No watermark, no QR code, no browser, no frame, no UI.",
+    "referenced_image_paths": [
+      "D:/project development/创业客户管理工作台/docs/spec/concepts/v2/A-projects.png"
+    ],
+    "transparent_background": false
+  },
+  "status": "prepared"
+}

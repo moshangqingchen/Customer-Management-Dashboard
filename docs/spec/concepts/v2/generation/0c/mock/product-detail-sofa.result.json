@@ -1,0 +1,8 @@
+{
+  "status": "completed",
+  "output_hint": "Generated images are saved to C:\\Users\\Administrator\\.codex\\generated_images\\01a19c29-a997-7ce0-b54f-74c565710ae7 as C:\\Users\\Administrator\\.codex\\generated_images\\01a19c29-a997-7ce0-b54f-74c565710ae7\\exec-0acb7158-4bac-4fa0-adf2-f0d91f046812.png by default.\nIf you need to use a generated image at another path, copy it and leave the original in place unless the user explicitly asks you to delete it.\nThe generated image is already displayed to the user. There is no need to render it in the final response as a Markdown image or file link.",
+  "actual_model": "tool did not expose",
+  "usage": null,
+  "cost": null,
+  "original": "docs/spec/concepts/v2/generation/0c/mock/product-detail-sofa.png"
+}

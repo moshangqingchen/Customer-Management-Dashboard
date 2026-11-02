@@ -1,0 +1,29 @@
+{
+  "exitCode": 0,
+  "summary": "PASS 19/19 WEBP: names, decoding, dimensions, byte limits, original/request/result archives, prompt equality and SHA256; 7/7 RGBA and transparent borders.",
+  "output": [
+    "PASS src/assets/illustrations/hero-morning.webp | 1536x600 | 67672 bytes",
+    "PASS src/assets/illustrations/hero-afternoon.webp | 1536x600 | 85096 bytes",
+    "PASS src/assets/illustrations/hero-night.webp | 1536x600 | 88048 bytes",
+    "PASS src/assets/illustrations/welcome.webp | 800x800 | 68488 bytes",
+    "PASS src/assets/illustrations/empty-today.webp | 480x480 | 30138 bytes",
+    "PASS src/assets/illustrations/empty-projects.webp | 480x480 | 24918 bytes",
+    "PASS src/assets/illustrations/empty-clients.webp | 480x480 | 31550 bytes",
+    "PASS src/assets/illustrations/empty-files.webp | 480x480 | 32022 bytes",
+    "PASS src/assets/illustrations/empty-snippets.webp | 480x480 | 29050 bytes",
+    "PASS src/assets/illustrations/empty-search.webp | 480x480 | 35108 bytes",
+    "PASS src/assets/illustrations/library-offline.webp | 480x480 | 39148 bytes",
+    "PASS src/api/mock/assets/poster-summer-drink.webp | 800x800 | 91192 bytes",
+    "PASS src/api/mock/assets/brand-logo-upgrade.webp | 800x800 | 23392 bytes",
+    "PASS src/api/mock/assets/tea-gift-box.webp | 800x800 | 52950 bytes",
+    "PASS src/api/mock/assets/double11-flowers.webp | 800x800 | 55390 bytes",
+    "PASS src/api/mock/assets/cafe-menu.webp | 800x800 | 92888 bytes",
+    "PASS src/api/mock/assets/store-opening.webp | 800x800 | 60636 bytes",
+    "PASS src/api/mock/assets/member-card.webp | 800x800 | 38080 bytes",
+    "PASS src/api/mock/assets/product-detail-sofa.webp | 800x800 | 103568 bytes",
+    "PASS 19/19 WEBP: names, decoding, dimensions, byte limits, original/request/result archives, prompt equality and SHA256; 7/7 RGBA and transparent borders."
+  ],
+  "count": 19,
+  "transparentCount": 7,
+  "totalFinalBytes": 1049334
+}

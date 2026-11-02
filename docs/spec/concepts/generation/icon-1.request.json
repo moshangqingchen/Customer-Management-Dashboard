@@ -1,0 +1,15 @@
+{
+  "tool": "image_gen.imagegen",
+  "status": "prepared",
+  "target": "docs/spec/concepts/icons/icon-1.png",
+  "requested_size": "1024x1024 (prompt only)",
+  "requested_format": "PNG (prompt only)",
+  "requested_count": 1,
+  "parameters": {
+    "prompt": "Use case: logo-brand\nAsset type: Windows 桌面应用「客户工作台」图标候选，单张原生 1024×1024 PNG，方形画布。\nPrimary request: 方案一「朱印」。正面平视的一枚印章印面，朱红圆角方形 squircle 主体居中，占画布宽高约88%，圆角约22%。朱红颜色 #C94A12—#E0601E，暖白色阴刻的几何化抽象「客」字结构，方正、粗壮、清晰，像印章篆刻。抽象汉字结构即可，不强求可读汉字。\nStyle/medium: 高级、克制、现代、扁平的应用图标，几何轮廓，白色负形与朱红实体对比鲜明。整体干净，仅印面边缘极轻微印泥颗粒质感，不要做旧破损。\nComposition/framing: 严格正视、无任何透视；主体约88%占比，均匀留边；粗壮的大形使16px和32px缩小后仍可辨认。周围真正透明背景，保留alpha。\nConstraints: 仅生成一个完整图标；不含任何说明文字、标题、尺寸标记或水印；无手、无物理印章手柄、无立体倾斜、无地面、无落地投影。不要营销包装图或多方案拼图。输出PNG。",
+    "transparent_background": true
+  },
+  "async_support": "Tool schema exposes no async/task-id/idempotency fields; cannot verify provider-level support",
+  "model": "not specified; actual model unknown",
+  "quality": "not exposed"
+}

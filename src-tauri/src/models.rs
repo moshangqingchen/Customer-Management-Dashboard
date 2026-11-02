@@ -1,403 +1,370 @@
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
+use serde_json::{Map, Value};
+
+macro_rules! string_enum {
+    ($name:ident { $($variant:ident => $value:literal),+ $(,)? }) => {
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+        pub enum $name { $(#[serde(rename = $value)] $variant),+ }
+        impl $name {
+            pub fn as_str(self) -> &'static str { match self { $(Self::$variant => $value),+ } }
+        }
+        impl rusqlite::types::FromSql for $name {
+            fn column_result(value: rusqlite::types::ValueRef<'_>) -> rusqlite::types::FromSqlResult<Self> {
+                match value.as_str()? {
+                    $($value => Ok(Self::$variant),)+
+                    _ => Err(rusqlite::types::FromSqlError::InvalidType),
+                }
+            }
+        }
+    };
+}
+
+string_enum!(ProjectStatus { Lead => "lead", Active => "active", Review => "review", Delivered => "delivered", Done => "done", Cancelled => "cancelled" });
+string_enum!(PaymentKind { Income => "income", Refund => "refund" });
+string_enum!(TagColor { Red => "red", Orange => "orange", Amber => "amber", Lime => "lime", Green => "green", Teal => "teal", Cyan => "cyan", Blue => "blue", Violet => "violet", Pink => "pink", Gray => "gray" });
+string_enum!(FileKind { Image => "image", Design => "design", Pdf => "pdf", Doc => "doc", Archive => "archive", Video => "video", Other => "other" });
+string_enum!(ActivityKind { Note => "note", Status => "status", Payment => "payment", File => "file", Created => "created" });
+string_enum!(Theme { Light => "light", Dark => "dark", System => "system" });
+string_enum!(LibraryState { Ready => "ready", NotConfigured => "notConfigured", Missing => "missing", ReadOnly => "readOnly" });
+string_enum!(BackupKind { Auto => "auto", Manual => "manual", BeforeRestore => "beforeRestore" });
+string_enum!(TrashType { Client => "client", Project => "project" });
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct PlatformIdentityInput {
+pub struct Tag {
+    pub id: String,
+    pub name: String,
+    pub color: TagColor,
+    pub sort: i64,
+    pub client_count: i64,
+    pub project_count: i64,
+}
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct TagPatch {
+    pub name: Option<String>,
+    pub color: Option<TagColor>,
+    pub sort: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClientAccount {
     pub platform: String,
     pub handle: String,
-    pub account: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct AddressInput {
-    pub label: String,
-    pub recipient: String,
+pub struct Client {
+    pub id: String,
+    pub name: String,
+    pub company: String,
     pub phone: String,
+    pub wechat: String,
+    pub email: String,
     pub address: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct NewCustomer {
-    pub name: String,
-    pub phone: String,
-    pub wechat: String,
-    pub vip_level: i64,
+    pub accounts: Vec<ClientAccount>,
+    pub rating: i64,
+    pub pinned: bool,
     pub notes: String,
-    pub tags: Vec<String>,
-    pub platform_identities: Vec<PlatformIdentityInput>,
-    pub addresses: Vec<AddressInput>,
-    pub qr_code_path: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Customer {
-    pub id: String,
-    pub name: String,
-    pub phone: String,
-    pub wechat: String,
-    pub vip_level: i64,
-    pub notes: String,
-    pub tags: Vec<String>,
-    pub platform_identities: Vec<PlatformIdentityInput>,
-    pub addresses: Vec<AddressInput>,
-    pub qr_code_path: Option<String>,
-    pub order_count: i64,
-    pub total_spent_cents: i64,
+    pub folder: Option<String>,
+    pub tag_ids: Vec<String>,
     pub created_at: String,
     pub updated_at: String,
+    pub project_count: i64,
+    pub open_project_count: i64,
+    pub billed_cents: i64,
+    pub received_cents: i64,
+    pub outstanding_cents: i64,
+    pub first_project_at: Option<String>,
+    pub last_activity_at: String,
 }
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct OrderItemInput {
-    pub item_type: String,
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ClientInput {
     pub name: String,
-    pub quantity: i64,
-    pub unit_price_cents: i64,
-    pub print_spec: Option<String>,
-    #[serde(default)]
-    pub source_quote_id: Option<String>,
-    #[serde(default)]
-    pub source_factory_id: Option<String>,
-    #[serde(default)]
-    pub source_factory_name: String,
-    #[serde(default)]
-    pub source_quote_summary: String,
-    #[serde(default)]
-    pub source_production_cost_cents: i64,
-    #[serde(default)]
-    pub source_shipping_cost_cents: i64,
+    pub company: Option<String>,
+    pub phone: Option<String>,
+    pub wechat: Option<String>,
+    pub email: Option<String>,
+    pub address: Option<String>,
+    pub accounts: Option<Vec<ClientAccount>>,
+    pub rating: Option<i64>,
+    pub pinned: Option<bool>,
+    pub notes: Option<String>,
+    pub tag_ids: Option<Vec<String>>,
+}
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ClientPatch {
+    pub name: Option<String>,
+    pub company: Option<String>,
+    pub phone: Option<String>,
+    pub wechat: Option<String>,
+    pub email: Option<String>,
+    pub address: Option<String>,
+    pub accounts: Option<Vec<ClientAccount>>,
+    pub rating: Option<i64>,
+    pub pinned: Option<bool>,
+    pub notes: Option<String>,
+    pub rename_folder: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct OrderItem {
+pub struct Project {
     pub id: String,
-    pub order_id: String,
-    pub item_type: String,
-    pub name: String,
-    pub quantity: i64,
-    pub unit_price_cents: i64,
-    pub print_spec: Option<String>,
-    pub source_quote_id: Option<String>,
-    pub source_factory_id: Option<String>,
-    pub source_factory_name: String,
-    pub source_quote_summary: String,
-    pub source_production_cost_cents: i64,
-    pub source_shipping_cost_cents: i64,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SourceFactoryInput {
-    pub name: String,
-    pub contact_name: String,
-    pub phone: String,
-    pub wechat: String,
-    #[serde(default)]
-    pub qq: String,
-    #[serde(default)]
-    pub order_url: String,
-    pub address: String,
-    pub tags: Vec<String>,
-    pub shipping_notes: String,
-    pub notes: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SourceFactory {
-    pub id: String,
-    pub name: String,
-    pub contact_name: String,
-    pub phone: String,
-    pub wechat: String,
-    #[serde(default)]
-    pub qq: String,
-    #[serde(default)]
-    pub order_url: String,
-    pub address: String,
-    pub tags: Vec<String>,
-    pub shipping_notes: String,
-    pub notes: String,
-    pub quote_count: i64,
+    pub client_id: String,
+    pub client_name: String,
+    pub title: String,
+    pub status: ProjectStatus,
+    pub pinned: bool,
+    pub brief: String,
+    pub source_platform: String,
+    pub source_order_no: String,
+    pub start_date: Option<String>,
+    pub due_date: Option<String>,
+    pub delivered_at: Option<String>,
+    pub completed_at: Option<String>,
+    pub price_cents: i64,
+    pub cost_cents: i64,
+    pub tag_ids: Vec<String>,
+    pub folder: Option<String>,
     pub created_at: String,
     pub updated_at: String,
+    pub received_cents: i64,
+    pub payment_count: i64,
+    pub file_count: i64,
+    pub cover_path: Option<String>,
+}
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ProjectInput {
+    pub client_id: String,
+    pub title: String,
+    pub status: Option<ProjectStatus>,
+    pub pinned: Option<bool>,
+    pub brief: Option<String>,
+    pub source_platform: Option<String>,
+    pub source_order_no: Option<String>,
+    pub start_date: Option<String>,
+    pub due_date: Option<String>,
+    pub price_cents: Option<i64>,
+    pub cost_cents: Option<i64>,
+    pub tag_ids: Option<Vec<String>>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SourceFactoryProjectInput {
-    pub factory_id: String,
-    pub category_name: String,
-    pub project_name: String,
+// Omitted dates leave the field unchanged, explicit null clears it.
+fn nullable_patch<'de, D, T>(deserializer: D) -> std::result::Result<Option<Option<T>>, D::Error>
+where
+    D: Deserializer<'de>,
+    T: Deserialize<'de>,
+{
+    Option::<T>::deserialize(deserializer).map(Some)
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SourceFactoryProject {
-    pub id: String,
-    pub factory_id: String,
-    pub category_name: String,
-    pub project_name: String,
-    pub created_at: String,
-    pub updated_at: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SourceQuoteInput {
-    pub factory_id: String,
-    pub item_type: String,
-    pub item_name: String,
-    pub quantity: i64,
-    pub size: String,
-    pub material: String,
-    pub paper_weight: String,
-    pub sides: String,
-    pub color: String,
-    pub finish: String,
-    pub production_cost_cents: i64,
-    pub shipping_cost_cents: i64,
-    pub lead_time: String,
-    pub notes: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SourceQuote {
-    pub id: String,
-    pub factory_id: String,
-    pub factory_name: String,
-    pub item_type: String,
-    pub item_name: String,
-    pub quantity: i64,
-    pub size: String,
-    pub material: String,
-    pub paper_weight: String,
-    pub sides: String,
-    pub color: String,
-    pub finish: String,
-    pub production_cost_cents: i64,
-    pub shipping_cost_cents: i64,
-    pub lead_time: String,
-    pub notes: String,
-    pub created_at: String,
-    pub updated_at: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct NewOrder {
-    pub customer_id: String,
-    pub platform: String,
-    pub platform_account: String,
-    pub external_order_no: String,
-    pub design_status: String,
-    pub fulfillment_status: String,
-    pub design_due_at: Option<String>,
-    pub delivery_due_at: Option<String>,
-    pub notes: String,
-    pub tags: Vec<String>,
-    pub items: Vec<OrderItemInput>,
-    pub shipment_company: String,
-    pub shipment_tracking_no: String,
-    pub shipping_address: Option<AddressInput>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PaymentInput {
-    pub amount_cents: i64,
-    pub paid_at: String,
-    pub method: String,
-    pub notes: String,
-    #[serde(default)]
-    pub allow_overpayment: bool,
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ProjectPatch {
+    pub client_id: Option<String>,
+    pub title: Option<String>,
+    pub pinned: Option<bool>,
+    pub brief: Option<String>,
+    pub source_platform: Option<String>,
+    pub source_order_no: Option<String>,
+    #[serde(default, deserialize_with = "nullable_patch")]
+    pub start_date: Option<Option<String>>,
+    #[serde(default, deserialize_with = "nullable_patch")]
+    pub due_date: Option<Option<String>>,
+    pub price_cents: Option<i64>,
+    pub cost_cents: Option<i64>,
+    pub rename_folder: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Payment {
     pub id: String,
-    pub order_id: String,
+    pub project_id: String,
+    pub kind: PaymentKind,
     pub amount_cents: i64,
     pub paid_at: String,
     pub method: String,
-    pub notes: String,
+    pub note: String,
+    pub created_at: String,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PaymentWithContext {
+    #[serde(flatten)]
+    pub payment: Payment,
+    pub project_title: String,
+    pub client_id: String,
+    pub client_name: String,
+}
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct PaymentInput {
+    pub project_id: String,
+    pub kind: Option<PaymentKind>,
+    pub amount_cents: i64,
+    pub paid_at: String,
+    pub method: Option<String>,
+    pub note: Option<String>,
+}
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct PaymentPatch {
+    pub kind: Option<PaymentKind>,
+    pub amount_cents: Option<i64>,
+    pub paid_at: Option<String>,
+    pub method: Option<String>,
+    pub note: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Order {
+pub struct Activity {
     pub id: String,
-    pub customer_id: String,
-    pub customer_name: String,
-    pub customer_phone: String,
-    pub customer_wechat: String,
-    pub customer_vip_level: i64,
-    pub platform: String,
-    pub platform_account: String,
-    pub external_order_no: String,
-    pub design_status: String,
-    pub fulfillment_status: String,
-    pub design_due_at: Option<String>,
-    pub delivery_due_at: Option<String>,
-    pub notes: String,
-    pub tags: Vec<String>,
-    pub items: Vec<OrderItem>,
-    pub payments: Vec<Payment>,
-    pub total_cents: i64,
-    pub received_cents: i64,
-    pub payment_status: String,
-    pub shipment_company: String,
-    pub shipment_tracking_no: String,
-    pub shipping_address: Option<AddressInput>,
-    pub folder_path: Option<String>,
-    pub folder_state: String,
+    pub client_id: String,
+    pub project_id: Option<String>,
+    pub project_title: Option<String>,
+    pub client_name: String,
+    pub kind: ActivityKind,
+    pub body: String,
+    pub meta: Map<String, Value>,
     pub created_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SnippetGroup {
+    pub id: String,
+    pub name: String,
+    pub sort: i64,
+}
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct SnippetGroupPatch {
+    pub name: Option<String>,
+    pub sort: Option<i64>,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Snippet {
+    pub id: String,
+    pub group_id: String,
+    pub title: String,
+    pub body: String,
+    pub sort: i64,
+    pub use_count: i64,
     pub updated_at: String,
 }
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct FileRecord {
-    pub id: String,
-    pub order_id: Option<String>,
-    pub customer_id: String,
-    pub category: String,
-    pub name: String,
-    pub relative_path: String,
-    pub size_bytes: i64,
-    pub created_at: String,
-    pub state: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SearchHit {
-    pub entity_type: String,
-    pub entity_id: String,
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct SnippetInput {
+    pub group_id: String,
     pub title: String,
-    pub subtitle: String,
+    pub body: String,
+}
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct SnippetPatch {
+    pub group_id: Option<String>,
+    pub title: Option<String>,
+    pub body: Option<String>,
+    pub sort: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct DashboardSummary {
-    pub pending_design: i64,
-    pub due_soon: i64,
-    pub overdue: i64,
-    pub pending_shipment: i64,
-    pub unpaid_cents: i64,
-    pub month_revenue_cents: i64,
-    pub todo_orders: Vec<Order>,
-    pub recent_orders: Vec<Order>,
-    pub recent_files: Vec<FileRecord>,
+pub struct FileEntry {
+    pub path: String,
+    pub rel_path: String,
+    pub name: String,
+    pub ext: String,
+    pub kind: FileKind,
+    pub size_bytes: u64,
+    pub modified_at: String,
+    pub folder_group: String,
+    pub client_id: Option<String>,
+    pub project_id: Option<String>,
+}
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FileListResult {
+    pub files: Vec<FileEntry>,
+    pub folder: Option<String>,
+    pub folder_missing: bool,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged, deny_unknown_fields)]
+pub enum FileTarget {
+    Project {
+        #[serde(rename = "projectId")]
+        project_id: String,
+    },
+    Client {
+        #[serde(rename = "clientId")]
+        client_id: String,
+    },
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct AppSettings {
-    pub library_root: Option<String>,
-    pub backup_dir: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct StorageHealth {
-    pub status: String,
-    pub path: Option<String>,
-    pub writable: bool,
+pub struct LibraryStatus {
+    pub root: Option<String>,
+    pub state: LibraryState,
     pub free_bytes: Option<u64>,
     pub message: String,
 }
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct BackupStatus {
-    pub backup_dir: String,
-    pub last_backup_path: Option<String>,
-    pub last_backup_at: Option<String>,
-    pub last_error: Option<String>,
+pub struct Settings {
+    pub theme: Theme,
+    pub subfolder_template: Vec<String>,
+    pub payment_methods: Vec<String>,
+    pub source_platforms: Vec<String>,
+    pub last_payment_method: String,
 }
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct LibraryMigrationResult {
-    pub old_root: String,
-    pub new_root: String,
-    pub copied_files: usize,
-    pub copied_bytes: u64,
-    pub old_root_retained: bool,
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct SettingsPatch {
+    pub theme: Option<Theme>,
+    pub subfolder_template: Option<Vec<String>>,
+    pub payment_methods: Option<Vec<String>>,
+    pub source_platforms: Option<Vec<String>>,
+    pub last_payment_method: Option<String>,
 }
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct FullArchiveInspection {
-    pub format_version: i64,
-    pub schema_version: i64,
-    pub exported_at: String,
-    pub library_file_count: usize,
-    pub library_bytes: u64,
-    pub source_library_root: Option<String>,
-    pub message: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct FullRestoreResult {
-    pub library_root: String,
-    pub restored_files: usize,
-    pub restored_bytes: u64,
-    pub safety_backup_path: String,
-    pub previous_library_retained: bool,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ImportCustomerRow {
-    pub row_number: usize,
-    pub name: String,
-    pub phone: String,
-    pub wechat: String,
-    pub platform: String,
-    pub platform_handle: String,
-    pub notes: String,
-    pub vip_level: i64,
-    pub tags: Vec<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ImportResult {
-    pub imported: usize,
-    #[serde(default)]
-    pub updated: usize,
-    pub skipped: usize,
-    pub errors: Vec<String>,
-    pub duplicate_warnings: Vec<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SpreadsheetPreview {
-    pub headers: Vec<String>,
-    pub rows: Vec<Vec<String>>,
+pub struct BackupInfo {
     pub file_name: String,
-    pub sheet_names: Vec<String>,
-    pub selected_sheet: Option<String>,
-    pub total_rows: usize,
+    pub path: String,
+    pub size_bytes: u64,
+    pub created_at: String,
+    pub kind: BackupKind,
 }
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CustomerImportOperation {
-    pub row_number: usize,
-    pub action: String,
-    pub customer_id: Option<String>,
-    pub customer: Option<NewCustomer>,
+pub struct TrashItem {
+    pub r#type: TrashType,
+    pub id: String,
+    pub title: String,
+    pub subtitle: String,
+    pub deleted_at: String,
+}
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AppInfo {
+    pub version: String,
+    pub data_dir: String,
+    pub db_path: String,
+}
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MutationResult<T> {
+    pub value: T,
+    pub warning: Option<String>,
 }

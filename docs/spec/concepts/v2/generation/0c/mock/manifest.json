@@ -1,0 +1,378 @@
+[
+  {
+    "asset": "brand-logo-upgrade",
+    "final_path": "src/api/mock/assets/brand-logo-upgrade.webp",
+    "original_path": "docs/spec/concepts/v2/generation/0c/mock/brand-logo-upgrade.png",
+    "request_path": "docs/spec/concepts/v2/generation/0c/mock/brand-logo-upgrade.request.json",
+    "result_path": "docs/spec/concepts/v2/generation/0c/mock/brand-logo-upgrade.result.json",
+    "requested_size": [
+      1024,
+      1024
+    ],
+    "actual_original_size": [
+      1254,
+      1254
+    ],
+    "final_size": [
+      800,
+      800
+    ],
+    "final_bytes": 23392,
+    "format": "WEBP",
+    "sha256": "3d7dfd6bbd2855de8873f87f004c78601cc38e55457c94554a1ec0e3612f6c85",
+    "export": {
+      "quality": 82,
+      "method": 6,
+      "resample": "LANCZOS",
+      "mode": "RGB"
+    },
+    "generation": {
+      "tool": "image_gen__imagegen",
+      "actual_model": "工具未提供，无法确认",
+      "generation_quality": "工具未提供，无法确认",
+      "number": 1,
+      "usage": null,
+      "cost": "无法查询费用和币种，不能确认为免费",
+      "async_support": "内置工具未暴露供应商异步接口、任务号或查询端点；已等待原调用完成，未重复创建任务",
+      "args": {
+        "prompt": "Use case: logo-brand\nAsset type: finished brand identity proposal presentation board, square 1024×1024.\nReference image 1 is ONLY visual reference for the dark-blue brand upgrade thumbnail on the project board. Generate the full standalone commercial design, no application UI.\nPrimary request: premium corporate brand-mark upgrade proposal board on deep navy blue, a simple original elegant white geometric leaf-like monogram centered slightly left, flowing restrained blue and violet curved panels with subtle dimensional lighting. Confident minimal mark, beautiful precise typography, substantial negative space, credible Chinese brand studio presentation.\nText (verbatim, simplified Chinese): headline「品牌标志升级」, subheading「视觉识别 · 全新焕新」. Text large and clearly legible, white and pale blue. Keep elegant and concise, not busy. All lettering and final layout generated in the image. No existing famous logo, no watermark, no QR code, no app UI, no mockup monitor.",
+        "referenced_image_paths": [
+          "D:/project development/创业客户管理工作台/docs/spec/concepts/v2/A-projects.png"
+        ],
+        "transparent_background": false
+      }
+    },
+    "prompt": "Use case: logo-brand\nAsset type: finished brand identity proposal presentation board, square 1024×1024.\nReference image 1 is ONLY visual reference for the dark-blue brand upgrade thumbnail on the project board. Generate the full standalone commercial design, no application UI.\nPrimary request: premium corporate brand-mark upgrade proposal board on deep navy blue, a simple original elegant white geometric leaf-like monogram centered slightly left, flowing restrained blue and violet curved panels with subtle dimensional lighting. Confident minimal mark, beautiful precise typography, substantial negative space, credible Chinese brand studio presentation.\nText (verbatim, simplified Chinese): headline「品牌标志升级」, subheading「视觉识别 · 全新焕新」. Text large and clearly legible, white and pale blue. Keep elegant and concise, not busy. All lettering and final layout generated in the image. No existing famous logo, no watermark, no QR code, no app UI, no mockup monitor.",
+    "tool_output_hint": "Generated images are saved to C:\\Users\\Administrator\\.codex\\generated_images\\01a19c29-a997-7ce0-b54f-74c565710ae7 as C:\\Users\\Administrator\\.codex\\generated_images\\01a19c29-a997-7ce0-b54f-74c565710ae7\\exec-bc58b364-7e95-41f9-be87-cbe55ef9cac0.png by default.\nIf you need to use a generated image at another path, copy it and leave the original in place unless the user explicitly asks you to delete it.\nThe generated image is already displayed to the user. There is no need to render it in the final response as a Markdown image or file link.",
+    "visual_qa": "内容、主要简体中文和商业设计质感通过目视检查"
+  },
+  {
+    "asset": "cafe-menu",
+    "final_path": "src/api/mock/assets/cafe-menu.webp",
+    "original_path": "docs/spec/concepts/v2/generation/0c/mock/cafe-menu.png",
+    "request_path": "docs/spec/concepts/v2/generation/0c/mock/cafe-menu.request.json",
+    "result_path": "docs/spec/concepts/v2/generation/0c/mock/cafe-menu.result.json",
+    "requested_size": [
+      1024,
+      1024
+    ],
+    "actual_original_size": [
+      1254,
+      1254
+    ],
+    "final_size": [
+      800,
+      800
+    ],
+    "final_bytes": 92888,
+    "format": "WEBP",
+    "sha256": "2d30ee9780fcfeb6f8ba3f3609012887dfe597eb8d31a00ce753b41657915489",
+    "export": {
+      "quality": 82,
+      "method": 6,
+      "resample": "LANCZOS",
+      "mode": "RGB"
+    },
+    "generation": {
+      "tool": "image_gen__imagegen",
+      "actual_model": "工具未提供，无法确认",
+      "generation_quality": "工具未提供，无法确认",
+      "number": 1,
+      "usage": null,
+      "cost": "无法查询费用和币种，不能确认为免费",
+      "async_support": "内置工具未暴露供应商异步接口、任务号或查询端点；已等待原调用完成，未重复创建任务",
+      "args": {
+        "prompt": "Use case: ads-marketing\nAsset type: finished Chinese cafe printed menu design, square 1024×1024.\nReference image 1 is ONLY a commercial finish reference from the project board. Generate the full standalone menu design, no application UI.\nPrimary request: warm brown artisan coffee shop menu design. Cream paper menu sheet fills most of frame, deep coffee brown refined serif-like Chinese headings, orderly left-aligned menu rows and prices, small tasteful line drawings of coffee utensils and a cup of latte in lower right, tactile paper, warm natural shadows. Sophisticated local cafe identity, beautifully spaced grid and readable hierarchy.\nText (verbatim, simplified Chinese): title「咖啡菜单」. Menu rows「美式咖啡 18」「拿铁咖啡 26」「卡布奇诺 26」「摩卡咖啡 28」. Small bottom text「现磨咖啡 · 慢享时光」. Use only these short texts, correctly rendered and aligned, no tiny filler. All text and layout generated in image. No watermark, no QR code, no app UI.",
+        "referenced_image_paths": [
+          "D:/project development/创业客户管理工作台/docs/spec/concepts/v2/A-projects.png"
+        ],
+        "transparent_background": false
+      }
+    },
+    "prompt": "Use case: ads-marketing\nAsset type: finished Chinese cafe printed menu design, square 1024×1024.\nReference image 1 is ONLY a commercial finish reference from the project board. Generate the full standalone menu design, no application UI.\nPrimary request: warm brown artisan coffee shop menu design. Cream paper menu sheet fills most of frame, deep coffee brown refined serif-like Chinese headings, orderly left-aligned menu rows and prices, small tasteful line drawings of coffee utensils and a cup of latte in lower right, tactile paper, warm natural shadows. Sophisticated local cafe identity, beautifully spaced grid and readable hierarchy.\nText (verbatim, simplified Chinese): title「咖啡菜单」. Menu rows「美式咖啡 18」「拿铁咖啡 26」「卡布奇诺 26」「摩卡咖啡 28」. Small bottom text「现磨咖啡 · 慢享时光」. Use only these short texts, correctly rendered and aligned, no tiny filler. All text and layout generated in image. No watermark, no QR code, no app UI.",
+    "tool_output_hint": "Generated images are saved to C:\\Users\\Administrator\\.codex\\generated_images\\01a19c29-a997-7ce0-b54f-74c565710ae7 as C:\\Users\\Administrator\\.codex\\generated_images\\01a19c29-a997-7ce0-b54f-74c565710ae7\\exec-fa42358a-a917-4e0a-8219-46bba3203ced.png by default.\nIf you need to use a generated image at another path, copy it and leave the original in place unless the user explicitly asks you to delete it.\nThe generated image is already displayed to the user. There is no need to render it in the final response as a Markdown image or file link.",
+    "visual_qa": "内容、主要简体中文和商业设计质感通过目视检查"
+  },
+  {
+    "asset": "double11-flowers",
+    "final_path": "src/api/mock/assets/double11-flowers.webp",
+    "original_path": "docs/spec/concepts/v2/generation/0c/mock/double11-flowers.png",
+    "request_path": "docs/spec/concepts/v2/generation/0c/mock/double11-flowers.request.json",
+    "result_path": "docs/spec/concepts/v2/generation/0c/mock/double11-flowers.result.json",
+    "requested_size": [
+      1024,
+      1024
+    ],
+    "actual_original_size": [
+      1254,
+      1254
+    ],
+    "final_size": [
+      800,
+      800
+    ],
+    "final_bytes": 55390,
+    "format": "WEBP",
+    "sha256": "993d93661e0ce98d073f6dc6be667e2a2f252328c8c480eb2c2ead6cfa8db7e4",
+    "export": {
+      "quality": 82,
+      "method": 6,
+      "resample": "LANCZOS",
+      "mode": "RGB"
+    },
+    "generation": {
+      "tool": "image_gen__imagegen",
+      "actual_model": "工具未提供，无法确认",
+      "generation_quality": "工具未提供，无法确认",
+      "number": 1,
+      "usage": null,
+      "cost": "无法查询费用和币种，不能确认为免费",
+      "async_support": "内置工具未暴露供应商异步接口、任务号或查询端点；已等待原调用完成，未重复创建任务",
+      "args": {
+        "prompt": "Use case: ads-marketing\nAsset type: finished Chinese florist ecommerce product campaign image, square 1024×1024.\nReference image 1 is ONLY reference for the pink tulip promotional thumbnail on the project board; generate the full standalone campaign artwork, no application UI.\nPrimary request: refined Double Eleven flower gift promotion. A lush bouquet of elegant fresh pink tulips wrapped in pale rose paper with a satin ribbon, placed right of center against a soft warm pink studio backdrop with subtle flower-petal accents. Tender yet commercial, credible florist product photography, high-quality soft light and sophisticated editorial type.\nText (verbatim, simplified Chinese): headline「双十一」 and「花礼专场」, smaller「精选花束 · 限时优赠」. Large dark rose-red headline upper left, immaculate spacing, bouquet and text fully visible, lovely balanced composition. All lettering and layout generated by image model. No watermark, no QR code, no app UI, no clutter.",
+        "referenced_image_paths": [
+          "D:/project development/创业客户管理工作台/docs/spec/concepts/v2/A-projects.png"
+        ],
+        "transparent_background": false
+      }
+    },
+    "prompt": "Use case: ads-marketing\nAsset type: finished Chinese florist ecommerce product campaign image, square 1024×1024.\nReference image 1 is ONLY reference for the pink tulip promotional thumbnail on the project board; generate the full standalone campaign artwork, no application UI.\nPrimary request: refined Double Eleven flower gift promotion. A lush bouquet of elegant fresh pink tulips wrapped in pale rose paper with a satin ribbon, placed right of center against a soft warm pink studio backdrop with subtle flower-petal accents. Tender yet commercial, credible florist product photography, high-quality soft light and sophisticated editorial type.\nText (verbatim, simplified Chinese): headline「双十一」 and「花礼专场」, smaller「精选花束 · 限时优赠」. Large dark rose-red headline upper left, immaculate spacing, bouquet and text fully visible, lovely balanced composition. All lettering and layout generated by image model. No watermark, no QR code, no app UI, no clutter.",
+    "tool_output_hint": "Generated images are saved to C:\\Users\\Administrator\\.codex\\generated_images\\01a19c29-a997-7ce0-b54f-74c565710ae7 as C:\\Users\\Administrator\\.codex\\generated_images\\01a19c29-a997-7ce0-b54f-74c565710ae7\\exec-e27120be-b890-499a-bfc6-827a69f067db.png by default.\nIf you need to use a generated image at another path, copy it and leave the original in place unless the user explicitly asks you to delete it.\nThe generated image is already displayed to the user. There is no need to render it in the final response as a Markdown image or file link.",
+    "visual_qa": "内容、主要简体中文和商业设计质感通过目视检查"
+  },
+  {
+    "asset": "member-card",
+    "final_path": "src/api/mock/assets/member-card.webp",
+    "original_path": "docs/spec/concepts/v2/generation/0c/mock/member-card.png",
+    "request_path": "docs/spec/concepts/v2/generation/0c/mock/member-card.request.json",
+    "result_path": "docs/spec/concepts/v2/generation/0c/mock/member-card.result.json",
+    "requested_size": [
+      1024,
+      1024
+    ],
+    "actual_original_size": [
+      1254,
+      1254
+    ],
+    "final_size": [
+      800,
+      800
+    ],
+    "final_bytes": 38080,
+    "format": "WEBP",
+    "sha256": "7a29a1e9b34dfdaee8e968e0d36546dbba3a2d373669bb121a2cba35f475f45b",
+    "export": {
+      "quality": 82,
+      "method": 6,
+      "resample": "LANCZOS",
+      "mode": "RGB"
+    },
+    "generation": {
+      "tool": "image_gen__imagegen",
+      "actual_model": "工具未提供，无法确认",
+      "generation_quality": "工具未提供，无法确认",
+      "number": 1,
+      "usage": null,
+      "cost": "无法查询费用和币种，不能确认为免费",
+      "async_support": "内置工具未暴露供应商异步接口、任务号或查询端点；已等待原调用完成，未重复创建任务",
+      "args": {
+        "prompt": "Use case: product-mockup\nAsset type: premium bookstore membership card design presentation, square 1024×1024.\nReference image 1 is ONLY reference for the pastel bookstore membership-card thumbnail on the project board; create full standalone commercial design presentation, no application UI.\nPrimary request: two beautifully designed pale lavender bookstore membership cards, one front and one back, casually offset on a light lilac studio surface. Main card large in foreground, rounded corners, high-quality matte paper with a subtle fine botanical sprig and understated open-book line motif, delicate silver foil detail, soft dimensional shadows. Refined warm literary aesthetic, clean tasteful commercial print presentation.\nText (verbatim, simplified Chinese): main card「拾光书店」「会员卡」, small「阅读 · 生活 · 灵感」. All words crisp, correct and elegant. Other card may use only a small open-book icon, no filler text, no barcode, no QR code. All lettering and layout generated by image model. No watermark, no app UI.",
+        "referenced_image_paths": [
+          "D:/project development/创业客户管理工作台/docs/spec/concepts/v2/A-projects.png"
+        ],
+        "transparent_background": false
+      }
+    },
+    "prompt": "Use case: product-mockup\nAsset type: premium bookstore membership card design presentation, square 1024×1024.\nReference image 1 is ONLY reference for the pastel bookstore membership-card thumbnail on the project board; create full standalone commercial design presentation, no application UI.\nPrimary request: two beautifully designed pale lavender bookstore membership cards, one front and one back, casually offset on a light lilac studio surface. Main card large in foreground, rounded corners, high-quality matte paper with a subtle fine botanical sprig and understated open-book line motif, delicate silver foil detail, soft dimensional shadows. Refined warm literary aesthetic, clean tasteful commercial print presentation.\nText (verbatim, simplified Chinese): main card「拾光书店」「会员卡」, small「阅读 · 生活 · 灵感」. All words crisp, correct and elegant. Other card may use only a small open-book icon, no filler text, no barcode, no QR code. All lettering and layout generated by image model. No watermark, no app UI.",
+    "tool_output_hint": "Generated images are saved to C:\\Users\\Administrator\\.codex\\generated_images\\01a19c29-a997-7ce0-b54f-74c565710ae7 as C:\\Users\\Administrator\\.codex\\generated_images\\01a19c29-a997-7ce0-b54f-74c565710ae7\\exec-ca8e106d-a234-415d-82d0-4755efd3ce46.png by default.\nIf you need to use a generated image at another path, copy it and leave the original in place unless the user explicitly asks you to delete it.\nThe generated image is already displayed to the user. There is no need to render it in the final response as a Markdown image or file link.",
+    "visual_qa": "内容、主要简体中文和商业设计质感通过目视检查"
+  },
+  {
+    "asset": "poster-summer-drink",
+    "final_path": "src/api/mock/assets/poster-summer-drink.webp",
+    "original_path": "docs/spec/concepts/v2/generation/0c/mock/poster-summer-drink.png",
+    "request_path": "docs/spec/concepts/v2/generation/0c/mock/poster-summer-drink.request.json",
+    "result_path": "docs/spec/concepts/v2/generation/0c/mock/poster-summer-drink.result.json",
+    "requested_size": [
+      1024,
+      1024
+    ],
+    "actual_original_size": [
+      1254,
+      1254
+    ],
+    "final_size": [
+      800,
+      800
+    ],
+    "final_bytes": 91192,
+    "format": "WEBP",
+    "sha256": "52d3a548a6e4de5ef48255b1c20db3aff7411ecaa42be1c1367e011df25a5497",
+    "export": {
+      "quality": 82,
+      "method": 6,
+      "resample": "LANCZOS",
+      "mode": "RGB"
+    },
+    "generation": {
+      "tool": "image_gen__imagegen",
+      "actual_model": "工具未提供，无法确认",
+      "generation_quality": "工具未提供，无法确认",
+      "number": 1,
+      "usage": null,
+      "cost": "无法查询费用和币种，不能确认为免费",
+      "async_support": "内置工具未暴露供应商异步接口、任务号或查询端点；已等待原调用完成，未重复创建任务",
+      "args": {
+        "prompt": "Use case: ads-marketing\nAsset type: finished Chinese commercial poster, square 1024×1024.\nReference image 1 is ONLY a visual reference for the polished lemon drink thumbnail on the project board; create the full standalone poster, no application UI.\nPrimary request: a refined summer new-product lemon drink advertisement. A tall clear glass of iced sparkling lemon drink with vivid lemon slices and condensation, fresh leaves, a few sliced lemons in foreground; airy pale mint and sky-blue backdrop, sunshine, premium food photography with crisp editorial typography.\nText (verbatim, simplified Chinese): large headline「夏季新品」, smaller「清爽柠檬饮」「限时上市」. Main headline occupies upper left and remains legible at thumbnail size; the glass on right. Attractive professional commercial hierarchy, careful spacing, natural lighting, clean bright high-end finish. All lettering and layout generated in the image. No watermark, no QR code, no browser, no frame, no UI.",
+        "referenced_image_paths": [
+          "D:/project development/创业客户管理工作台/docs/spec/concepts/v2/A-projects.png"
+        ],
+        "transparent_background": false
+      }
+    },
+    "prompt": "Use case: ads-marketing\nAsset type: finished Chinese commercial poster, square 1024×1024.\nReference image 1 is ONLY a visual reference for the polished lemon drink thumbnail on the project board; create the full standalone poster, no application UI.\nPrimary request: a refined summer new-product lemon drink advertisement. A tall clear glass of iced sparkling lemon drink with vivid lemon slices and condensation, fresh leaves, a few sliced lemons in foreground; airy pale mint and sky-blue backdrop, sunshine, premium food photography with crisp editorial typography.\nText (verbatim, simplified Chinese): large headline「夏季新品」, smaller「清爽柠檬饮」「限时上市」. Main headline occupies upper left and remains legible at thumbnail size; the glass on right. Attractive professional commercial hierarchy, careful spacing, natural lighting, clean bright high-end finish. All lettering and layout generated in the image. No watermark, no QR code, no browser, no frame, no UI.",
+    "tool_output_hint": "Generated images are saved to C:\\Users\\Administrator\\.codex\\generated_images\\01a19c29-a997-7ce0-b54f-74c565710ae7 as C:\\Users\\Administrator\\.codex\\generated_images\\01a19c29-a997-7ce0-b54f-74c565710ae7\\exec-638cdb33-2603-4883-b59f-95402d189095.png by default.\nIf you need to use a generated image at another path, copy it and leave the original in place unless the user explicitly asks you to delete it.\nThe generated image is already displayed to the user. There is no need to render it in the final response as a Markdown image or file link.",
+    "visual_qa": "内容、主要简体中文和商业设计质感通过目视检查"
+  },
+  {
+    "asset": "product-detail-sofa",
+    "final_path": "src/api/mock/assets/product-detail-sofa.webp",
+    "original_path": "docs/spec/concepts/v2/generation/0c/mock/product-detail-sofa.png",
+    "request_path": "docs/spec/concepts/v2/generation/0c/mock/product-detail-sofa.request.json",
+    "result_path": "docs/spec/concepts/v2/generation/0c/mock/product-detail-sofa.result.json",
+    "requested_size": [
+      1024,
+      1024
+    ],
+    "actual_original_size": [
+      1254,
+      1254
+    ],
+    "final_size": [
+      800,
+      800
+    ],
+    "final_bytes": 103568,
+    "format": "WEBP",
+    "sha256": "b3764cb9f3642f8a16bb681d9f42c8d0c471af6ac27714aef13f81e0aebd335c",
+    "export": {
+      "quality": 82,
+      "method": 6,
+      "resample": "LANCZOS",
+      "mode": "RGB"
+    },
+    "generation": {
+      "tool": "image_gen__imagegen",
+      "actual_model": "工具未提供，无法确认",
+      "generation_quality": "工具未提供，无法确认",
+      "number": 1,
+      "usage": null,
+      "cost": "无法查询费用和币种，不能确认为免费",
+      "async_support": "内置工具未暴露供应商异步接口、任务号或查询端点；已等待原调用完成，未重复创建任务",
+      "args": {
+        "prompt": "Use case: ads-marketing\nAsset type: finished Chinese home furnishings ecommerce detail-page hero panel, square 1024×1024.\nReference image 1 is ONLY reference for the light sofa interior thumbnail on the project board; create full standalone product detail design, no application UI.\nPrimary request: premium light-colored sofa product detail hero. A beautiful ivory modular sofa with soft cushions, staged in a sunlit minimal warm-white living room, beige rug, natural oak side table, one leafy plant, gauzy curtains, realistic fabric texture. Sophisticated photorealistic interior photography, soft architectural shadows, quietly luxurious and breathable. Product sofa occupies middle and lower two-thirds; tasteful clean headline area at top left.\nText (verbatim, simplified Chinese): headline「森临家居」, subtitle「舒适生活 由此开始」. Keep words correct and readable, restrained charcoal-gray typography, ample whitespace. All lettering and final layout generated in image. No watermark, no QR code, no app UI, no product catalog grid.",
+        "referenced_image_paths": [
+          "D:/project development/创业客户管理工作台/docs/spec/concepts/v2/A-projects.png"
+        ],
+        "transparent_background": false
+      }
+    },
+    "prompt": "Use case: ads-marketing\nAsset type: finished Chinese home furnishings ecommerce detail-page hero panel, square 1024×1024.\nReference image 1 is ONLY reference for the light sofa interior thumbnail on the project board; create full standalone product detail design, no application UI.\nPrimary request: premium light-colored sofa product detail hero. A beautiful ivory modular sofa with soft cushions, staged in a sunlit minimal warm-white living room, beige rug, natural oak side table, one leafy plant, gauzy curtains, realistic fabric texture. Sophisticated photorealistic interior photography, soft architectural shadows, quietly luxurious and breathable. Product sofa occupies middle and lower two-thirds; tasteful clean headline area at top left.\nText (verbatim, simplified Chinese): headline「森临家居」, subtitle「舒适生活 由此开始」. Keep words correct and readable, restrained charcoal-gray typography, ample whitespace. All lettering and final layout generated in image. No watermark, no QR code, no app UI, no product catalog grid.",
+    "tool_output_hint": "Generated images are saved to C:\\Users\\Administrator\\.codex\\generated_images\\01a19c29-a997-7ce0-b54f-74c565710ae7 as C:\\Users\\Administrator\\.codex\\generated_images\\01a19c29-a997-7ce0-b54f-74c565710ae7\\exec-0acb7158-4bac-4fa0-adf2-f0d91f046812.png by default.\nIf you need to use a generated image at another path, copy it and leave the original in place unless the user explicitly asks you to delete it.\nThe generated image is already displayed to the user. There is no need to render it in the final response as a Markdown image or file link.",
+    "visual_qa": "内容、主要简体中文和商业设计质感通过目视检查"
+  },
+  {
+    "asset": "store-opening",
+    "final_path": "src/api/mock/assets/store-opening.webp",
+    "original_path": "docs/spec/concepts/v2/generation/0c/mock/store-opening.png",
+    "request_path": "docs/spec/concepts/v2/generation/0c/mock/store-opening.request.json",
+    "result_path": "docs/spec/concepts/v2/generation/0c/mock/store-opening.result.json",
+    "requested_size": [
+      1024,
+      1024
+    ],
+    "actual_original_size": [
+      1254,
+      1254
+    ],
+    "final_size": [
+      800,
+      800
+    ],
+    "final_bytes": 60636,
+    "format": "WEBP",
+    "sha256": "f4eef268bf9c5eb95a18203cac30909e62578ad07c5f6c3ca94f3b01eb061693",
+    "export": {
+      "quality": 82,
+      "method": 6,
+      "resample": "LANCZOS",
+      "mode": "RGB"
+    },
+    "generation": {
+      "tool": "image_gen__imagegen",
+      "actual_model": "工具未提供，无法确认",
+      "generation_quality": "工具未提供，无法确认",
+      "number": 1,
+      "usage": null,
+      "cost": "无法查询费用和币种，不能确认为免费",
+      "async_support": "内置工具未暴露供应商异步接口、任务号或查询端点；已等待原调用完成，未重复创建任务",
+      "args": {
+        "prompt": "Use case: ads-marketing\nAsset type: finished Chinese coffee shop opening poster, square 1024×1024.\nReference image 1 is ONLY reference for the coffee-store opening thumbnail on the project board. Generate full standalone commercial poster, no application UI.\nPrimary request: a refined cafe grand opening poster, warm espresso-brown tones and cream highlights. A photorealistic white ceramic latte cup and saucer in foreground right, beautiful heart latte art, scattered coffee beans on warm wood, softly blurred cozy cafe background, faint green leaves at edge. Inviting premium local cafe advertising.\nText (verbatim, simplified Chinese): very large main headline「开业」, secondary「新品咖啡」, small「全场 8 折」. Elegant cream typography clearly readable on dark brown upper-left area, generous spacing, strong visual hierarchy. All text and final layout generated in image. No watermark, no QR code, no app UI, no extra text.",
+        "referenced_image_paths": [
+          "D:/project development/创业客户管理工作台/docs/spec/concepts/v2/A-projects.png"
+        ],
+        "transparent_background": false
+      }
+    },
+    "prompt": "Use case: ads-marketing\nAsset type: finished Chinese coffee shop opening poster, square 1024×1024.\nReference image 1 is ONLY reference for the coffee-store opening thumbnail on the project board. Generate full standalone commercial poster, no application UI.\nPrimary request: a refined cafe grand opening poster, warm espresso-brown tones and cream highlights. A photorealistic white ceramic latte cup and saucer in foreground right, beautiful heart latte art, scattered coffee beans on warm wood, softly blurred cozy cafe background, faint green leaves at edge. Inviting premium local cafe advertising.\nText (verbatim, simplified Chinese): very large main headline「开业」, secondary「新品咖啡」, small「全场 8 折」. Elegant cream typography clearly readable on dark brown upper-left area, generous spacing, strong visual hierarchy. All text and final layout generated in image. No watermark, no QR code, no app UI, no extra text.",
+    "tool_output_hint": "Generated images are saved to C:\\Users\\Administrator\\.codex\\generated_images\\01a19c29-a997-7ce0-b54f-74c565710ae7 as C:\\Users\\Administrator\\.codex\\generated_images\\01a19c29-a997-7ce0-b54f-74c565710ae7\\exec-bcf04f78-f5e0-4744-9a5b-237503583db4.png by default.\nIf you need to use a generated image at another path, copy it and leave the original in place unless the user explicitly asks you to delete it.\nThe generated image is already displayed to the user. There is no need to render it in the final response as a Markdown image or file link.",
+    "visual_qa": "内容、主要简体中文和商业设计质感通过目视检查"
+  },
+  {
+    "asset": "tea-gift-box",
+    "final_path": "src/api/mock/assets/tea-gift-box.webp",
+    "original_path": "docs/spec/concepts/v2/generation/0c/mock/tea-gift-box.png",
+    "request_path": "docs/spec/concepts/v2/generation/0c/mock/tea-gift-box.request.json",
+    "result_path": "docs/spec/concepts/v2/generation/0c/mock/tea-gift-box.result.json",
+    "requested_size": [
+      1024,
+      1024
+    ],
+    "actual_original_size": [
+      1254,
+      1254
+    ],
+    "final_size": [
+      800,
+      800
+    ],
+    "final_bytes": 52950,
+    "format": "WEBP",
+    "sha256": "cecf4dc5a5bd153ec83699070ded25a3126556c03e7a3a04ba3752f1b4986d5a",
+    "export": {
+      "quality": 82,
+      "method": 6,
+      "resample": "LANCZOS",
+      "mode": "RGB"
+    },
+    "generation": {
+      "tool": "image_gen__imagegen",
+      "actual_model": "工具未提供，无法确认",
+      "generation_quality": "工具未提供，无法确认",
+      "number": 1,
+      "usage": null,
+      "cost": "无法查询费用和币种，不能确认为免费",
+      "async_support": "内置工具未暴露供应商异步接口、任务号或查询端点；已等待原调用完成，未重复创建任务",
+      "args": {
+        "prompt": "Use case: product-mockup\nAsset type: premium tea packaging design presentation, square 1024×1024.\nReference image 1 is ONLY reference for the sophisticated green tea gift box thumbnails on the project board; create a full standalone packaging presentation, no application UI.\nPrimary request: a beautiful Chinese green-tea gift box packaging design. Cream textured-paper rectangular rigid gift box with refined sage-green botanical tea-leaf illustrations, tasteful deep green side panel, delicate gold accents, resting in an airy pale sage studio with a ceramic tea cup and a couple of fresh tea leaves. Hero box large, three-quarter angle showing front and side, photorealistic printed packaging, natural soft daylight, premium restrained composition.\nText (verbatim, simplified Chinese): box front title「茗香」, small subtitle「绿茶礼盒」. These are the only text. Ensure characters 茗 and 香 correct and prominent. All typography and layout generated in image. No watermark, no QR code, no app UI, no unrelated props.",
+        "referenced_image_paths": [
+          "D:/project development/创业客户管理工作台/docs/spec/concepts/v2/A-projects.png"
+        ],
+        "transparent_background": false
+      }
+    },
+    "prompt": "Use case: product-mockup\nAsset type: premium tea packaging design presentation, square 1024×1024.\nReference image 1 is ONLY reference for the sophisticated green tea gift box thumbnails on the project board; create a full standalone packaging presentation, no application UI.\nPrimary request: a beautiful Chinese green-tea gift box packaging design. Cream textured-paper rectangular rigid gift box with refined sage-green botanical tea-leaf illustrations, tasteful deep green side panel, delicate gold accents, resting in an airy pale sage studio with a ceramic tea cup and a couple of fresh tea leaves. Hero box large, three-quarter angle showing front and side, photorealistic printed packaging, natural soft daylight, premium restrained composition.\nText (verbatim, simplified Chinese): box front title「茗香」, small subtitle「绿茶礼盒」. These are the only text. Ensure characters 茗 and 香 correct and prominent. All typography and layout generated in image. No watermark, no QR code, no app UI, no unrelated props.",
+    "tool_output_hint": "Generated images are saved to C:\\Users\\Administrator\\.codex\\generated_images\\01a19c29-a997-7ce0-b54f-74c565710ae7 as C:\\Users\\Administrator\\.codex\\generated_images\\01a19c29-a997-7ce0-b54f-74c565710ae7\\exec-c7461cf4-f743-423e-8185-6972530b1d5f.png by default.\nIf you need to use a generated image at another path, copy it and leave the original in place unless the user explicitly asks you to delete it.\nThe generated image is already displayed to the user. There is no need to render it in the final response as a Markdown image or file link.",
+    "visual_qa": "内容、主要简体中文和商业设计质感通过目视检查"
+  }
+]

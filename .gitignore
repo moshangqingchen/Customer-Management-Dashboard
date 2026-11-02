@@ -45,3 +45,10 @@ pnpm-debug.log*
 .DS_Store
 Thumbs.db
 Desktop.ini
+
+# Raw AI image generations (kept locally, prompts are tracked)
+docs/spec/concepts/**/generation/**/*.png
+docs/spec/concepts/generation/*.png
+
+# Local Claude preview config
+.claude/

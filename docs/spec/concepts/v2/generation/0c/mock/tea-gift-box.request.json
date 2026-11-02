@@ -1,0 +1,16 @@
+{
+  "asset": "tea-gift-box",
+  "requested_size": [
+    1024,
+    1024
+  ],
+  "tool": "image_gen__imagegen",
+  "args": {
+    "prompt": "Use case: product-mockup\nAsset type: premium tea packaging design presentation, square 1024×1024.\nReference image 1 is ONLY reference for the sophisticated green tea gift box thumbnails on the project board; create a full standalone packaging presentation, no application UI.\nPrimary request: a beautiful Chinese green-tea gift box packaging design. Cream textured-paper rectangular rigid gift box with refined sage-green botanical tea-leaf illustrations, tasteful deep green side panel, delicate gold accents, resting in an airy pale sage studio with a ceramic tea cup and a couple of fresh tea leaves. Hero box large, three-quarter angle showing front and side, photorealistic printed packaging, natural soft daylight, premium restrained composition.\nText (verbatim, simplified Chinese): box front title「茗香」, small subtitle「绿茶礼盒」. These are the only text. Ensure characters 茗 and 香 correct and prominent. All typography and layout generated in image. No watermark, no QR code, no app UI, no unrelated props.",
+    "referenced_image_paths": [
+      "D:/project development/创业客户管理工作台/docs/spec/concepts/v2/A-projects.png"
+    ],
+    "transparent_background": false
+  },
+  "status": "prepared"
+}

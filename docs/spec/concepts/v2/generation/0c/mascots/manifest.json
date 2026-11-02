@@ -1,0 +1,451 @@
+[
+  {
+    "stem": "empty-today",
+    "finalPath": "src/assets/illustrations/empty-today.webp",
+    "rawPath": "docs/spec/concepts/v2/generation/0c/mascots/empty-today.original.png",
+    "requestPath": "docs/spec/concepts/v2/generation/0c/mascots/empty-today.request.json",
+    "resultPath": "docs/spec/concepts/v2/generation/0c/mascots/empty-today.result.json",
+    "originalSize": [
+      1254,
+      1254
+    ],
+    "requestedSize": [
+      1024,
+      1024
+    ],
+    "finalSize": [
+      480,
+      480
+    ],
+    "bytes": 30138,
+    "prompt": "Use case: illustration-story.\n正式应用空状态插画素材，单张方形1024×1024。参考图仅用于提取横幅最右侧那只橘猫“团子”的角色外观和晴空主题日系动漫画风；这是新绘的单只吉祥物插画，不要重现参考图中的软件界面、女主角、文字或横幅。\n团子角色必须统一：圆滚滚的橘色短毛虎斑猫，暖橙色毛发、深橘棕色条纹、额头M纹、小三角耳、奶白色嘴鼻区与胸腹、奶白色小爪、条纹粗尾巴，Q版大头短腿，脸型柔软，干净细腻轮廓、柔和动漫赛璐璐与轻柔渐变，温暖可爱。少量道具用淡紫与天蓝，不能变成另一只猫。\n本张动作与道具：团子侧卧在一小段浅紫色窗台上晒太阳睡觉，闭着眼微笑，前爪轻轻交叠，橘色条纹尾巴卷到身体旁。右上方一枚小小的温暖太阳作为独立点缀。窗台只是一个小道具，不要整扇窗户，不要房间或背景。\n构图：单只猫和指定少量道具居中，完整收进画面，在四周保留约10%的透明安全边距，主体连同道具占画幅约75%，线条清楚，细节适合缩小到160像素高使用。背景必须是真实透明alpha，背景完全空白透明，无不透明底色、无棋盘格、无白色描边贴纸边、无厚投影、无光晕、无颗粒、无漂浮噪点、无水印。不添加任何未要求的物体或文字。\n画面完全无文字。",
+    "parameters": {
+      "prompt": "Use case: illustration-story.\n正式应用空状态插画素材，单张方形1024×1024。参考图仅用于提取横幅最右侧那只橘猫“团子”的角色外观和晴空主题日系动漫画风；这是新绘的单只吉祥物插画，不要重现参考图中的软件界面、女主角、文字或横幅。\n团子角色必须统一：圆滚滚的橘色短毛虎斑猫，暖橙色毛发、深橘棕色条纹、额头M纹、小三角耳、奶白色嘴鼻区与胸腹、奶白色小爪、条纹粗尾巴，Q版大头短腿，脸型柔软，干净细腻轮廓、柔和动漫赛璐璐与轻柔渐变，温暖可爱。少量道具用淡紫与天蓝，不能变成另一只猫。\n本张动作与道具：团子侧卧在一小段浅紫色窗台上晒太阳睡觉，闭着眼微笑，前爪轻轻交叠，橘色条纹尾巴卷到身体旁。右上方一枚小小的温暖太阳作为独立点缀。窗台只是一个小道具，不要整扇窗户，不要房间或背景。\n构图：单只猫和指定少量道具居中，完整收进画面，在四周保留约10%的透明安全边距，主体连同道具占画幅约75%，线条清楚，细节适合缩小到160像素高使用。背景必须是真实透明alpha，背景完全空白透明，无不透明底色、无棋盘格、无白色描边贴纸边、无厚投影、无光晕、无颗粒、无漂浮噪点、无水印。不添加任何未要求的物体或文字。\n画面完全无文字。",
+      "referenced_image_paths": [
+        "D:/project development/创业客户管理工作台/docs/spec/concepts/v2/A-today.png"
+      ],
+      "transparent_background": true
+    },
+    "count": 1,
+    "actualModel": "工具未返回，无法确认",
+    "quality": "生成质量工具未提供，无法确认",
+    "usage": null,
+    "cost": {
+      "value": null,
+      "currency": "无法确认",
+      "note": "内置工具未返回计费或用量信息，无法查询本次费用；未核对账单。"
+    },
+    "export": {
+      "format": "WebP",
+      "quality": 88,
+      "method": 6,
+      "alpha": true,
+      "sourceAlphaClearThreshold": 12,
+      "minimumConnectedComponentPixels": 32,
+      "sourceCrop": [
+        89,
+        174,
+        1165,
+        1033
+      ],
+      "subjectMaxSide": 416,
+      "canvas": [
+        480,
+        480
+      ],
+      "resample": "Lanczos",
+      "finalAlphaClearThreshold": 2
+    },
+    "toolResult": {
+      "output_hint": "Generated images are saved to C:\\Users\\Administrator\\.codex\\generated_images\\01a19c29-787b-7e53-95c7-ea4d6c50f0ea as C:\\Users\\Administrator\\.codex\\generated_images\\01a19c29-787b-7e53-95c7-ea4d6c50f0ea\\exec-4a38b93a-7f97-424e-8c17-1977c8c66ab7.png by default.\nIf you need to use a generated image at another path, copy it and leave the original in place unless the user explicitly asks you to delete it.\nThe generated image is already displayed to the user. There is no need to render it in the final response as a Markdown image or file link.",
+      "image_url": "omitted base64; original saved as empty-today.original.png",
+      "actualModel": "工具未返回，无法确认",
+      "usage": null,
+      "providerJobId": null
+    }
+  },
+  {
+    "stem": "empty-projects",
+    "finalPath": "src/assets/illustrations/empty-projects.webp",
+    "rawPath": "docs/spec/concepts/v2/generation/0c/mascots/empty-projects.original.png",
+    "requestPath": "docs/spec/concepts/v2/generation/0c/mascots/empty-projects.request.json",
+    "resultPath": "docs/spec/concepts/v2/generation/0c/mascots/empty-projects.result.json",
+    "originalSize": [
+      1254,
+      1254
+    ],
+    "requestedSize": [
+      1024,
+      1024
+    ],
+    "finalSize": [
+      480,
+      480
+    ],
+    "bytes": 24918,
+    "prompt": "Use case: illustration-story.\n正式应用空状态插画素材，单张方形1024×1024。参考图仅用于提取横幅最右侧那只橘猫“团子”的角色外观和晴空主题日系动漫画风；这是新绘的单只吉祥物插画，不要重现参考图中的软件界面、女主角、文字或横幅。\n团子角色必须统一：圆滚滚的橘色短毛虎斑猫，暖橙色毛发、深橘棕色条纹、额头M纹、小三角耳、奶白色嘴鼻区与胸腹、奶白色小爪、条纹粗尾巴，Q版大头短腿，脸型柔软，干净细腻轮廓、柔和动漫赛璐璐与轻柔渐变，温暖可爱。少量道具用淡紫与天蓝，不能变成另一只猫。\n本张动作与道具：团子用两只前爪推着一个比身体略小的空牛皮纸箱，身体略向前倾，轻松可爱，纸箱开口朝上，可以清楚看到里面是空的。箱子没有文字，边角点缀一小块淡紫色胶带。\n构图：单只猫和指定少量道具居中，完整收进画面，在四周保留约10%的透明安全边距，主体连同道具占画幅约75%，线条清楚，细节适合缩小到160像素高使用。背景必须是真实透明alpha，背景完全空白透明，无不透明底色、无棋盘格、无白色描边贴纸边、无厚投影、无光晕、无颗粒、无漂浮噪点、无水印。不添加任何未要求的物体或文字。\n画面完全无文字。",
+    "parameters": {
+      "prompt": "Use case: illustration-story.\n正式应用空状态插画素材，单张方形1024×1024。参考图仅用于提取横幅最右侧那只橘猫“团子”的角色外观和晴空主题日系动漫画风；这是新绘的单只吉祥物插画，不要重现参考图中的软件界面、女主角、文字或横幅。\n团子角色必须统一：圆滚滚的橘色短毛虎斑猫，暖橙色毛发、深橘棕色条纹、额头M纹、小三角耳、奶白色嘴鼻区与胸腹、奶白色小爪、条纹粗尾巴，Q版大头短腿，脸型柔软，干净细腻轮廓、柔和动漫赛璐璐与轻柔渐变，温暖可爱。少量道具用淡紫与天蓝，不能变成另一只猫。\n本张动作与道具：团子用两只前爪推着一个比身体略小的空牛皮纸箱，身体略向前倾，轻松可爱，纸箱开口朝上，可以清楚看到里面是空的。箱子没有文字，边角点缀一小块淡紫色胶带。\n构图：单只猫和指定少量道具居中，完整收进画面，在四周保留约10%的透明安全边距，主体连同道具占画幅约75%，线条清楚，细节适合缩小到160像素高使用。背景必须是真实透明alpha，背景完全空白透明，无不透明底色、无棋盘格、无白色描边贴纸边、无厚投影、无光晕、无颗粒、无漂浮噪点、无水印。不添加任何未要求的物体或文字。\n画面完全无文字。",
+      "referenced_image_paths": [
+        "D:/project development/创业客户管理工作台/docs/spec/concepts/v2/A-today.png"
+      ],
+      "transparent_background": true
+    },
+    "count": 1,
+    "actualModel": "工具未返回，无法确认",
+    "quality": "生成质量工具未提供，无法确认",
+    "usage": null,
+    "cost": {
+      "value": null,
+      "currency": "无法确认",
+      "note": "内置工具未返回计费或用量信息，无法查询本次费用；未核对账单。"
+    },
+    "export": {
+      "format": "WebP",
+      "quality": 88,
+      "method": 6,
+      "alpha": true,
+      "sourceAlphaClearThreshold": 12,
+      "minimumConnectedComponentPixels": 32,
+      "sourceCrop": [
+        44,
+        276,
+        1214,
+        1073
+      ],
+      "subjectMaxSide": 416,
+      "canvas": [
+        480,
+        480
+      ],
+      "resample": "Lanczos",
+      "finalAlphaClearThreshold": 2
+    },
+    "toolResult": {
+      "output_hint": "Generated images are saved to C:\\Users\\Administrator\\.codex\\generated_images\\01a19c29-787b-7e53-95c7-ea4d6c50f0ea as C:\\Users\\Administrator\\.codex\\generated_images\\01a19c29-787b-7e53-95c7-ea4d6c50f0ea\\exec-91c4ae33-0685-4dde-9901-846acfe3e4e3.png by default.\nIf you need to use a generated image at another path, copy it and leave the original in place unless the user explicitly asks you to delete it.\nThe generated image is already displayed to the user. There is no need to render it in the final response as a Markdown image or file link.",
+      "actualModel": "工具未返回，无法确认",
+      "usage": null,
+      "providerJobId": null
+    }
+  },
+  {
+    "stem": "empty-clients",
+    "finalPath": "src/assets/illustrations/empty-clients.webp",
+    "rawPath": "docs/spec/concepts/v2/generation/0c/mascots/empty-clients.original.png",
+    "requestPath": "docs/spec/concepts/v2/generation/0c/mascots/empty-clients.request.json",
+    "resultPath": "docs/spec/concepts/v2/generation/0c/mascots/empty-clients.result.json",
+    "originalSize": [
+      1254,
+      1254
+    ],
+    "requestedSize": [
+      1024,
+      1024
+    ],
+    "finalSize": [
+      480,
+      480
+    ],
+    "bytes": 31550,
+    "prompt": "Use case: illustration-story.\n正式应用空状态插画素材，单张方形1024×1024。参考图仅用于提取横幅最右侧那只橘猫“团子”的角色外观和晴空主题日系动漫画风；这是新绘的单只吉祥物插画，不要重现参考图中的软件界面、女主角、文字或横幅。\n团子角色必须统一：圆滚滚的橘色短毛虎斑猫，暖橙色毛发、深橘棕色条纹、额头M纹、小三角耳、奶白色嘴鼻区与胸腹、奶白色小爪、条纹粗尾巴，Q版大头短腿，脸型柔软，干净细腻轮廓、柔和动漫赛璐璐与轻柔渐变，温暖可爱。少量道具用淡紫与天蓝，不能变成另一只猫。\n本张动作与道具：团子坐着，笑眯眯地举着一面天蓝色小旗，旗上清楚地写着且仅写着“Hi”，H大写i小写。旗杆由一只前爪稳稳拿着，另一只前爪自然落在胸前。\n构图：单只猫和指定少量道具居中，完整收进画面，在四周保留约10%的透明安全边距，主体连同道具占画幅约75%，线条清楚，细节适合缩小到160像素高使用。背景必须是真实透明alpha，背景完全空白透明，无不透明底色、无棋盘格、无白色描边贴纸边、无厚投影、无光晕、无颗粒、无漂浮噪点、无水印。不添加任何未要求的物体或文字。\n唯一文字必须准确写作 Hi。",
+    "parameters": {
+      "prompt": "Use case: illustration-story.\n正式应用空状态插画素材，单张方形1024×1024。参考图仅用于提取横幅最右侧那只橘猫“团子”的角色外观和晴空主题日系动漫画风；这是新绘的单只吉祥物插画，不要重现参考图中的软件界面、女主角、文字或横幅。\n团子角色必须统一：圆滚滚的橘色短毛虎斑猫，暖橙色毛发、深橘棕色条纹、额头M纹、小三角耳、奶白色嘴鼻区与胸腹、奶白色小爪、条纹粗尾巴，Q版大头短腿，脸型柔软，干净细腻轮廓、柔和动漫赛璐璐与轻柔渐变，温暖可爱。少量道具用淡紫与天蓝，不能变成另一只猫。\n本张动作与道具：团子坐着，笑眯眯地举着一面天蓝色小旗，旗上清楚地写着且仅写着“Hi”，H大写i小写。旗杆由一只前爪稳稳拿着，另一只前爪自然落在胸前。\n构图：单只猫和指定少量道具居中，完整收进画面，在四周保留约10%的透明安全边距，主体连同道具占画幅约75%，线条清楚，细节适合缩小到160像素高使用。背景必须是真实透明alpha，背景完全空白透明，无不透明底色、无棋盘格、无白色描边贴纸边、无厚投影、无光晕、无颗粒、无漂浮噪点、无水印。不添加任何未要求的物体或文字。\n唯一文字必须准确写作 Hi。",
+      "referenced_image_paths": [
+        "D:/project development/创业客户管理工作台/docs/spec/concepts/v2/A-today.png"
+      ],
+      "transparent_background": true
+    },
+    "count": 1,
+    "actualModel": "工具未返回，无法确认",
+    "quality": "生成质量工具未提供，无法确认",
+    "usage": null,
+    "cost": {
+      "value": null,
+      "currency": "无法确认",
+      "note": "内置工具未返回计费或用量信息，无法查询本次费用；未核对账单。"
+    },
+    "export": {
+      "format": "WebP",
+      "quality": 88,
+      "method": 6,
+      "alpha": true,
+      "sourceAlphaClearThreshold": 12,
+      "minimumConnectedComponentPixels": 32,
+      "sourceCrop": [
+        63,
+        193,
+        1161,
+        1097
+      ],
+      "subjectMaxSide": 416,
+      "canvas": [
+        480,
+        480
+      ],
+      "resample": "Lanczos",
+      "finalAlphaClearThreshold": 2
+    },
+    "toolResult": {
+      "output_hint": "Generated images are saved to C:\\Users\\Administrator\\.codex\\generated_images\\01a19c29-787b-7e53-95c7-ea4d6c50f0ea as C:\\Users\\Administrator\\.codex\\generated_images\\01a19c29-787b-7e53-95c7-ea4d6c50f0ea\\exec-803f096c-9295-4f41-82bd-cff4d868e045.png by default.\nIf you need to use a generated image at another path, copy it and leave the original in place unless the user explicitly asks you to delete it.\nThe generated image is already displayed to the user. There is no need to render it in the final response as a Markdown image or file link.",
+      "actualModel": "工具未返回，无法确认",
+      "usage": null,
+      "providerJobId": null
+    }
+  },
+  {
+    "stem": "empty-files",
+    "finalPath": "src/assets/illustrations/empty-files.webp",
+    "rawPath": "docs/spec/concepts/v2/generation/0c/mascots/empty-files.original.png",
+    "requestPath": "docs/spec/concepts/v2/generation/0c/mascots/empty-files.request.json",
+    "resultPath": "docs/spec/concepts/v2/generation/0c/mascots/empty-files.result.json",
+    "originalSize": [
+      1254,
+      1254
+    ],
+    "requestedSize": [
+      1024,
+      1024
+    ],
+    "finalSize": [
+      480,
+      480
+    ],
+    "bytes": 32022,
+    "prompt": "Use case: illustration-story.\n正式应用空状态插画素材，单张方形1024×1024。参考图仅用于提取横幅最右侧那只橘猫“团子”的角色外观和晴空主题日系动漫画风；这是新绘的单只吉祥物插画，不要重现参考图中的软件界面、女主角、文字或横幅。\n团子角色必须统一：圆滚滚的橘色短毛虎斑猫，暖橙色毛发、深橘棕色条纹、额头M纹、小三角耳、奶白色嘴鼻区与胸腹、奶白色小爪、条纹粗尾巴，Q版大头短腿，脸型柔软，干净细腻轮廓、柔和动漫赛璐璐与轻柔渐变，温暖可爱。少量道具用淡紫与天蓝，不能变成另一只猫。\n本张动作与道具：团子从一个打开的淡紫色空文件夹里探出头和两只小前爪，文件夹内没有纸张，圆滚滚身体部分被文件夹遮挡，露出可爱的卷尾巴，带点好奇。文件夹没有文字。\n构图：单只猫和指定少量道具居中，完整收进画面，在四周保留约10%的透明安全边距，主体连同道具占画幅约75%，线条清楚，细节适合缩小到160像素高使用。背景必须是真实透明alpha，背景完全空白透明，无不透明底色、无棋盘格、无白色描边贴纸边、无厚投影、无光晕、无颗粒、无漂浮噪点、无水印。不添加任何未要求的物体或文字。\n画面完全无文字。",
+    "parameters": {
+      "prompt": "Use case: illustration-story.\n正式应用空状态插画素材，单张方形1024×1024。参考图仅用于提取横幅最右侧那只橘猫“团子”的角色外观和晴空主题日系动漫画风；这是新绘的单只吉祥物插画，不要重现参考图中的软件界面、女主角、文字或横幅。\n团子角色必须统一：圆滚滚的橘色短毛虎斑猫，暖橙色毛发、深橘棕色条纹、额头M纹、小三角耳、奶白色嘴鼻区与胸腹、奶白色小爪、条纹粗尾巴，Q版大头短腿，脸型柔软，干净细腻轮廓、柔和动漫赛璐璐与轻柔渐变，温暖可爱。少量道具用淡紫与天蓝，不能变成另一只猫。\n本张动作与道具：团子从一个打开的淡紫色空文件夹里探出头和两只小前爪，文件夹内没有纸张，圆滚滚身体部分被文件夹遮挡，露出可爱的卷尾巴，带点好奇。文件夹没有文字。\n构图：单只猫和指定少量道具居中，完整收进画面，在四周保留约10%的透明安全边距，主体连同道具占画幅约75%，线条清楚，细节适合缩小到160像素高使用。背景必须是真实透明alpha，背景完全空白透明，无不透明底色、无棋盘格、无白色描边贴纸边、无厚投影、无光晕、无颗粒、无漂浮噪点、无水印。不添加任何未要求的物体或文字。\n画面完全无文字。",
+      "referenced_image_paths": [
+        "D:/project development/创业客户管理工作台/docs/spec/concepts/v2/A-today.png"
+      ],
+      "transparent_background": true
+    },
+    "count": 1,
+    "actualModel": "工具未返回，无法确认",
+    "quality": "生成质量工具未提供，无法确认",
+    "usage": null,
+    "cost": {
+      "value": null,
+      "currency": "无法确认",
+      "note": "内置工具未返回计费或用量信息，无法查询本次费用；未核对账单。"
+    },
+    "export": {
+      "format": "WebP",
+      "quality": 88,
+      "method": 6,
+      "alpha": true,
+      "sourceAlphaClearThreshold": 12,
+      "minimumConnectedComponentPixels": 32,
+      "sourceCrop": [
+        175,
+        128,
+        1084,
+        1085
+      ],
+      "subjectMaxSide": 416,
+      "canvas": [
+        480,
+        480
+      ],
+      "resample": "Lanczos",
+      "finalAlphaClearThreshold": 2
+    },
+    "toolResult": {
+      "output_hint": "Generated images are saved to C:\\Users\\Administrator\\.codex\\generated_images\\01a19c29-787b-7e53-95c7-ea4d6c50f0ea as C:\\Users\\Administrator\\.codex\\generated_images\\01a19c29-787b-7e53-95c7-ea4d6c50f0ea\\exec-04f197a6-0f8d-4772-a321-5c51a12dae0d.png by default.\nIf you need to use a generated image at another path, copy it and leave the original in place unless the user explicitly asks you to delete it.\nThe generated image is already displayed to the user. There is no need to render it in the final response as a Markdown image or file link.",
+      "actualModel": "工具未返回，无法确认",
+      "usage": null,
+      "providerJobId": null
+    }
+  },
+  {
+    "stem": "empty-snippets",
+    "finalPath": "src/assets/illustrations/empty-snippets.webp",
+    "rawPath": "docs/spec/concepts/v2/generation/0c/mascots/empty-snippets.original.png",
+    "requestPath": "docs/spec/concepts/v2/generation/0c/mascots/empty-snippets.request.json",
+    "resultPath": "docs/spec/concepts/v2/generation/0c/mascots/empty-snippets.result.json",
+    "originalSize": [
+      1254,
+      1254
+    ],
+    "requestedSize": [
+      1024,
+      1024
+    ],
+    "finalSize": [
+      480,
+      480
+    ],
+    "bytes": 29050,
+    "prompt": "Use case: illustration-story.\n正式应用空状态插画素材，单张方形1024×1024。参考图仅用于提取横幅最右侧那只橘猫“团子”的角色外观和晴空主题日系动漫画风；这是新绘的单只吉祥物插画，不要重现参考图中的软件界面、女主角、文字或横幅。\n团子角色必须统一：圆滚滚的橘色短毛虎斑猫，暖橙色毛发、深橘棕色条纹、额头M纹、小三角耳、奶白色嘴鼻区与胸腹、奶白色小爪、条纹粗尾巴，Q版大头短腿，脸型柔软，干净细腻轮廓、柔和动漫赛璐璐与轻柔渐变，温暖可爱。少量道具用淡紫与天蓝，不能变成另一只猫。\n本张动作与道具：团子坐着，嘴边轻轻叼住一个圆润的天蓝色空白对话气泡的尾尖，气泡是无字的白色内部、淡天蓝色边缘，像轻盈的小道具，不挡住团子的眼睛和大部分脸。\n构图：单只猫和指定少量道具居中，完整收进画面，在四周保留约10%的透明安全边距，主体连同道具占画幅约75%，线条清楚，细节适合缩小到160像素高使用。背景必须是真实透明alpha，背景完全空白透明，无不透明底色、无棋盘格、无白色描边贴纸边、无厚投影、无光晕、无颗粒、无漂浮噪点、无水印。不添加任何未要求的物体或文字。\n画面完全无文字。",
+    "parameters": {
+      "prompt": "Use case: illustration-story.\n正式应用空状态插画素材，单张方形1024×1024。参考图仅用于提取横幅最右侧那只橘猫“团子”的角色外观和晴空主题日系动漫画风；这是新绘的单只吉祥物插画，不要重现参考图中的软件界面、女主角、文字或横幅。\n团子角色必须统一：圆滚滚的橘色短毛虎斑猫，暖橙色毛发、深橘棕色条纹、额头M纹、小三角耳、奶白色嘴鼻区与胸腹、奶白色小爪、条纹粗尾巴，Q版大头短腿，脸型柔软，干净细腻轮廓、柔和动漫赛璐璐与轻柔渐变，温暖可爱。少量道具用淡紫与天蓝，不能变成另一只猫。\n本张动作与道具：团子坐着，嘴边轻轻叼住一个圆润的天蓝色空白对话气泡的尾尖，气泡是无字的白色内部、淡天蓝色边缘，像轻盈的小道具，不挡住团子的眼睛和大部分脸。\n构图：单只猫和指定少量道具居中，完整收进画面，在四周保留约10%的透明安全边距，主体连同道具占画幅约75%，线条清楚，细节适合缩小到160像素高使用。背景必须是真实透明alpha，背景完全空白透明，无不透明底色、无棋盘格、无白色描边贴纸边、无厚投影、无光晕、无颗粒、无漂浮噪点、无水印。不添加任何未要求的物体或文字。\n画面完全无文字。",
+      "referenced_image_paths": [
+        "D:/project development/创业客户管理工作台/docs/spec/concepts/v2/A-today.png"
+      ],
+      "transparent_background": true
+    },
+    "count": 1,
+    "actualModel": "工具未返回，无法确认",
+    "quality": "生成质量工具未提供，无法确认",
+    "usage": null,
+    "cost": {
+      "value": null,
+      "currency": "无法确认",
+      "note": "内置工具未返回计费或用量信息，无法查询本次费用；未核对账单。"
+    },
+    "export": {
+      "format": "WebP",
+      "quality": 88,
+      "method": 6,
+      "alpha": true,
+      "sourceAlphaClearThreshold": 12,
+      "minimumConnectedComponentPixels": 32,
+      "sourceCrop": [
+        139,
+        177,
+        1168,
+        1070
+      ],
+      "subjectMaxSide": 416,
+      "canvas": [
+        480,
+        480
+      ],
+      "resample": "Lanczos",
+      "finalAlphaClearThreshold": 2
+    },
+    "toolResult": {
+      "output_hint": "Generated images are saved to C:\\Users\\Administrator\\.codex\\generated_images\\01a19c29-787b-7e53-95c7-ea4d6c50f0ea as C:\\Users\\Administrator\\.codex\\generated_images\\01a19c29-787b-7e53-95c7-ea4d6c50f0ea\\exec-59776010-fa0b-4f3f-b2d2-10e5f357ad6d.png by default.\nIf you need to use a generated image at another path, copy it and leave the original in place unless the user explicitly asks you to delete it.\nThe generated image is already displayed to the user. There is no need to render it in the final response as a Markdown image or file link.",
+      "actualModel": "工具未返回，无法确认",
+      "usage": null,
+      "providerJobId": null
+    }
+  },
+  {
+    "stem": "empty-search",
+    "finalPath": "src/assets/illustrations/empty-search.webp",
+    "rawPath": "docs/spec/concepts/v2/generation/0c/mascots/empty-search.original.png",
+    "requestPath": "docs/spec/concepts/v2/generation/0c/mascots/empty-search.request.json",
+    "resultPath": "docs/spec/concepts/v2/generation/0c/mascots/empty-search.result.json",
+    "originalSize": [
+      1254,
+      1254
+    ],
+    "requestedSize": [
+      1024,
+      1024
+    ],
+    "finalSize": [
+      480,
+      480
+    ],
+    "bytes": 35108,
+    "prompt": "Use case: illustration-story.\n正式应用空状态插画素材，单张方形1024×1024。参考图仅用于提取横幅最右侧那只橘猫“团子”的角色外观和晴空主题日系动漫画风；这是新绘的单只吉祥物插画，不要重现参考图中的软件界面、女主角、文字或横幅。\n团子角色必须统一：圆滚滚的橘色短毛虎斑猫，暖橙色毛发、深橘棕色条纹、额头M纹、小三角耳、奶白色嘴鼻区与胸腹、奶白色小爪、条纹粗尾巴，Q版大头短腿，脸型柔软，干净细腻轮廓、柔和动漫赛璐璐与轻柔渐变，温暖可爱。少量道具用淡紫与天蓝，不能变成另一只猫。\n本张动作与道具：团子蹲坐着，前爪拿着一个淡紫色柄的放大镜，认真地歪头寻找，放大镜靠近一只眼睛但两只眼睛都可辨认，眉眼专注可爱，圆滚尾巴自然卷起。\n构图：单只猫和指定少量道具居中，完整收进画面，在四周保留约10%的透明安全边距，主体连同道具占画幅约75%，线条清楚，细节适合缩小到160像素高使用。背景必须是真实透明alpha，背景完全空白透明，无不透明底色、无棋盘格、无白色描边贴纸边、无厚投影、无光晕、无颗粒、无漂浮噪点、无水印。不添加任何未要求的物体或文字。\n画面完全无文字。",
+    "parameters": {
+      "prompt": "Use case: illustration-story.\n正式应用空状态插画素材，单张方形1024×1024。参考图仅用于提取横幅最右侧那只橘猫“团子”的角色外观和晴空主题日系动漫画风；这是新绘的单只吉祥物插画，不要重现参考图中的软件界面、女主角、文字或横幅。\n团子角色必须统一：圆滚滚的橘色短毛虎斑猫，暖橙色毛发、深橘棕色条纹、额头M纹、小三角耳、奶白色嘴鼻区与胸腹、奶白色小爪、条纹粗尾巴，Q版大头短腿，脸型柔软，干净细腻轮廓、柔和动漫赛璐璐与轻柔渐变，温暖可爱。少量道具用淡紫与天蓝，不能变成另一只猫。\n本张动作与道具：团子蹲坐着，前爪拿着一个淡紫色柄的放大镜，认真地歪头寻找，放大镜靠近一只眼睛但两只眼睛都可辨认，眉眼专注可爱，圆滚尾巴自然卷起。\n构图：单只猫和指定少量道具居中，完整收进画面，在四周保留约10%的透明安全边距，主体连同道具占画幅约75%，线条清楚，细节适合缩小到160像素高使用。背景必须是真实透明alpha，背景完全空白透明，无不透明底色、无棋盘格、无白色描边贴纸边、无厚投影、无光晕、无颗粒、无漂浮噪点、无水印。不添加任何未要求的物体或文字。\n画面完全无文字。",
+      "referenced_image_paths": [
+        "D:/project development/创业客户管理工作台/docs/spec/concepts/v2/A-today.png"
+      ],
+      "transparent_background": true
+    },
+    "count": 1,
+    "actualModel": "工具未返回，无法确认",
+    "quality": "生成质量工具未提供，无法确认",
+    "usage": null,
+    "cost": {
+      "value": null,
+      "currency": "无法确认",
+      "note": "内置工具未返回计费或用量信息，无法查询本次费用；未核对账单。"
+    },
+    "export": {
+      "format": "WebP",
+      "quality": 88,
+      "method": 6,
+      "alpha": true,
+      "sourceAlphaClearThreshold": 12,
+      "minimumConnectedComponentPixels": 32,
+      "sourceCrop": [
+        96,
+        89,
+        1174,
+        1112
+      ],
+      "subjectMaxSide": 416,
+      "canvas": [
+        480,
+        480
+      ],
+      "resample": "Lanczos",
+      "finalAlphaClearThreshold": 2
+    },
+    "toolResult": {
+      "output_hint": "Generated images are saved to C:\\Users\\Administrator\\.codex\\generated_images\\01a19c29-787b-7e53-95c7-ea4d6c50f0ea as C:\\Users\\Administrator\\.codex\\generated_images\\01a19c29-787b-7e53-95c7-ea4d6c50f0ea\\exec-4f09c46b-867d-40ed-88fb-561a5d104d87.png by default.\nIf you need to use a generated image at another path, copy it and leave the original in place unless the user explicitly asks you to delete it.\nThe generated image is already displayed to the user. There is no need to render it in the final response as a Markdown image or file link.",
+      "actualModel": "工具未返回，无法确认",
+      "usage": null,
+      "providerJobId": null
+    }
+  },
+  {
+    "stem": "library-offline",
+    "finalPath": "src/assets/illustrations/library-offline.webp",
+    "rawPath": "docs/spec/concepts/v2/generation/0c/mascots/library-offline.original.png",
+    "requestPath": "docs/spec/concepts/v2/generation/0c/mascots/library-offline.request.json",
+    "resultPath": "docs/spec/concepts/v2/generation/0c/mascots/library-offline.result.json",
+    "originalSize": [
+      1254,
+      1254
+    ],
+    "requestedSize": [
+      1024,
+      1024
+    ],
+    "finalSize": [
+      480,
+      480
+    ],
+    "bytes": 39148,
+    "prompt": "Use case: illustration-story.\n正式应用空状态插画素材，单张方形1024×1024。参考图仅用于提取横幅最右侧那只橘猫“团子”的角色外观和晴空主题日系动漫画风；这是新绘的单只吉祥物插画，不要重现参考图中的软件界面、女主角、文字或横幅。\n团子角色必须统一：圆滚滚的橘色短毛虎斑猫，暖橙色毛发、深橘棕色条纹、额头M纹、小三角耳、奶白色嘴鼻区与胸腹、奶白色小爪、条纹粗尾巴，Q版大头短腿，脸型柔软，干净细腻轮廓、柔和动漫赛璐璐与轻柔渐变，温暖可爱。少量道具用淡紫与天蓝，不能变成另一只猫。\n本张动作与道具：团子坐着，两只前爪抱住一个已经拔下的浅紫色电源插头，插头的金属插脚清楚可见，插头连接一小段松弛的天蓝色电线。团子耷拉着耳朵，嘴角轻轻向下，眼睛水汪汪，委屈但仍然温暖可爱。不要插座、不要闪电、不要危险感。\n构图：单只猫和指定少量道具居中，完整收进画面，在四周保留约10%的透明安全边距，主体连同道具占画幅约75%，线条清楚，细节适合缩小到160像素高使用。背景必须是真实透明alpha，背景完全空白透明，无不透明底色、无棋盘格、无白色描边贴纸边、无厚投影、无光晕、无颗粒、无漂浮噪点、无水印。不添加任何未要求的物体或文字。\n画面完全无文字。",
+    "parameters": {
+      "prompt": "Use case: illustration-story.\n正式应用空状态插画素材，单张方形1024×1024。参考图仅用于提取横幅最右侧那只橘猫“团子”的角色外观和晴空主题日系动漫画风；这是新绘的单只吉祥物插画，不要重现参考图中的软件界面、女主角、文字或横幅。\n团子角色必须统一：圆滚滚的橘色短毛虎斑猫，暖橙色毛发、深橘棕色条纹、额头M纹、小三角耳、奶白色嘴鼻区与胸腹、奶白色小爪、条纹粗尾巴，Q版大头短腿，脸型柔软，干净细腻轮廓、柔和动漫赛璐璐与轻柔渐变，温暖可爱。少量道具用淡紫与天蓝，不能变成另一只猫。\n本张动作与道具：团子坐着，两只前爪抱住一个已经拔下的浅紫色电源插头，插头的金属插脚清楚可见，插头连接一小段松弛的天蓝色电线。团子耷拉着耳朵，嘴角轻轻向下，眼睛水汪汪，委屈但仍然温暖可爱。不要插座、不要闪电、不要危险感。\n构图：单只猫和指定少量道具居中，完整收进画面，在四周保留约10%的透明安全边距，主体连同道具占画幅约75%，线条清楚，细节适合缩小到160像素高使用。背景必须是真实透明alpha，背景完全空白透明，无不透明底色、无棋盘格、无白色描边贴纸边、无厚投影、无光晕、无颗粒、无漂浮噪点、无水印。不添加任何未要求的物体或文字。\n画面完全无文字。",
+      "referenced_image_paths": [
+        "D:/project development/创业客户管理工作台/docs/spec/concepts/v2/A-today.png"
+      ],
+      "transparent_background": true
+    },
+    "count": 1,
+    "actualModel": "工具未返回，无法确认",
+    "quality": "生成质量工具未提供，无法确认",
+    "usage": null,
+    "cost": {
+      "value": null,
+      "currency": "无法确认",
+      "note": "内置工具未返回计费或用量信息，无法查询本次费用；未核对账单。"
+    },
+    "export": {
+      "format": "WebP",
+      "quality": 88,
+      "method": 6,
+      "alpha": true,
+      "sourceAlphaClearThreshold": 12,
+      "minimumConnectedComponentPixels": 32,
+      "sourceCrop": [
+        172,
+        128,
+        1099,
+        1160
+      ],
+      "subjectMaxSide": 416,
+      "canvas": [
+        480,
+        480
+      ],
+      "resample": "Lanczos",
+      "finalAlphaClearThreshold": 2
+    },
+    "toolResult": {
+      "output_hint": "Generated images are saved to C:\\Users\\Administrator\\.codex\\generated_images\\01a19c29-787b-7e53-95c7-ea4d6c50f0ea as C:\\Users\\Administrator\\.codex\\generated_images\\01a19c29-787b-7e53-95c7-ea4d6c50f0ea\\exec-cef02c8d-04b5-4375-a4dc-a01c7baa8642.png by default.\nIf you need to use a generated image at another path, copy it and leave the original in place unless the user explicitly asks you to delete it.\nThe generated image is already displayed to the user. There is no need to render it in the final response as a Markdown image or file link.",
+      "actualModel": "工具未返回，无法确认",
+      "usage": null,
+      "providerJobId": null
+    }
+  }
+]

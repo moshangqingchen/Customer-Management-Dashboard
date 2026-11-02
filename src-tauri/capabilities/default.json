@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Default capability for the main window",
+  "description": "主窗口权限，包含拖放和焦点事件监听及窗口状态保存",
   "windows": ["main"],
-  "permissions": ["core:default", "updater:default"]
+  "permissions": ["core:default", "core:event:allow-listen", "core:event:allow-unlisten", "window-state:default"]
 }

@@ -1,0 +1,40 @@
+﻿{
+    "asset":  "today-light",
+    "status":  "superseded",
+    "tool":  "image_gen.imagegen",
+    "source_path":  "C:\\Users\\Administrator\\.codex\\generated_images\\01a19c04-9cc5-7601-8270-aab6baf0b664\\exec-d145f173-37db-4866-8d43-0fcde50692a3.png",
+    "destination":  "docs/spec/concepts/generation/today-light-v1.png",
+    "requested_size":  "1536x1024 (via prompt)",
+    "actual_size":  [
+                        1536,
+                        1024
+                    ],
+    "format":  "PNG",
+    "pixel_format":  "24bpp RGB",
+    "count":  1,
+    "parameters":  {
+                       "transparent_background":  false
+                   },
+    "model":  null,
+    "quality":  null,
+    "usage":  null,
+    "cost":  null,
+    "currency":  null,
+    "cost_note":  "Tool returned no model, usage or billing data. Amount and currency cannot be confirmed; no free or actual-charge claim.",
+    "response_keys":  [
+                          "image_url",
+                          "output_hint"
+                      ],
+    "task_id":  null,
+    "status_query_url":  null,
+    "download_url":  null,
+    "async_support":  "not exposed by builtin tool; provider support unverified",
+    "sha256":  "9F632EA4DB5481863C64C0B129227C037350B0749B203CB4B29C3352A3D8D4F2",
+    "visual_review":  "已通过view_image目检。暖白纸感、朱红主按钮与今日导航、关注区3项、进行中分组、收入8640与6根柱、待收款5项及动态时间线齐全，无设备外壳或透视。中文字总体可读。",
+    "deviations":  [
+                       "侧栏数量3生成在星标行，而非任务要求的逾期行；以产品规格为实现依据。",
+                       "部分文字与控件视觉上比13px级别略大；原图未缩放、编辑或合成。"
+                   ],
+    "finished_at":  "2026-11-02T11:33:26.852Z",
+    "supersededBy":  "today-light-correction.result.json"
+}

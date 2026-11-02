@@ -1,640 +1,571 @@
-use std::{path::PathBuf, process::Command};
-
-use base64::Engine;
-use chrono::{DateTime, Utc};
-use tauri::{AppHandle, Manager, State};
-use walkdir::WalkDir;
-
 use crate::{
-    models::{
-        AppSettings, BackupStatus, Customer, CustomerImportOperation, DashboardSummary, FileRecord,
-        FullArchiveInspection, FullRestoreResult, ImportCustomerRow, ImportResult,
-        LibraryMigrationResult, NewCustomer, NewOrder, Order, PaymentInput, SearchHit,
-        SourceFactory, SourceFactoryInput, SourceFactoryProject, SourceFactoryProjectInput,
-        SourceQuote, SourceQuoteInput, SpreadsheetPreview, StorageHealth,
-    },
-    service::AppService,
+    backup,
+    error::{AppError, Result},
+    library::{self, display},
+    models::*,
+    register_library_path,
+    repo::{activities, clients, payments, projects, settings, snippets, tags, trash},
+    AppState, Database, DB_FILE,
 };
+use serde::Deserialize;
+use std::{
+    io::Write,
+    path::{Path, PathBuf},
+};
+use tauri::{
+    ipc::{CommandArg, CommandItem, InvokeError},
+    AppHandle, Runtime, State,
+};
+use tauri_plugin_dialog::{DialogExt, FilePath};
+use tauri_plugin_opener::OpenerExt;
 
-type CommandResult<T> = Result<T, String>;
+// Keep malformed IPC arguments on the same error contract as repository validation.
+pub struct Arg<T>(T);
 
-fn command_error(error: impl std::fmt::Display) -> String {
-    error.to_string()
-}
-
-#[tauri::command]
-pub fn choose_directory() -> Option<String> {
-    rfd::FileDialog::new()
-        .pick_folder()
-        .map(|path| path.to_string_lossy().to_string())
-}
-
-#[tauri::command]
-pub fn choose_file(kind: Option<String>) -> Option<String> {
-    let dialog = match kind.as_deref() {
-        Some("spreadsheet") => {
-            rfd::FileDialog::new().add_filter("客户表格", &["xlsx", "xls", "xlsb", "ods", "csv"])
-        }
-        Some("databaseBackup") => {
-            rfd::FileDialog::new().add_filter("工作台数据库备份", &["db", "sqlite", "sqlite3"])
-        }
-        Some("fullArchive") => rfd::FileDialog::new().add_filter("工作台完整归档", &["zip"]),
-        Some("image") => rfd::FileDialog::new().add_filter("图片", &["png", "jpg", "jpeg", "webp"]),
-        _ => rfd::FileDialog::new(),
-    };
-    dialog
-        .pick_file()
-        .map(|path| path.to_string_lossy().to_string())
-}
-
-#[tauri::command]
-pub fn choose_save_file(default_name: String, extension: String) -> Option<String> {
-    rfd::FileDialog::new()
-        .set_file_name(default_name)
-        .add_filter(extension.to_uppercase(), &[extension.as_str()])
-        .save_file()
-        .map(|path| path.to_string_lossy().to_string())
-}
-
-#[tauri::command]
-pub fn read_image_data_url(path: String) -> CommandResult<String> {
-    let path = PathBuf::from(path);
-    let metadata = std::fs::metadata(&path).map_err(command_error)?;
-    if !metadata.is_file() {
-        return Err("所选路径不是图片文件".to_string());
-    }
-    if metadata.len() > 16 * 1024 * 1024 {
-        return Err("图片不能超过 16 MB".to_string());
-    }
-    let extension = path
-        .extension()
-        .and_then(|value| value.to_str())
-        .unwrap_or_default()
-        .to_ascii_lowercase();
-    let mime = match extension.as_str() {
-        "jpg" | "jpeg" => "image/jpeg",
-        "webp" => "image/webp",
-        "gif" => "image/gif",
-        "png" => "image/png",
-        _ => return Err("仅支持 PNG、JPG、WEBP 或 GIF 图片".to_string()),
-    };
-    let bytes = std::fs::read(&path).map_err(command_error)?;
-    Ok(format!(
-        "data:{mime};base64,{}",
-        base64::engine::general_purpose::STANDARD.encode(bytes)
-    ))
-}
-
-#[tauri::command]
-pub fn preview_customer_spreadsheet(
-    path: String,
-    sheet: Option<String>,
-) -> CommandResult<SpreadsheetPreview> {
-    crate::import_service::preview_spreadsheet(&PathBuf::from(path), sheet.as_deref())
-        .map_err(command_error)
-}
-
-#[tauri::command]
-pub fn get_settings(service: State<'_, AppService>) -> CommandResult<AppSettings> {
-    service.settings().map_err(command_error)
-}
-
-#[tauri::command]
-pub fn get_app_preference(
-    service: State<'_, AppService>,
-    key: String,
-) -> CommandResult<Option<String>> {
-    service.get_app_preference(&key).map_err(command_error)
-}
-
-#[tauri::command]
-pub fn set_app_preference(
-    service: State<'_, AppService>,
-    key: String,
-    value: String,
-) -> CommandResult<()> {
-    service
-        .set_app_preference(&key, &value)
-        .map_err(command_error)
-}
-
-#[tauri::command]
-pub fn set_library_root(
-    service: State<'_, AppService>,
-    path: String,
-) -> CommandResult<AppSettings> {
-    service
-        .set_library_root(&PathBuf::from(path))
-        .map_err(command_error)
-}
-
-#[tauri::command]
-pub fn validate_library_root(service: State<'_, AppService>, path: String) -> StorageHealth {
-    service.validate_library_root(&PathBuf::from(path))
-}
-
-#[tauri::command]
-pub fn get_storage_health(service: State<'_, AppService>) -> CommandResult<StorageHealth> {
-    service.storage_health().map_err(command_error)
-}
-
-#[tauri::command]
-pub fn migrate_library_root(
-    service: State<'_, AppService>,
-    target: String,
-) -> CommandResult<LibraryMigrationResult> {
-    service
-        .migrate_library_root(&PathBuf::from(target))
-        .map_err(command_error)
-}
-
-#[tauri::command]
-pub fn set_backup_dir(service: State<'_, AppService>, path: String) -> CommandResult<AppSettings> {
-    service
-        .set_backup_dir(&PathBuf::from(path))
-        .map_err(command_error)
-}
-
-#[tauri::command]
-pub fn list_customers(
-    service: State<'_, AppService>,
-    vip_only: bool,
-) -> CommandResult<Vec<Customer>> {
-    service.list_customers(vip_only).map_err(command_error)
-}
-
-#[tauri::command]
-pub fn list_source_factories(service: State<'_, AppService>) -> CommandResult<Vec<SourceFactory>> {
-    service.list_source_factories().map_err(command_error)
-}
-
-#[tauri::command]
-pub fn create_source_factory(
-    service: State<'_, AppService>,
-    input: SourceFactoryInput,
-) -> CommandResult<SourceFactory> {
-    service.create_source_factory(input).map_err(command_error)
-}
-
-#[tauri::command]
-pub fn update_source_factory(
-    service: State<'_, AppService>,
-    id: String,
-    input: SourceFactoryInput,
-) -> CommandResult<SourceFactory> {
-    service
-        .update_source_factory(&id, input)
-        .map_err(command_error)
-}
-
-#[tauri::command]
-pub fn delete_source_factory(service: State<'_, AppService>, id: String) -> CommandResult<()> {
-    service.delete_source_factory(&id).map_err(command_error)
-}
-
-#[tauri::command]
-pub fn list_source_factory_projects(
-    service: State<'_, AppService>,
-    factory_id: Option<String>,
-) -> CommandResult<Vec<SourceFactoryProject>> {
-    service
-        .list_source_factory_projects(factory_id.as_deref())
-        .map_err(command_error)
-}
-
-#[tauri::command]
-pub fn create_source_factory_project(
-    service: State<'_, AppService>,
-    input: SourceFactoryProjectInput,
-) -> CommandResult<SourceFactoryProject> {
-    service
-        .create_source_factory_project(input)
-        .map_err(command_error)
-}
-
-#[tauri::command]
-pub fn delete_source_factory_project(
-    service: State<'_, AppService>,
-    id: String,
-) -> CommandResult<()> {
-    service
-        .delete_source_factory_project(&id)
-        .map_err(command_error)
-}
-
-#[tauri::command]
-pub fn list_source_quotes(
-    service: State<'_, AppService>,
-    factory_id: Option<String>,
-) -> CommandResult<Vec<SourceQuote>> {
-    service
-        .list_source_quotes(factory_id.as_deref())
-        .map_err(command_error)
-}
-
-#[tauri::command]
-pub fn create_source_quote(
-    service: State<'_, AppService>,
-    input: SourceQuoteInput,
-) -> CommandResult<SourceQuote> {
-    service.create_source_quote(input).map_err(command_error)
-}
-
-#[tauri::command]
-pub fn update_source_quote(
-    service: State<'_, AppService>,
-    id: String,
-    input: SourceQuoteInput,
-) -> CommandResult<SourceQuote> {
-    service
-        .update_source_quote(&id, input)
-        .map_err(command_error)
-}
-
-#[tauri::command]
-pub fn delete_source_quote(service: State<'_, AppService>, id: String) -> CommandResult<()> {
-    service.delete_source_quote(&id).map_err(command_error)
-}
-
-#[tauri::command]
-pub fn create_customer(
-    service: State<'_, AppService>,
-    input: NewCustomer,
-) -> CommandResult<Customer> {
-    service.create_customer(input).map_err(command_error)
-}
-
-#[tauri::command]
-pub fn update_customer(
-    service: State<'_, AppService>,
-    id: String,
-    input: NewCustomer,
-) -> CommandResult<Customer> {
-    service.update_customer(&id, input).map_err(command_error)
-}
-
-#[tauri::command]
-pub fn list_orders(service: State<'_, AppService>) -> CommandResult<Vec<Order>> {
-    service.list_orders().map_err(command_error)
-}
-
-#[tauri::command]
-pub fn sync_managed_library(service: State<'_, AppService>) -> CommandResult<()> {
-    service.sync_managed_library().map_err(command_error)
-}
-
-#[tauri::command]
-pub fn create_order(service: State<'_, AppService>, input: NewOrder) -> CommandResult<Order> {
-    service.create_order(input).map_err(command_error)
-}
-
-#[tauri::command]
-pub fn update_order_status(
-    service: State<'_, AppService>,
-    id: String,
-    design_status: String,
-    fulfillment_status: String,
-) -> CommandResult<Order> {
-    service
-        .update_order_status(&id, &design_status, &fulfillment_status)
-        .map_err(command_error)
-}
-
-#[tauri::command]
-pub fn update_order(
-    service: State<'_, AppService>,
-    id: String,
-    input: NewOrder,
-) -> CommandResult<Order> {
-    service.update_order(&id, input).map_err(command_error)
-}
-
-#[tauri::command]
-pub fn delete_order(service: State<'_, AppService>, id: String) -> CommandResult<()> {
-    service.delete_order(&id).map_err(command_error)
-}
-
-#[tauri::command]
-pub fn delete_customer(service: State<'_, AppService>, id: String) -> CommandResult<()> {
-    service.delete_customer(&id).map_err(command_error)
-}
-
-#[tauri::command]
-pub fn add_payment(
-    service: State<'_, AppService>,
-    order_id: String,
-    input: PaymentInput,
-) -> CommandResult<Order> {
-    service.add_payment(&order_id, input).map_err(command_error)
-}
-
-#[tauri::command]
-pub fn delete_payment(
-    service: State<'_, AppService>,
-    order_id: String,
-    payment_id: String,
-) -> CommandResult<Order> {
-    service
-        .delete_payment(&order_id, &payment_id)
-        .map_err(command_error)
-}
-
-#[tauri::command]
-pub fn retry_order_folder(
-    service: State<'_, AppService>,
-    order_id: String,
-) -> CommandResult<Order> {
-    service.retry_order_folder(&order_id).map_err(command_error)
-}
-
-#[tauri::command]
-pub fn list_files(service: State<'_, AppService>) -> CommandResult<Vec<FileRecord>> {
-    service.list_files().map_err(command_error)
-}
-
-fn file_category(path: &std::path::Path) -> String {
-    match path
-        .extension()
-        .and_then(|value| value.to_str())
-        .unwrap_or_default()
-        .to_ascii_lowercase()
-        .as_str()
-    {
-        "cdr" => "CorelDRAW".to_string(),
-        "psd" => "PSD".to_string(),
-        "ai" => "AI".to_string(),
-        "pdf" => "PDF".to_string(),
-        "txt" => "文本文档".to_string(),
-        "jpg" | "jpeg" | "png" | "webp" | "gif" | "svg" => "图片文件".to_string(),
-        "zip" | "rar" | "7z" => "压缩包".to_string(),
-        "" => "文件".to_string(),
-        extension => extension.to_uppercase(),
+impl<'de, T: Deserialize<'de>, R: Runtime> CommandArg<'de, R> for Arg<T> {
+    fn from_command(item: CommandItem<'de, R>) -> std::result::Result<Self, InvokeError> {
+        let key = item.key;
+        T::deserialize(item)
+            .map(Self)
+            .map_err(|_| AppError::invalid(format!("调用参数 {key} 缺失或格式不正确")).into())
     }
 }
 
-fn system_time_to_rfc3339(value: std::time::SystemTime) -> String {
-    DateTime::<Utc>::from(value).to_rfc3339()
+fn selected_path(file: FilePath) -> Result<String> {
+    let path = file
+        .into_path()
+        .map_err(|_| AppError::invalid("请选择本地文件路径"))?;
+    Ok(display(&path))
 }
 
-#[tauri::command]
-pub fn list_order_folder_files(
-    folder_path: String,
-    order_id: String,
-    customer_id: String,
-) -> CommandResult<Vec<FileRecord>> {
-    let root = PathBuf::from(folder_path);
-    if !root.is_dir() {
-        return Ok(Vec::new());
-    }
-
-    let mut files = Vec::new();
-    for entry in WalkDir::new(&root)
-        .min_depth(1)
-        .into_iter()
-        .filter_map(Result::ok)
-        .filter(|entry| entry.file_type().is_file())
-    {
-        let path = entry.path();
-        let metadata = match entry.metadata() {
-            Ok(value) => value,
-            Err(_) => continue,
-        };
-        let name = path
-            .file_name()
-            .and_then(|value| value.to_str())
-            .unwrap_or("文件")
-            .to_string();
-        let modified = metadata
-            .modified()
-            .map(system_time_to_rfc3339)
-            .unwrap_or_else(|_| Utc::now().to_rfc3339());
-        let absolute_path = path.to_string_lossy().to_string();
-        files.push(FileRecord {
-            id: format!("folder-file:{absolute_path}"),
-            order_id: Some(order_id.clone()),
-            customer_id: customer_id.clone(),
-            category: file_category(path),
-            name,
-            relative_path: absolute_path,
-            size_bytes: metadata.len() as i64,
-            created_at: modified,
-            state: "ready".to_string(),
-        });
-    }
-    files.sort_by(|left, right| {
-        right
-            .created_at
-            .cmp(&left.created_at)
-            .then_with(|| left.name.cmp(&right.name))
-    });
-    Ok(files)
+fn opener_error(error: tauri_plugin_opener::Error) -> AppError {
+    AppError::new("io", format!("无法在系统中打开指定位置（{error}）"))
 }
 
-#[tauri::command]
-pub fn add_order_file(
-    service: State<'_, AppService>,
-    order_id: String,
-    source_path: String,
-    category: String,
-) -> CommandResult<FileRecord> {
-    service
-        .add_order_file(&order_id, &PathBuf::from(source_path), &category)
-        .map_err(command_error)
+fn open(app: &AppHandle, path: PathBuf) -> Result<()> {
+    app.opener()
+        .open_path(display(&path), None::<&str>)
+        .map_err(opener_error)
 }
 
-#[tauri::command]
-pub fn delete_file(service: State<'_, AppService>, file_id: String) -> CommandResult<()> {
-    service
-        .move_file_to_recycle_bin(&file_id)
-        .map_err(command_error)
+fn write_text(path: &Path, content: &str) -> Result<()> {
+    let parent = path
+        .parent()
+        .ok_or_else(|| AppError::invalid("请选择有效的保存位置"))?;
+    let mut file = tempfile::NamedTempFile::new_in(parent)?;
+    file.write_all(b"\xEF\xBB\xBF")?;
+    file.write_all(content.as_bytes())?;
+    file.as_file().sync_all()?;
+    file.persist(path).map_err(|error| error.error)?;
+    Ok(())
 }
 
-#[tauri::command]
-pub fn search(service: State<'_, AppService>, query: String) -> CommandResult<Vec<SearchHit>> {
-    service.search(&query).map_err(command_error)
-}
-
-#[tauri::command]
-pub fn dashboard(service: State<'_, AppService>) -> CommandResult<DashboardSummary> {
-    service.dashboard().map_err(command_error)
-}
-
-#[tauri::command]
-pub fn import_customers(
-    service: State<'_, AppService>,
-    rows: Vec<ImportCustomerRow>,
-) -> CommandResult<ImportResult> {
-    service.import_customers(rows).map_err(command_error)
-}
-
-#[tauri::command]
-pub fn apply_customer_import(
-    service: State<'_, AppService>,
-    batch_id: String,
-    operations: Vec<CustomerImportOperation>,
-) -> CommandResult<ImportResult> {
-    service
-        .apply_customer_import(&batch_id, operations)
-        .map_err(command_error)
-}
-
-fn default_backup_dir(app: &AppHandle) -> CommandResult<PathBuf> {
-    app.path()
-        .document_dir()
-        .map(|path| path.join("创业客户管理工作台备份"))
-        .map_err(command_error)
-}
-
-#[tauri::command]
-pub fn run_backup(service: State<'_, AppService>, app: AppHandle) -> CommandResult<String> {
-    let default_dir = default_backup_dir(&app)?;
-    service
-        .create_manual_backup(&default_dir)
-        .map(|path| path.to_string_lossy().to_string())
-        .map_err(command_error)
-}
-
-#[tauri::command]
-pub fn get_backup_status(
-    service: State<'_, AppService>,
-    app: AppHandle,
-) -> CommandResult<BackupStatus> {
-    service
-        .backup_status(&default_backup_dir(&app)?)
-        .map_err(command_error)
-}
-
-#[tauri::command]
-pub fn export_full(service: State<'_, AppService>, destination: String) -> CommandResult<String> {
-    service
-        .export_full(&PathBuf::from(destination))
-        .map(|path| path.to_string_lossy().to_string())
-        .map_err(command_error)
-}
-
-#[tauri::command]
-pub fn inspect_full_archive(
-    service: State<'_, AppService>,
-    source: String,
-) -> CommandResult<FullArchiveInspection> {
-    service
-        .inspect_full_archive(&PathBuf::from(source))
-        .map_err(command_error)
-}
-
-#[tauri::command]
-pub fn restore_full_archive(
-    service: State<'_, AppService>,
-    source: String,
-    target_library_root: String,
-) -> CommandResult<FullRestoreResult> {
-    service
-        .restore_full_archive(&PathBuf::from(source), &PathBuf::from(target_library_root))
-        .map_err(command_error)
-}
-
-#[tauri::command]
-pub fn restore_backup(service: State<'_, AppService>, source: String) -> CommandResult<String> {
-    service
-        .restore_database_backup(&PathBuf::from(source))
-        .map(|path| path.to_string_lossy().to_string())
-        .map_err(command_error)
-}
-
-#[tauri::command]
-pub fn export_cloud_read_model(
-    service: State<'_, AppService>,
-    destination: String,
-) -> CommandResult<String> {
-    service
-        .export_cloud_read_model(&PathBuf::from(destination))
-        .map(|path| path.to_string_lossy().to_string())
-        .map_err(command_error)
-}
-
-#[tauri::command]
-pub fn open_in_explorer(path: String) -> CommandResult<()> {
-    Command::new("explorer")
-        .arg(path)
-        .spawn()
-        .map(|_| ())
-        .map_err(command_error)
-}
-
-fn normalize_external_url(url: &str) -> CommandResult<String> {
-    let trimmed = url.trim();
-    if trimmed.is_empty() {
-        return Err("下单网址为空".to_string());
-    }
-    let lower = trimmed.to_ascii_lowercase();
-    if lower.starts_with("http://") || lower.starts_with("https://") {
-        Ok(trimmed.to_string())
-    } else {
-        Ok(format!("https://{trimmed}"))
-    }
-}
-
-#[tauri::command]
-pub fn open_external_url(url: String) -> CommandResult<()> {
-    let target = normalize_external_url(&url)?;
-
-    #[cfg(target_os = "windows")]
-    let mut command = {
-        let mut command = Command::new("explorer");
-        command.arg(&target);
-        command
-    };
-
-    #[cfg(target_os = "macos")]
-    let mut command = {
-        let mut command = Command::new("open");
-        command.arg(&target);
-        command
-    };
-
-    #[cfg(all(unix, not(target_os = "macos")))]
-    let mut command = {
-        let mut command = Command::new("xdg-open");
-        command.arg(&target);
-        command
-    };
-
-    command.spawn().map(|_| ()).map_err(command_error)
-}
-
-#[tauri::command]
-pub fn restart_app(app: tauri::AppHandle) -> CommandResult<()> {
-    app.restart()
+fn read_project(
+    state: &AppState,
+    query: impl FnOnce(&rusqlite::Connection) -> Result<Project>,
+) -> Result<Project> {
+    let (mut project, root) =
+        state.read(|db| Ok((query(db)?, settings::read::<PathBuf>(db, "libraryRoot")?)))?;
+    library::populate_project_files(&mut project, root.as_deref());
+    Ok(project)
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
+mod tests;
 
-    #[test]
-    fn lists_files_from_an_order_folder() {
-        let directory = tempfile::tempdir().expect("create temp order folder");
-        let cdr = directory.path().join("新建 CorelDRAW 2024 Graphic.cdr");
-        let txt = directory.path().join("新建 文本文档.txt");
-        std::fs::write(&cdr, b"cdr").expect("write cdr");
-        std::fs::write(&txt, b"txt").expect("write txt");
+#[tauri::command(async)]
+pub fn app_info(state: State<'_, AppState>) -> Result<AppInfo> {
+    Ok(AppInfo {
+        version: env!("CARGO_PKG_VERSION").to_owned(),
+        data_dir: display(&state.data_dir),
+        db_path: display(&state.data_dir.join(DB_FILE)),
+    })
+}
 
-        let files = list_order_folder_files(
-            directory.path().to_string_lossy().to_string(),
-            "order-001".to_string(),
-            "customer-lin".to_string(),
-        )
-        .expect("list order folder files");
+#[tauri::command(async)]
+pub fn library_status(state: State<'_, AppState>) -> Result<LibraryStatus> {
+    library::status(&*state)
+}
 
-        assert_eq!(files.len(), 2);
-        assert!(files
-            .iter()
-            .any(|file| file.name == "新建 CorelDRAW 2024 Graphic.cdr"
-                && file.category == "CorelDRAW"
-                && file.order_id.as_deref() == Some("order-001")
-                && file.customer_id == "customer-lin"));
-        assert!(files
-            .iter()
-            .any(|file| file.name == "新建 文本文档.txt" && file.category == "文本文档"));
+#[tauri::command(async)]
+pub fn library_set_root(
+    state: State<'_, AppState>,
+    app: AppHandle,
+    path: Arg<String>,
+) -> Result<LibraryStatus> {
+    let status = library::set_root(&*state, Path::new(&path.0))?;
+    register_library_path(&app, status.root.as_deref().map(Path::new))?;
+    Ok(status)
+}
+
+#[tauri::command(async)]
+pub fn library_open_root(state: State<'_, AppState>, app: AppHandle) -> Result<()> {
+    open(&app, library::root(&*state)?)
+}
+
+#[tauri::command(async)]
+pub fn clients_list(state: State<'_, AppState>) -> Result<Vec<Client>> {
+    state.read(clients::list)
+}
+
+#[tauri::command(async)]
+pub fn client_get(state: State<'_, AppState>, id: Arg<String>) -> Result<Client> {
+    state.read(|db| clients::get(db, &id.0))
+}
+
+#[tauri::command(async)]
+pub fn client_create(state: State<'_, AppState>, input: Arg<ClientInput>) -> Result<Client> {
+    state.read(|db| clients::create(db, input.0))
+}
+
+#[tauri::command(async)]
+pub fn client_update(
+    state: State<'_, AppState>,
+    id: Arg<String>,
+    patch: Arg<ClientPatch>,
+) -> Result<MutationResult<Client>> {
+    let (mut result, rename, root) = state.read(|db| {
+        let current = clients::get(db, &id.0)?;
+        let rename = patch.0.rename_folder.unwrap_or(false)
+            && patch
+                .0
+                .name
+                .as_deref()
+                .is_some_and(|name| name.trim() != current.name)
+            && current.folder.is_some();
+        Ok((
+            clients::update_record(db, &id.0, patch.0)?,
+            rename,
+            settings::read::<PathBuf>(db, "libraryRoot")?,
+        ))
+    })?;
+    if rename {
+        result.warning = library::rename_client_folder(&*state, root.as_deref(), &id.0)
+            .err()
+            .map(|error| format!("folderRenameFailed：客户资料已保存。{}", error.message));
+        result.value = state.read(|db| clients::get(db, &id.0))?;
     }
+    Ok(result)
+}
+
+#[tauri::command(async)]
+pub fn client_delete(state: State<'_, AppState>, id: Arg<String>) -> Result<()> {
+    state.read(|db| clients::delete(db, &id.0))
+}
+
+#[tauri::command(async)]
+pub fn projects_list(state: State<'_, AppState>) -> Result<Vec<Project>> {
+    let (mut projects, root) = state.read(|db| {
+        Ok((
+            projects::list_records(db)?,
+            settings::read::<PathBuf>(db, "libraryRoot")?,
+        ))
+    })?;
+    for project in &mut projects {
+        library::populate_project_files(project, root.as_deref());
+    }
+    Ok(projects)
+}
+
+#[tauri::command(async)]
+pub fn project_get(state: State<'_, AppState>, id: Arg<String>) -> Result<Project> {
+    read_project(&state, |db| projects::get_record(db, &id.0))
+}
+
+#[tauri::command(async)]
+pub fn project_create(state: State<'_, AppState>, input: Arg<ProjectInput>) -> Result<Project> {
+    read_project(&state, |db| projects::create_record(db, input.0))
+}
+
+#[tauri::command(async)]
+pub fn project_update(
+    state: State<'_, AppState>,
+    id: Arg<String>,
+    patch: Arg<ProjectPatch>,
+) -> Result<MutationResult<Project>> {
+    let (mut result, rename, root) = state.read(|db| {
+        let current = projects::get_record(db, &id.0)?;
+        let rename = patch.0.rename_folder.unwrap_or(false)
+            && patch
+                .0
+                .title
+                .as_deref()
+                .is_some_and(|title| title.trim() != current.title)
+            && current.folder.is_some();
+        Ok((
+            projects::update_record(db, &id.0, patch.0)?,
+            rename,
+            settings::read::<PathBuf>(db, "libraryRoot")?,
+        ))
+    })?;
+    if rename {
+        result.warning = library::rename_project_folder(&*state, root.as_deref(), &id.0)
+            .err()
+            .map(|error| format!("folderRenameFailed：项目已保存。{}", error.message));
+    }
+    result.value = read_project(&state, |db| projects::get_record(db, &id.0))?;
+    Ok(result)
+}
+
+#[tauri::command(async)]
+pub fn project_set_status(
+    state: State<'_, AppState>,
+    id: Arg<String>,
+    status: Arg<ProjectStatus>,
+) -> Result<Project> {
+    read_project(&state, |db| {
+        projects::set_status_record(db, &id.0, status.0)
+    })
+}
+
+#[tauri::command(async)]
+pub fn project_duplicate(state: State<'_, AppState>, id: Arg<String>) -> Result<Project> {
+    read_project(&state, |db| projects::duplicate_record(db, &id.0))
+}
+
+#[tauri::command(async)]
+pub fn project_delete(state: State<'_, AppState>, id: Arg<String>) -> Result<()> {
+    state.read(|db| projects::delete(db, &id.0))
+}
+
+#[tauri::command(async)]
+pub fn payments_list(state: State<'_, AppState>, project_id: Arg<String>) -> Result<Vec<Payment>> {
+    state.read(|db| payments::list(db, &project_id.0))
+}
+
+#[tauri::command(async)]
+pub fn payments_all(state: State<'_, AppState>) -> Result<Vec<PaymentWithContext>> {
+    state.read(payments::all)
+}
+
+#[tauri::command(async)]
+pub fn payment_add(state: State<'_, AppState>, input: Arg<PaymentInput>) -> Result<Payment> {
+    state.read(|db| payments::add(db, input.0))
+}
+
+#[tauri::command(async)]
+pub fn payment_update(
+    state: State<'_, AppState>,
+    id: Arg<String>,
+    patch: Arg<PaymentPatch>,
+) -> Result<Payment> {
+    state.read(|db| payments::update(db, &id.0, patch.0))
+}
+
+#[tauri::command(async)]
+pub fn payment_delete(state: State<'_, AppState>, id: Arg<String>) -> Result<()> {
+    state.read(|db| payments::delete(db, &id.0))
+}
+
+#[tauri::command(async)]
+pub fn tags_list(state: State<'_, AppState>) -> Result<Vec<Tag>> {
+    state.read(tags::list)
+}
+
+#[tauri::command(async)]
+pub fn tag_create(
+    state: State<'_, AppState>,
+    name: Arg<String>,
+    color: Arg<TagColor>,
+) -> Result<Tag> {
+    state.read(|db| tags::create(db, &name.0, color.0))
+}
+
+#[tauri::command(async)]
+pub fn tag_update(
+    state: State<'_, AppState>,
+    id: Arg<String>,
+    patch: Arg<TagPatch>,
+) -> Result<Tag> {
+    state.read(|db| tags::update(db, &id.0, patch.0))
+}
+
+#[tauri::command(async)]
+pub fn tag_delete(state: State<'_, AppState>, id: Arg<String>) -> Result<()> {
+    state.read(|db| tags::delete(db, &id.0))
+}
+
+#[tauri::command(async)]
+pub fn tag_merge(
+    state: State<'_, AppState>,
+    source_id: Arg<String>,
+    target_id: Arg<String>,
+) -> Result<Tag> {
+    state.read(|db| tags::merge(db, &source_id.0, &target_id.0))
+}
+
+#[tauri::command(async)]
+pub fn client_set_tags(
+    state: State<'_, AppState>,
+    client_id: Arg<String>,
+    tag_ids: Arg<Vec<String>>,
+) -> Result<()> {
+    state.read(|db| tags::set(db, &client_id.0, &tag_ids.0, false))
+}
+
+#[tauri::command(async)]
+pub fn project_set_tags(
+    state: State<'_, AppState>,
+    project_id: Arg<String>,
+    tag_ids: Arg<Vec<String>>,
+) -> Result<()> {
+    state.read(|db| tags::set(db, &project_id.0, &tag_ids.0, true))
+}
+
+#[tauri::command(async)]
+pub fn activities_list(
+    state: State<'_, AppState>,
+    client_id: Arg<Option<String>>,
+    project_id: Arg<Option<String>>,
+    limit: Arg<Option<u32>>,
+) -> Result<Vec<Activity>> {
+    state.read(|db| activities::list(db, client_id.0.as_deref(), project_id.0.as_deref(), limit.0))
+}
+
+#[tauri::command(async)]
+pub fn activities_recent(state: State<'_, AppState>, limit: Arg<u32>) -> Result<Vec<Activity>> {
+    state.read(|db| activities::list(db, None, None, Some(limit.0)))
+}
+
+#[tauri::command(async)]
+pub fn activity_add_note(
+    state: State<'_, AppState>,
+    client_id: Arg<String>,
+    project_id: Arg<Option<String>>,
+    body: Arg<String>,
+) -> Result<Activity> {
+    state.read(|db| activities::add_note(db, &client_id.0, project_id.0.as_deref(), &body.0))
+}
+
+#[tauri::command(async)]
+pub fn activity_update_note(
+    state: State<'_, AppState>,
+    id: Arg<String>,
+    body: Arg<String>,
+) -> Result<Activity> {
+    state.read(|db| activities::update_note(db, &id.0, &body.0))
+}
+
+#[tauri::command(async)]
+pub fn activity_delete(state: State<'_, AppState>, id: Arg<String>) -> Result<()> {
+    state.read(|db| activities::delete(db, &id.0))
+}
+
+#[tauri::command(async)]
+pub fn files_list(
+    state: State<'_, AppState>,
+    target: Arg<FileTarget>,
+    include_projects: Arg<Option<bool>>,
+) -> Result<FileListResult> {
+    library::files_list(&*state, &target.0, include_projects.0.unwrap_or(false))
+}
+
+#[tauri::command(async)]
+pub fn files_recent(state: State<'_, AppState>, limit: Arg<u32>) -> Result<Vec<FileEntry>> {
+    library::files_recent(&*state, limit.0)
+}
+
+#[tauri::command(async)]
+pub fn files_add(
+    state: State<'_, AppState>,
+    target: Arg<FileTarget>,
+    source_paths: Arg<Vec<String>>,
+    subfolder: Arg<Option<String>>,
+) -> Result<Vec<FileEntry>> {
+    library::files_add(&*state, &target.0, &source_paths.0, subfolder.0.as_deref())
+}
+
+#[tauri::command(async)]
+pub fn files_pick_and_add(
+    state: State<'_, AppState>,
+    app: AppHandle,
+    target: Arg<FileTarget>,
+    subfolder: Arg<Option<String>>,
+) -> Result<Vec<FileEntry>> {
+    let Some(files) = app
+        .dialog()
+        .file()
+        .set_title("选择要添加的文件")
+        .blocking_pick_files()
+    else {
+        return Ok(Vec::new());
+    };
+    let sources = files
+        .into_iter()
+        .map(selected_path)
+        .collect::<Result<Vec<_>>>()?;
+    library::files_add(&*state, &target.0, &sources, subfolder.0.as_deref())
+}
+
+#[tauri::command(async)]
+pub fn file_open(state: State<'_, AppState>, app: AppHandle, path: Arg<String>) -> Result<()> {
+    open(&app, library::checked_file(&*state, Path::new(&path.0))?)
+}
+
+#[tauri::command(async)]
+pub fn file_reveal(state: State<'_, AppState>, app: AppHandle, path: Arg<String>) -> Result<()> {
+    let file = library::checked_file(&*state, Path::new(&path.0))?;
+    app.opener().reveal_item_in_dir(file).map_err(opener_error)
+}
+
+#[tauri::command(async)]
+pub fn file_rename(
+    state: State<'_, AppState>,
+    path: Arg<String>,
+    new_name: Arg<String>,
+) -> Result<FileEntry> {
+    library::file_rename(&*state, Path::new(&path.0), &new_name.0)
+}
+
+#[tauri::command(async)]
+pub fn file_trash(state: State<'_, AppState>, path: Arg<String>) -> Result<()> {
+    library::file_trash(&*state, Path::new(&path.0))
+}
+
+#[tauri::command(async)]
+pub fn folder_open(
+    state: State<'_, AppState>,
+    app: AppHandle,
+    target: Arg<FileTarget>,
+) -> Result<()> {
+    open(&app, library::ensure_folder(&*state, &target.0)?)
+}
+
+#[tauri::command(async)]
+pub fn pick_folder(app: AppHandle, title: Arg<Option<String>>) -> Result<Option<String>> {
+    app.dialog()
+        .file()
+        .set_title(title.0.as_deref().unwrap_or("选择文件夹"))
+        .blocking_pick_folder()
+        .map(selected_path)
+        .transpose()
+}
+
+#[tauri::command(async)]
+pub fn snippet_groups_list(state: State<'_, AppState>) -> Result<Vec<SnippetGroup>> {
+    state.read(snippets::groups_list)
+}
+
+#[tauri::command(async)]
+pub fn snippet_group_create(state: State<'_, AppState>, name: Arg<String>) -> Result<SnippetGroup> {
+    state.read(|db| snippets::group_create(db, &name.0))
+}
+
+#[tauri::command(async)]
+pub fn snippet_group_update(
+    state: State<'_, AppState>,
+    id: Arg<String>,
+    patch: Arg<SnippetGroupPatch>,
+) -> Result<SnippetGroup> {
+    state.read(|db| snippets::group_update(db, &id.0, patch.0))
+}
+
+#[tauri::command(async)]
+pub fn snippet_group_delete(state: State<'_, AppState>, id: Arg<String>) -> Result<()> {
+    state.read(|db| snippets::group_delete(db, &id.0))
+}
+
+#[tauri::command(async)]
+pub fn snippets_list(state: State<'_, AppState>) -> Result<Vec<Snippet>> {
+    state.read(snippets::list)
+}
+
+#[tauri::command(async)]
+pub fn snippet_create(state: State<'_, AppState>, input: Arg<SnippetInput>) -> Result<Snippet> {
+    state.read(|db| snippets::create(db, input.0))
+}
+
+#[tauri::command(async)]
+pub fn snippet_update(
+    state: State<'_, AppState>,
+    id: Arg<String>,
+    patch: Arg<SnippetPatch>,
+) -> Result<Snippet> {
+    state.read(|db| snippets::update(db, &id.0, patch.0))
+}
+
+#[tauri::command(async)]
+pub fn snippet_delete(state: State<'_, AppState>, id: Arg<String>) -> Result<()> {
+    state.read(|db| snippets::delete(db, &id.0))
+}
+
+#[tauri::command(async)]
+pub fn snippet_mark_used(state: State<'_, AppState>, id: Arg<String>) -> Result<()> {
+    state.read(|db| snippets::mark_used(db, &id.0))
+}
+
+#[tauri::command(async)]
+pub fn settings_get(state: State<'_, AppState>) -> Result<Settings> {
+    state.read(settings::get)
+}
+
+#[tauri::command(async)]
+pub fn settings_update(state: State<'_, AppState>, patch: Arg<SettingsPatch>) -> Result<Settings> {
+    state.read(|db| settings::update(db, patch.0))
+}
+
+#[tauri::command(async)]
+pub fn backups_list(state: State<'_, AppState>) -> Result<Vec<BackupInfo>> {
+    backup::list(&state.backup_connection()?, &state.data_dir)
+}
+
+#[tauri::command(async)]
+pub fn backup_create(state: State<'_, AppState>) -> Result<BackupInfo> {
+    backup::create(&state.backup_connection()?, &state.data_dir)
+}
+
+#[tauri::command(async)]
+pub fn backup_restore(
+    state: State<'_, AppState>,
+    app: AppHandle,
+    file_name: Arg<String>,
+) -> Result<()> {
+    let _filesystem = state.file_guard()?;
+    let mut db = state.backup_connection()?;
+    backup::restore(&mut db, &state.data_dir, &file_name.0)?;
+    let root = settings::read::<PathBuf>(&db, "libraryRoot")?;
+    register_library_path(&app, root.as_deref())
+}
+
+#[tauri::command(async)]
+pub fn trash_list(state: State<'_, AppState>) -> Result<Vec<TrashItem>> {
+    state.read(trash::list)
+}
+
+#[tauri::command(async)]
+pub fn trash_restore(
+    state: State<'_, AppState>,
+    r#type: Arg<TrashType>,
+    id: Arg<String>,
+) -> Result<()> {
+    state.read(|db| trash::restore(db, r#type.0, &id.0))
+}
+
+#[tauri::command(async)]
+pub fn trash_purge(
+    state: State<'_, AppState>,
+    r#type: Arg<TrashType>,
+    id: Arg<String>,
+) -> Result<()> {
+    state.read(|db| trash::purge(db, r#type.0, &id.0))
+}
+
+#[tauri::command(async)]
+pub fn save_text_file(
+    app: AppHandle,
+    default_name: Arg<String>,
+    content: Arg<String>,
+) -> Result<Option<String>> {
+    let name = library::sanitize(&default_name.0);
+    let selected = app
+        .dialog()
+        .file()
+        .set_title("保存文本文件")
+        .set_file_name(name)
+        .blocking_save_file();
+    let Some(path) = selected.map(selected_path).transpose()? else {
+        return Ok(None);
+    };
+    write_text(Path::new(&path), &content.0)?;
+    Ok(Some(path))
 }
