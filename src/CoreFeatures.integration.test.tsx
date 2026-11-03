@@ -127,7 +127,7 @@ describe('核心业务完整组件集成', () => {
     await within(panel).findByRole('heading', { name: second.title });
     await user.click(within(panel).getByRole('button', { name: '在整页打开' }));
     await waitFor(() => expect(screen.queryByRole('dialog', { name: '项目详情' })).toBeNull());
-    expect(within(screen.getByRole('main')).getByRole('heading', { name: second.title })).toBeTruthy();
+    expect(await within(screen.getByRole('main')).findByRole('heading', { name: second.title })).toBeTruthy();
     expect(useNav.getState().entries[useNav.getState().index].params.projectFullPage).toBe(true);
     await user.keyboard('{Alt>}{ArrowLeft}{/Alt}');
     expect(await screen.findByRole('dialog', { name: '项目详情' })).toBeTruthy();

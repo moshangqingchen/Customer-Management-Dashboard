@@ -106,6 +106,7 @@ pub fn set_root(db: &impl Database, path: &Path) -> Result<LibraryStatus> {
     if !path.is_absolute() {
         return Err(AppError::invalid("文件库位置必须是绝对路径"));
     }
+    fs::create_dir_all(path).map_err(|_| unavailable())?;
     let canonical = canonical_root(path)?;
     let value = describe(Some(&canonical));
     if value.state != LibraryState::Ready {

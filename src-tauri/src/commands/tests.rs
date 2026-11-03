@@ -3,6 +3,29 @@ use crate::repo::clients;
 use serde_json::json;
 
 #[test]
+fn app_info_reports_standard_and_portable_data_locations() {
+    for portable in [false, true] {
+        let dir = tempfile::tempdir().unwrap();
+        let mut state = AppState::open(dir.path().to_owned()).unwrap();
+        state.portable = portable;
+        state.suggested_library_root = portable.then(|| dir.path().join("建议文件库"));
+        let info = serde_json::to_value(app_information(&state)).unwrap();
+        assert_eq!(info["portable"], portable);
+        assert_eq!(info["dataDir"], display(dir.path()));
+        assert_eq!(info["dbPath"], display(&dir.path().join(DB_FILE)));
+        assert_eq!(info["version"], "2.0.1");
+        if portable {
+            assert_eq!(
+                info["suggestedLibraryRoot"],
+                display(&dir.path().join("建议文件库"))
+            );
+        } else {
+            assert_eq!(info["suggestedLibraryRoot"], serde_json::Value::Null);
+        }
+    }
+}
+
+#[test]
 fn text_export_replaces_existing_file_and_includes_utf8_bom() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("收款流水.csv");

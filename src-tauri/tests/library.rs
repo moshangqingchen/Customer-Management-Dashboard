@@ -77,6 +77,21 @@ impl Fixture {
 }
 
 #[test]
+fn confirming_a_suggested_library_creates_missing_directories() {
+    let tmp = tempfile::tempdir().unwrap();
+    let db = db::open(&tmp.path().join("client-desk.db")).unwrap();
+    let suggested = tmp.path().join("新位置").join("客户资料库");
+    assert!(!suggested.exists());
+    let status = library::set_root(&db, &suggested).unwrap();
+    assert_eq!(status.state, LibraryState::Ready);
+    assert!(suggested.is_dir());
+    assert_eq!(
+        library::root(&db).unwrap(),
+        suggested.canonicalize().unwrap()
+    );
+}
+
+#[test]
 fn sanitize_windows_folder_names() {
     assert_eq!(library::sanitize(" .小/店:\n*?\"<>|. "), "小_店________");
     assert_eq!(library::sanitize(" . . "), "未命名");

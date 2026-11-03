@@ -1,9 +1,9 @@
 import { invoke } from '@tauri-apps/api/core';
 import type { Api } from './client';
-import type { FilesAddResult, Project } from './types';
+import type { AppInfo, FilesAddResult, Project } from './types';
 
 export const tauriApi: Api = {
-  app: { info: () => invoke('app_info'), saveTextFile: (defaultName, content) => invoke('save_text_file', { defaultName, content }) },
+  app: { info: () => invoke<AppInfo>('app_info'), openDataDir: () => invoke('app_open_data_dir'), saveTextFile: (defaultName, content) => invoke('save_text_file', { defaultName, content }) },
   library: {
     status: () => invoke('library_status'), setRoot: path => invoke('library_set_root', { path }),
     openRoot: () => invoke('library_open_root'), pickFolder: title => invoke('pick_folder', { title }),

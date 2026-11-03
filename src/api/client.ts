@@ -11,7 +11,7 @@ export type NoteInput = { clientId: T.ID; projectId?: T.ID; body: string };
 export type TrashType = T.TrashItem['type'];
 
 export interface Api {
-  app: { info(): Promise<T.AppInfo>; saveTextFile(defaultName: string, content: string): Promise<string | null> };
+  app: { info(): Promise<T.AppInfo>; openDataDir(): Promise<void>; saveTextFile(defaultName: string, content: string): Promise<string | null> };
   library: { status(): Promise<T.LibraryStatus>; setRoot(path: string): Promise<T.LibraryStatus>; openRoot(): Promise<void>; pickFolder(title?: string): Promise<string | null> };
   clients: {
     list(): Promise<T.Client[]>; get(id: T.ID): Promise<T.Client>; create(input: T.ClientInput): Promise<T.Client>;

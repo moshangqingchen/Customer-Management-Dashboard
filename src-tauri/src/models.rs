@@ -373,6 +373,8 @@ pub struct AppInfo {
     pub version: String,
     pub data_dir: String,
     pub db_path: String,
+    pub portable: bool,
+    pub suggested_library_root: Option<String>,
 }
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

@@ -5,6 +5,7 @@ import { invoke } from '@tauri-apps/api/core';
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn().mockResolvedValue(undefined) }));
 const cases: [string, Record<string, unknown> | undefined, () => Promise<unknown>][] = [
   ['app_info', undefined, () => api.app.info()],
+  ['app_open_data_dir', undefined, () => api.app.openDataDir()],
   ['save_text_file', { defaultName: '收款.csv', content: '日期,金额' }, () => api.app.saveTextFile('收款.csv', '日期,金额')],
   ['library_status', undefined, () => api.library.status()],
   ['library_set_root', { path: 'D:/文件库' }, () => api.library.setRoot('D:/文件库')],
@@ -67,6 +68,11 @@ const cases: [string, Record<string, unknown> | undefined, () => Promise<unknown
   ['trash_purge', { type: 'project', id: 'p' }, () => api.trash.purge('project', 'p')],
 ];
 describe('Tauri 接口契约', () => {
+  it.each([false, true])('应用信息完整保留便携模式字段：%s', async portable => {
+    const value = { version: '2.0.1', dataDir: 'D:/我的数据/应用数据', dbPath: 'D:/我的数据/应用数据/client-desk.db', portable, suggestedLibraryRoot: portable ? 'D:/我的数据/客户资料库' : null };
+    vi.mocked(invoke).mockResolvedValueOnce(value);
+    expect(await api.app.info()).toEqual(value);
+  });
   it('添加与选择文件保留部分成功结果，全部失败仍正常返回', async () => {
     const result = { added: [], failed: [{ name: '缺失.psd', message: '文件不存在' }] };
     vi.mocked(invoke).mockResolvedValueOnce(result);

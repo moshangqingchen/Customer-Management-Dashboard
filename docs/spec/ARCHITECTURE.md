@@ -8,7 +8,7 @@
 |---|---|
 | 桌面壳 | Tauri 2（Windows，NSIS 安装包，`currentUser` 安装） |
 | 后端 | Rust 2021：`rusqlite`(bundled, backup)、`serde`/`serde_json`、`uuid` v4、`chrono`、`walkdir`、`thiserror`、`tempfile`(dev) |
-| Tauri 插件 | `dialog`（选文件夹/文件/保存位置）、`opener`（打开文件、在资源管理器中显示）、`single-instance`、`window-state`、`updater` + `process`（第 3 阶段） |
+| Tauri 插件 | `dialog`（选文件夹/文件/保存位置）、`opener`（打开文件、在资源管理器中显示）、`single-instance`、`updater` + `process`（第 3 阶段）；窗口位置由应用自己保存（2.0.1 起移除 `window-state` 插件，见 §4.3） |
 | 前端 | React 19 + TypeScript strict + Vite 6 |
 | 样式 | Tailwind CSS v4（`@tailwindcss/vite`），所有颜色走 CSS 变量 token |
 | 组件原语 | Radix UI（dialog, dropdown-menu, context-menu, popover, select, tooltip, tabs, checkbox, scroll-area） |
@@ -183,6 +183,20 @@ CREATE TABLE snippets (
 - 自动：应用启动时若 `lastAutoBackupDate` ≠ 今天则备份并更新；保留最新 30 份自动备份（手动备份不轮转，文件名加 `-manual`）。
 - 恢复：先对当前库做一次 `-before-restore` 备份，再用 backup API 把选中文件恢复到当前连接；恢复后前端整体刷新。
 
+### 4.3 便携模式（2.0.1 起）
+
+用户要求「所有东西都在项目文件夹里」。安装目录旁可放 `portable.json` 开启便携模式：
+
+```json
+{ "dataDir": "..\\我的数据\\应用数据", "libraryDir": "..\\我的数据\\客户资料库" }
+```
+
+- 位置：`<exe 所在目录>/portable.json`；相对路径以 exe 所在目录为基准解析，也接受绝对路径。`libraryDir` 可省略。
+- 文件不存在 → 行为与之前完全一致（`<app_data_dir>`）。文件存在但无法解析或 `dataDir` 不可写 → 弹系统错误框说明原因并退出，**绝不**悄悄退回 AppData（否则用户会看到空库以为数据丢了）。
+- 便携模式下，本应用写入的一切都在 `dataDir` 内：SQLite 及其 `-wal/-shm`、`backups/`（仅未设置文件库时；设置后按 §4.2 写入 `<libraryRoot>/_备份/`）、窗口位置 `window-state.json`（两种模式都由应用自己保存，不再用 window-state 插件）、WebView2 用户数据（`<dataDir>/webview`）。不得在 `%APPDATA%`、`%LOCALAPPDATA%` 下创建以 identifier 命名的任何文件或空目录。例外：更新包下载用系统临时目录（插件行为，下载完即用）。
+- `libraryDir` 只用于首次引导的「建议位置」，真正的文件库仍由用户确认后经 `library_set_root` 写入设置。
+- 非便携安装（GitHub 下载的普通安装包）不受影响。
+
 ## 5. 前端类型（`src/api/types.ts` 逐字使用）
 
 ```ts
@@ -264,7 +278,7 @@ export interface Settings {
 }
 export interface BackupInfo { fileName: string; path: string; sizeBytes: number; createdAt: string; kind: "auto" | "manual" | "beforeRestore"; }
 export interface TrashItem { type: "client" | "project"; id: ID; title: string; subtitle: string; deletedAt: string; }
-export interface AppInfo { version: string; dataDir: string; dbPath: string; }
+export interface AppInfo { version: string; dataDir: string; dbPath: string; portable: boolean; suggestedLibraryRoot: string | null; }
 export interface MutationResult<T> { value: T; warning: string | null; }
 export interface AppErrorPayload { code: string; message: string; }
 ```
@@ -276,6 +290,7 @@ export interface AppErrorPayload { code: string; message: string; }
 | invoke 名 | 参数 | 返回 |
 |---|---|---|
 | `app_info` | – | `AppInfo` |
+| `app_open_data_dir` | – | `void`（用资源管理器打开数据目录） |
 | `library_status` | – | `LibraryStatus` |
 | `library_set_root` | `{ path }` | `LibraryStatus` |
 | `library_open_root` | – | `void` |

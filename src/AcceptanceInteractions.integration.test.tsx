@@ -45,6 +45,7 @@ describe('最终验收：标签、命令与删除恢复', () => {
     const target = await mockApi.tags.create('验收合并目标', 'violet');
     const user = await mount();
     await user.click(screen.getByRole('button', { name: '设置' }));
+    await screen.findByRole('heading', { name: '设置' });
     await user.type(await screen.findByRole('textbox', { name: '新标签名称' }), '验收新标签');
     const form = screen.getByRole('textbox', { name: '新标签名称' }).closest('form');
     if (!form) throw new Error('未找到新建标签表单');

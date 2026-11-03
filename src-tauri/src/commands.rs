@@ -73,13 +73,24 @@ fn read_project(
 #[cfg(test)]
 mod tests;
 
-#[tauri::command(async)]
-pub fn app_info(state: State<'_, AppState>) -> Result<AppInfo> {
-    Ok(AppInfo {
+fn app_information(state: &AppState) -> AppInfo {
+    AppInfo {
         version: env!("CARGO_PKG_VERSION").to_owned(),
         data_dir: display(&state.data_dir),
         db_path: display(&state.data_dir.join(DB_FILE)),
-    })
+        portable: state.portable,
+        suggested_library_root: state.suggested_library_root.as_deref().map(display),
+    }
+}
+
+#[tauri::command(async)]
+pub fn app_info(state: State<'_, AppState>) -> Result<AppInfo> {
+    Ok(app_information(&state))
+}
+
+#[tauri::command(async)]
+pub fn app_open_data_dir(state: State<'_, AppState>, app: AppHandle) -> Result<()> {
+    open(&app, state.data_dir.clone())
 }
 
 #[tauri::command(async)]

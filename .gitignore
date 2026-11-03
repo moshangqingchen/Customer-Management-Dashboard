@@ -15,6 +15,10 @@ src-tauri/gen/
 # Release packages and update artifacts
 release/
 
+# Installed app and private client data (portable mode); never commit
+/app/
+/我的数据/
+
 # Local environment and secrets
 .env
 .env.*

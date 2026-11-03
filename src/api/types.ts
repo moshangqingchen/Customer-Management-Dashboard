@@ -76,6 +76,6 @@ export interface Settings {
 }
 export interface BackupInfo { fileName: string; path: string; sizeBytes: number; createdAt: string; kind: "auto" | "manual" | "beforeRestore"; }
 export interface TrashItem { type: "client" | "project"; id: ID; title: string; subtitle: string; deletedAt: string; }
-export interface AppInfo { version: string; dataDir: string; dbPath: string; }
+export interface AppInfo { version: string; dataDir: string; dbPath: string; portable: boolean; suggestedLibraryRoot: string | null; }
 export interface MutationResult<T> { value: T; warning: string | null; }
 export interface AppErrorPayload { code: string; message: string; }

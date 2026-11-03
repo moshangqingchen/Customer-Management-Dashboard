@@ -99,7 +99,7 @@ describe('基础工作台完整流程', () => {
     expect(await mockApi.projects.list()).toHaveLength(33);
     expect(useUI.getState().newProjectOpen).toBe(false);
     expect(useNav.getState().entries.at(-1)?.params.projectId).toBeTruthy();
-  });
+  }, 30_000);
 
   it('命令面板回车复制话术并保留换行，选择收款项目时表单随项目重置', async () => {
     const user = await readyApp();

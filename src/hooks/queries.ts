@@ -191,6 +191,7 @@ export const useUpdateSettings = () => useAction((patch: Partial<Settings>) => a
 export const useSetLibraryRoot = () => useAction((path: string) => api.library.setRoot(path), () => [queryKeys.library, queryKeys.files, queryKeys.projects, queryKeys.project(), queryKeys.clients, queryKeys.client(), queryKeys.backups]);
 export const usePickFolder = () => useAction((title?: string) => api.library.pickFolder(title));
 export const useOpenLibrary = () => useAction(() => api.library.openRoot());
+export const useOpenDataDir = () => useAction(() => api.app.openDataDir());
 export const useCreateBackup = () => useAction(() => api.backups.create(), () => [queryKeys.backups]);
 export function useRestoreBackup() {
   const q = useQueryClient();

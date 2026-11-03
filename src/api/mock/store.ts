@@ -9,6 +9,7 @@ import { migrateMockAssets } from './migrateAssets';
 export type StoredClient = T.Client & { deletedAt: string | null };
 export type StoredProject = T.Project & { deletedAt: string | null; deletedWithClient: boolean };
 export interface MockData {
+  appInfo?: T.AppInfo;
   version: 1; clients: StoredClient[]; projects: StoredProject[]; payments: T.Payment[];
   tags: T.Tag[]; activities: T.Activity[]; groups: T.SnippetGroup[]; snippets: T.Snippet[];
   files: T.FileEntry[]; libraryRoot: string | null; settings: T.Settings; backups: T.BackupInfo[];
