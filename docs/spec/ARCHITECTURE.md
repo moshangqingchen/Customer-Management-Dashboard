@@ -197,6 +197,13 @@ CREATE TABLE snippets (
 - `libraryDir` 只用于首次引导的「建议位置」，真正的文件库仍由用户确认后经 `library_set_root` 写入设置。
 - 非便携安装（GitHub 下载的普通安装包）不受影响。
 
+### 4.4 系统缩略图与剪贴板（2.1 起，仅 Windows）
+
+- **缩略图** `file_thumbnail { path, size }`：`size` 为 256（网格）或 1024（预览）。用 Windows Shell `IShellItemImageFactory::GetImage`（`SIIGBF_THUMBNAILONLY | SIIGBF_BIGGERSIZEOK`）取图，编码为 PNG 缓存在 `<dataDir>/thumbs/`，缓存键 = 规范化路径 + 修改时间 + 文件大小 + size（稳定哈希，升级后不应失效）；命中直接返回。返回缓存 PNG 的绝对路径，前端用 `convertFileSrc` 显示；启动时把 `<dataDir>/thumbs` 加进 asset 协议授权。没有缩略图处理程序返回 `null`。COM 在专用 STA 线程上调用；单次超时 5 秒，并发上限 2，排队已满或超时直接返回 `null`，绝不阻塞命令线程，挂起的处理程序也不能让线程无限增长。缓存总量超过 300MB 时按最久未用清理。只接受文件库内的路径。
+- **复制文件** `files_copy_to_clipboard { paths }`：写入 `CF_HDROP` 和 `Preferred DropEffect = DROPEFFECT_COPY`，可在微信/QQ/资源管理器粘贴。路径必须都在文件库内且存在。
+- **粘贴入库** `files_paste { target, subfolder? }`：剪贴板优先读 `CF_HDROP`（行为等同 `files_add`），否则读图片（优先 `PNG` 格式，其次 `CF_DIBV5`/`CF_DIB`），存为 `粘贴图片 YYYYMMDD-HHMMSS.png`（重名按 §4.1 规则编号）。都没有时返回 `AppError { code: "clipboardEmpty", message: "剪贴板里没有文件或图片" }`。写动态记录同 `files_add`。
+- **封面**：`coverPath` 规则扩展为「项目内最新的图片；没有图片时取最新的 design/pdf 文件」，前端对非图片封面走 `file_thumbnail`，取不到就不显示封面。
+
 ## 5. 前端类型（`src/api/types.ts` 逐字使用）
 
 ```ts
@@ -331,6 +338,9 @@ export interface AppErrorPayload { code: string; message: string; }
 | `file_reveal` | `{ path }` | `void` |
 | `file_rename` | `{ path, newName }` | `FileEntry` |
 | `file_trash` | `{ path }` | `void` |
+| `file_thumbnail` | `{ path, size: 256 \| 1024 }` | `string \| null`（2.1 起，见 §4.4） |
+| `files_copy_to_clipboard` | `{ paths: string[] }` | `void`（2.1 起） |
+| `files_paste` | `{ target: FileTarget, subfolder? }` | `FilesAddResult`（2.1 起） |
 | `folder_open` | `{ target: FileTarget }` | `void`（必要时先创建） |
 | `pick_folder` | `{ title? }` | `string \| null` |
 | `snippet_groups_list` / `snippet_group_create {name}` / `snippet_group_update {id, patch:{name?, sort?}}` / `snippet_group_delete {id}` | | |
