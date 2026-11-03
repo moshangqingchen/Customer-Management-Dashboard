@@ -144,4 +144,3 @@ danger `#EF4444`（逾期、删除、退款）· warning `#F59E0B`（即将到�
 ## 9. 概念图
 
 - `docs/spec/concepts/v2/A-today.png`、`A-projects.png`：**当前视觉基准**。
-- `docs/spec/concepts/v2/B-*.png`、`docs/spec/concepts/*.png`（旧「暖纸·朱印」方向）：已废弃，仅存档。

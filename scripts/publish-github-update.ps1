@@ -50,7 +50,8 @@ function Publish-WithGitHubApi(
     throw "The current GitHub credential cannot publish releases to $RepositoryName."
   }
 
-  $releases = @(Invoke-RestMethod -Proxy 'http://127.0.0.1:10090' -Headers $headers -Uri "$apiBase/releases?per_page=100")
+  # Invoke-RestMethod emits a JSON array as one object; pipe it to enumerate the items.
+  $releases = @((Invoke-RestMethod -Proxy 'http://127.0.0.1:10090' -Headers $headers -Uri "$apiBase/releases?per_page=100") | ForEach-Object { $_ })
   $release = $releases | Where-Object { $_.tag_name -eq $Tag } | Select-Object -First 1
   if ($release -and !$release.draft) {
     throw "Release $Tag is already published. Refusing to replace live updater assets; publish a new version instead."
@@ -74,7 +75,7 @@ function Publish-WithGitHubApi(
       -Uri "$apiBase/releases" -Body $draftBody
   }
 
-  $assets = @(Invoke-RestMethod -Proxy 'http://127.0.0.1:10090' -Headers $headers -Uri "$apiBase/releases/$($release.id)/assets?per_page=100")
+  $assets = @((Invoke-RestMethod -Proxy 'http://127.0.0.1:10090' -Headers $headers -Uri "$apiBase/releases/$($release.id)/assets?per_page=100") | ForEach-Object { $_ })
   foreach ($file in $Files) {
     $assetName = Split-Path -Leaf $file
     $existing = $assets | Where-Object { $_.name -eq $assetName }
