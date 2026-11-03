@@ -1,6 +1,6 @@
-import { format, parseISO } from 'date-fns';
+import { parseISO } from 'date-fns';
 import type { Activity, ProjectStatus } from '../api/types';
-import { dateOffset, today } from './dates';
+import { dateOffset, formatDate, formatDateTime, formatTime, today } from './dates';
 import { formatMoney } from './money';
 import { statuses, statusMeta } from './status';
 
@@ -22,9 +22,10 @@ export function activitySummary(activity: Activity): string {
 }
 
 export function activityDayLabel(date: string, base = today()): string {
+  if (date.slice(0, 4) !== base.slice(0, 4)) return formatDate(date, base);
   if (date === base) return '今天';
   if (date === dateOffset(-1, base)) return '昨天';
-  return format(parseISO(date), date.slice(0, 4) === base.slice(0, 4) ? 'M月d日' : 'yyyy年M月d日');
+  return formatDate(date, base);
 }
 
 export function groupActivities(activities: Activity[], base = today()) {
@@ -38,10 +39,11 @@ export function groupActivities(activities: Activity[], base = today()) {
 
 export function relativeActivityTime(timestamp: string, now = new Date()): string {
   const value = parseISO(timestamp); const minutes = Math.max(0, Math.floor((now.getTime() - value.getTime()) / 60000));
+  const day = today(value); const base = today(now);
+  if (day.slice(0, 4) !== base.slice(0, 4)) return formatDateTime(timestamp, base);
   if (minutes < 1) return '刚刚';
   if (minutes < 60) return `${minutes} 分钟前`;
-  const day = today(value); const base = today(now);
   if (day === base) return `${Math.floor(minutes / 60)} 小时前`;
-  if (day === dateOffset(-1, base)) return `昨天 ${format(value, 'HH:mm')}`;
-  return format(value, day.slice(0, 4) === base.slice(0, 4) ? 'M月d日 HH:mm' : 'yyyy年M月d日 HH:mm');
+  if (day === dateOffset(-1, base)) return `昨天 ${formatTime(timestamp)}`;
+  return formatDateTime(timestamp, base);
 }

@@ -243,7 +243,7 @@ export interface Project {
   createdAt: string; updatedAt: string;
   // 派生
   receivedCents: number; paymentCount: number; fileCount: number;
-  coverPath: string | null; // 项目文件夹（递归 ≤3 层）中最近修改的图片（png/jpg/jpeg/webp/gif，≤25MB）的绝对路径；与 fileCount 同一次扫描、同一缓存
+  coverPath: string | null; // 项目文件夹（递归 ≤3 层）中最近修改的图片的绝对路径，没有图片时取最近的 design/pdf（见 §4.4）；与 fileCount 同一次扫描、同一缓存
 }
 export type ProjectInput = {
   clientId: ID; title: string; status?: ProjectStatus; pinned?: boolean; brief?: string;
@@ -359,7 +359,7 @@ export interface AppErrorPayload { code: string; message: string; }
 
 拖拽：前端监听 `getCurrentWebview().onDragDropEvent`，用事件坐标（物理像素 ÷ devicePixelRatio）配合 `document.elementFromPoint` 找最近的 `[data-drop-target]`（值为 `project:<id>` 或 `client:<id>`），调用 `files_add`。`over` 事件时给目标加高亮。
 
-缩略图：前端用 `convertFileSrc(path)`；超过 25MB 的图片不加载缩略图，显示类型图标。`tauri.conf.json` 开启 `assetProtocol.enable`，静态 scope 为空，运行时由后端添加。CSP 允许 `img-src 'self' data: blob: asset: http://asset.localhost`。
+缩略图：≤25MB 的图片前端直接 `convertFileSrc(path)`；超过 25MB 的图片和非图片文件走 `file_thumbnail`（§4.4），拿不到时显示类型图块。`tauri.conf.json` 开启 `assetProtocol.enable`，静态 scope 为空，运行时由后端添加。CSP 允许 `img-src 'self' data: blob: asset: http://asset.localhost`。
 
 ## 7. 浏览器开发模式（Mock）
 

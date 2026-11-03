@@ -3,7 +3,7 @@ import { Check, Copy, MessageSquare, Pencil, Plus, Search, Trash2 } from 'lucide
 import type { Snippet } from '../api/types';
 import { useDeleteSnippet, useMarkSnippetUsed, useSnippetGroups, useSnippets } from '../hooks/queries';
 import { useCopy } from '../hooks/useCopy';
-import { filterSnippets } from '../lib/snippets';
+import { filterSnippets, hasSnippetVariables } from '../lib/snippets';
 import { PageHeader } from '../components/layout/PageHeader';
 import { SnippetEditor } from '../components/snippets/SnippetEditor';
 import { SnippetGroups } from '../components/snippets/SnippetGroups';
@@ -15,7 +15,7 @@ import { EmptyState, Skeleton } from '../components/ui/Surfaces';
 
 function SnippetCard({ snippet, groupName, onEdit, onDelete }: { snippet: Snippet; groupName?: string; onEdit: () => void; onDelete: () => void }) {
   const clipboard = useCopy(); const used = useMarkSnippetUsed();
-  async function copy() { if (await clipboard.copy(snippet.body)) used.mutate(snippet.id); }
+  async function copy() { if (await clipboard.copy(snippet.body, hasSnippetVariables(snippet.body) ? '已复制（含未填写的变量）' : '已复制')) used.mutate(snippet.id); }
   return <article className="group relative min-w-0 rounded-lg border border-line/70 bg-surface shadow-sm transition-all hover:-translate-y-px hover:shadow-md"><button type="button" aria-label={`复制话术：${snippet.title}`} className="block h-full min-h-48 w-full rounded-lg p-5 text-left" onClick={() => { void copy(); }}><div className="mb-4 flex items-center gap-2"><IconTile size="sm" tone="violet">{clipboard.copied ? <Check /> : <MessageSquare />}</IconTile><span className="truncate text-xs text-fg-2">{groupName}</span></div><h3 className="truncate pr-10 text-lg font-semibold" title={snippet.title}>{snippet.title}</h3><p className="mt-2 line-clamp-3 min-h-[66px] whitespace-pre-wrap break-words text-sm leading-[22px] text-fg-2">{snippet.body}</p><span className="mt-4 flex items-center gap-1.5 text-xs text-fg-2"><Copy size={12} />{clipboard.copied ? '已复制' : '点击复制'}<span className="ml-auto tabular-nums">已使用 {snippet.useCount} 次</span></span></button><div className="absolute top-4 right-3 flex rounded-md bg-surface opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"><IconButton label={`编辑话术：${snippet.title}`} size="sm" onClick={onEdit}><Pencil size={15} /></IconButton><IconButton label={`删除话术：${snippet.title}`} size="sm" onClick={onDelete}><Trash2 size={15} /></IconButton></div></article>;
 }
 export function SnippetsPage() {

@@ -10,9 +10,14 @@
 - 收入：周期指标与环比、近十二个月实收与利润、收款流水、CSV 导出及客户排行。金额以整数分存储，退款按负数统计。
 - 文件：图片缩略图、文件类型图块、全库检索、拖入复制、重命名与回收。
 - 话术：分组排序、跨组搜索、原样复制和使用计数。
+- 设计文件缩略图：PSD、AI、CDR、PDF、视频及大图片按需加载 Windows 系统缩略图，支持设计文件项目封面；缺少缩略图时显示类型图块。设计文件缩略图依赖本机已安装软件提供的 Windows 缩略图处理程序，例如安装 CorelDRAW 并注册其处理程序后才有 CDR 缩略图。
+- 大图预览：选中文件按空格或点击预览，方向键切换，Esc 关闭；支持系统打开、定位和复制文件。
+- 复制文件：Ctrl/Shift 多选后复制文件本身，可粘贴到微信、QQ或邮件；项目支持一键复制「交付成品」中的文件。
+- 粘贴入库：在项目或客户详情按 Ctrl+V，或点击「从剪贴板粘贴」，将文件或截图存入文件库；项目使用当前「添加到」子文件夹。
+- 话术变量：编辑器可插入客户、项目、报价、已收、待收和截止日变量，在项目或客户详情选择话术时自动填写并复制。
 - 设置：文件库、外观、标签合并、收款方式、来源平台、备份、回收站与更新。
 
-快捷键：`Ctrl+1…6` 跳转主页面，`Ctrl+K` 搜索与命令，`Ctrl+N` 新建项目，`Ctrl+Shift+N` 新建客户，`/` 聚焦页面搜索，`Esc` 关闭弹窗或面板。
+快捷键：`Ctrl+1…6` 跳转主页面，`Ctrl+K` 搜索与命令，`Ctrl+N` 新建项目，`Ctrl+Shift+N` 新建客户，`/` 聚焦页面搜索，`Space` 预览选中的文件，`←/→` 切换预览，`Ctrl+V` 在详情粘贴文件或截图，`Esc` 关闭弹窗或面板。
 
 ## 文件库与备份
 
@@ -54,6 +59,7 @@
       client-desk.db
       backups/
       window-state.json
+      thumbs/
       webview/
     客户资料库/
       _备份/
@@ -61,7 +67,7 @@
       客户与项目文件夹…
 ```
 
-便携模式将数据库及其附属文件、窗口位置和 WebView2 用户数据保存在 `dataDir`；数据库备份在未配置文件库时写入这里的 `backups/`，配置文件库后写入文件库的 `_备份/`。可在「设置 → 关于」查看并打开数据目录。
+便携模式将数据库及其附属文件、窗口位置、缩略图缓存和 WebView2 用户数据保存在 `dataDir`；数据库备份在未配置文件库时写入这里的 `backups/`，配置文件库后写入文件库的 `_备份/`。两种模式的系统缩略图都缓存在 `<dataDir>/thumbs/`，超过 300MB 时清理最久未使用的缓存。可在「设置 → 关于」查看并打开数据目录。
 
 按上述布局使用时，**正常关闭应用后，复制整个 `我的数据` 文件夹即可备份应用数据和设计文件**；若文件库选在其他位置，还需一起备份那个文件夹。移动整个项目文件夹后，`portable.json` 中的相对路径仍会生效，但数据库保存的文件库位置是绝对路径，需要在「设置 → 文件库」重新指向移动后的 `客户资料库`，保留其原来的目录结构。
 
@@ -91,11 +97,11 @@ cargo test
 
 ```powershell
 # 同步版本（不生成 git 提交或标签）
-./scripts/set-version.ps1 -Version '2.0.1'
+./scripts/set-version.ps1 -Version '2.1.0'
 # 生成带更新签名的 NSIS 安装包；可预先提供私钥及其密码环境变量
 ./scripts/build-tauri-signed.ps1
 # 仅在本地准备更新清单，不联网发布
-./scripts/create-update-manifest.ps1 -DownloadUrl 'https://github.com/moshangqingchen/Customer-Management-Dashboard/releases/download/v2.0.1/client-desk-2.0.1-x64-setup.exe' -Notes '版本说明'
+./scripts/create-update-manifest.ps1 -DownloadUrl 'https://github.com/moshangqingchen/Customer-Management-Dashboard/releases/download/v2.1.0/client-desk-2.1.0-x64-setup.exe' -Notes '版本说明'
 ./scripts/verify-update-release.ps1
 ```
 

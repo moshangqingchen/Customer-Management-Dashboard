@@ -71,7 +71,8 @@ describe('基础工作台完整流程', () => {
     act(() => window.__mock.reset());
     await screen.findByRole('button', { name: '选择文件库位置' });
     expect(errors).not.toHaveBeenCalled();
-  });
+  // This flow loads all six route chunks, including the file preview UI, on Windows.
+  }, 15_000);
 
   it('客户支持保存并继续；项目可创建客户并回车保存，中文候选回车不提交', async () => {
     const user = await readyApp();

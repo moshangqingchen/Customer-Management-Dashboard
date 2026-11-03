@@ -1,4 +1,6 @@
 import type { FileEntry, FileKind, Project } from '../api/types';
+import { isValid, parseISO } from 'date-fns';
+import { relativeDate, today } from './dates';
 const extensions: Record<FileKind, string[]> = {
   image: 'png jpg jpeg webp gif bmp svg'.split(' '), design: 'psd psb ai cdr sketch fig xd indd eps afdesign afphoto'.split(' '),
   pdf: ['pdf'], doc: 'doc docx xls xlsx ppt pptx txt md wps et dps csv'.split(' '), archive: ['zip', 'rar', '7z'], video: 'mp4 mov avi mkv webm'.split(' '), other: [],
@@ -18,6 +20,11 @@ export function middleEllipsis(name: string, maxLength = 28): string {
   return `${chars.slice(0, Math.max(1, maxLength - suffix - 1)).join('')}…${chars.slice(-suffix).join('')}`;
 }
 export const canThumbnail = (kind: FileKind, bytes: number) => kind === 'image' && bytes <= 25 * 1024 * 1024;
+/** Modification timestamps are displayed on the local calendar, like other activity dates. */
+export function fileModifiedDate(value: string, base = today()): string {
+  const date = parseISO(value);
+  return isValid(date) ? relativeDate(today(date), base) : '—';
+}
 
 export interface FileGroup { key: string; label: string; files: FileEntry[]; }
 /** Client aggregates retain project boundaries even when subfolder names match. */

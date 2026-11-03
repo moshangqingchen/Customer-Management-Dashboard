@@ -1,4 +1,4 @@
-import { addMonths, differenceInCalendarDays, endOfMonth, endOfQuarter, endOfYear, format, parseISO, startOfMonth, startOfQuarter, startOfYear, subMonths, subYears } from 'date-fns';
+import { addMonths, differenceInCalendarDays, endOfMonth, endOfQuarter, endOfYear, format, isValid, parseISO, startOfMonth, startOfQuarter, startOfYear, subMonths, subYears } from 'date-fns';
 import type { PaymentWithContext, Project } from '../api/types';
 import { dateOffset, today } from './dates';
 import { outstanding } from './money';
@@ -13,7 +13,13 @@ export interface MonthlyStats extends IncomeStats { month: string }
 export interface ClientRank { clientId: string; clientName: string; receivedCents: number }
 export interface IncomeLedgerEntry extends PaymentWithContext { netCents: number }
 export interface OutstandingEntry { project: Project; outstandingCents: number }
-export const inRange = (date: string, range: DateRange): boolean => (!range.from || date.slice(0, 10) >= range.from) && (!range.to || date.slice(0, 10) <= range.to);
+/** Timestamps and date-only values are compared on the same local calendar. */
+export function inRange(value: string, range: DateRange): boolean {
+  const parsed = parseISO(value);
+  if (!isValid(parsed)) return false;
+  const date = today(parsed);
+  return (!range.from || date >= range.from) && (!range.to || date <= range.to);
+}
 export function periodRange(period: StatsPeriod, base = today()): DateRange {
   const current = parseISO(base);
   if (period === 'all') return { from: null, to: null };

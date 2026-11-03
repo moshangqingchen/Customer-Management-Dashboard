@@ -245,11 +245,11 @@ fn project_cover_shares_the_count_scan_depth_visibility_size_and_cache_rules() {
         path
     };
     write("初稿.png", 10, 1);
-    let latest = write("一层/二层/终稿.JPEG", 10, 2);
+    write("一层/二层/终稿.JPEG", 10, 2);
     write("一层/二层/三层/太深.png", 10, 9);
-    write("过大.webp", 25 * 1024 * 1024 + 1, 9);
-    write("矢量.svg", 10, 9);
-    write("位图.bmp", 10, 9);
+    let latest = write("过大.webp", 25 * 1024 * 1024 + 1, 9);
+    write("矢量.svg", 10, 6);
+    write("位图.bmp", 10, 7);
     write(".隐藏.png", 10, 9);
     let folder: String =
         f.db.query_row("SELECT folder FROM projects WHERE id='p1'", [], |row| {
@@ -282,6 +282,53 @@ fn project_cover_shares_the_count_scan_depth_visibility_size_and_cache_rules() {
     );
     library::file_trash(&f.db, &newest).unwrap();
     assert_eq!(library::project_files(Some(&f.root), Some(&folder)), files);
+}
+
+#[test]
+fn project_cover_prefers_any_image_then_latest_design_or_pdf() {
+    use std::time::{Duration, SystemTime};
+    let f = Fixture::new();
+    let base = library::ensure_folder(&f.db, &project("p1")).unwrap();
+    let folder: String =
+        f.db.query_row("SELECT folder FROM projects WHERE id='p1'", [], |row| {
+            row.get(0)
+        })
+        .unwrap();
+    let write = |name: &str, seconds| {
+        let path = base.join(name);
+        let file = fs::File::create(&path).unwrap();
+        file.set_modified(SystemTime::UNIX_EPOCH + Duration::from_secs(seconds))
+            .unwrap();
+        path
+    };
+    write("旧稿.psd", 1);
+    let pdf = write("交付.pdf", 2);
+    write("参考.txt", 100);
+    library::ensure_folder(&f.db, &project("p1")).unwrap();
+    assert_eq!(
+        Path::new(
+            library::project_files(Some(&f.root), Some(&folder))
+                .cover_path
+                .as_ref()
+                .unwrap()
+        )
+        .canonicalize()
+        .unwrap(),
+        pdf.canonicalize().unwrap()
+    );
+    let image = write("图标.svg", 1);
+    library::ensure_folder(&f.db, &project("p1")).unwrap();
+    assert_eq!(
+        Path::new(
+            library::project_files(Some(&f.root), Some(&folder))
+                .cover_path
+                .as_ref()
+                .unwrap()
+        )
+        .canonicalize()
+        .unwrap(),
+        image.canonicalize().unwrap()
+    );
 }
 
 #[test]

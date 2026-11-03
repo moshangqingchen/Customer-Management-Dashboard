@@ -433,6 +433,29 @@ pub fn file_trash(state: State<'_, AppState>, path: Arg<String>) -> Result<()> {
     library::file_trash(&*state, Path::new(&path.0))
 }
 
+#[tauri::command]
+pub async fn file_thumbnail(
+    state: State<'_, AppState>,
+    path: Arg<String>,
+    size: Arg<u32>,
+) -> Result<Option<String>> {
+    crate::thumbnails::file_thumbnail(&*state, &state.data_dir, Path::new(&path.0), size.0).await
+}
+
+#[tauri::command(async)]
+pub fn files_copy_to_clipboard(state: State<'_, AppState>, paths: Arg<Vec<String>>) -> Result<()> {
+    crate::clipboard::files_copy_to_clipboard(&*state, &paths.0)
+}
+
+#[tauri::command(async)]
+pub fn files_paste(
+    state: State<'_, AppState>,
+    target: Arg<FileTarget>,
+    subfolder: Arg<Option<String>>,
+) -> Result<FilesAddResult> {
+    crate::clipboard::files_paste(&*state, &state.data_dir, &target.0, subfolder.0.as_deref())
+}
+
 #[tauri::command(async)]
 pub fn folder_open(
     state: State<'_, AppState>,

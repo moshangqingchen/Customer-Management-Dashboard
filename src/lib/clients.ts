@@ -1,4 +1,5 @@
 import type { Client } from '../api/types';
+import { parseISO } from 'date-fns';
 import { relativeDate, today } from './dates';
 
 export const contactFields = [
@@ -9,6 +10,6 @@ export type ContactField = typeof contactFields[number]['key'];
 export const clientContactFields = (client: Client, includeEmpty = false) => contactFields.filter(field => includeEmpty || !!client[field.key]);
 export function cooperationDate(value: string | null, base = today()): string {
   if (!value) return '暂无合作';
-  const date = new Date(value);
+  const date = parseISO(value);
   return Number.isNaN(date.getTime()) ? '暂无合作' : relativeDate(today(date), base);
 }

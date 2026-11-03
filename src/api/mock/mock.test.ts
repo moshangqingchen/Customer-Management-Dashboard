@@ -5,8 +5,7 @@ import { createSeed } from './seed';
 import { toApiError } from '../error';
 import { today, dateOffset, dayDifference, isOpen, weekEnd, weekStart } from '../../lib/dates';
 import { sanitize } from './files';
-import { designAssetId, designImageForPath } from './designAssets';
-import * as designAssets from './designAssets';
+import { designImageForPath } from './designAssets';
 
 vi.mock('sonner', () => ({ toast: { info: vi.fn() } }));
 beforeEach(() => { reset(); });
@@ -215,23 +214,25 @@ describe('标签、话术与动态', () => {
   });
 });
 describe('文件库与备份', () => {
-  it('封面按最新合规图片派生，排除大图和不支持的格式，改名删除后刷新', async () => {
+  it('封面优先最新图片（含大图和矢量），没有图片时用最新设计文件或PDF', async () => {
     await api.library.setRoot('D:/客户工作台'); const { project } = await emptyProject();
-    const resolveCover = vi.spyOn(designAssets, 'designImageById').mockImplementation(assetId => `${assetId}?cover`);
-    try {
     const files = (await addBrowserFiles({ projectId: project.id }, [
       { name: '旧稿.png', size: 100 }, { name: '新稿.JPG', size: 25 * 1024 * 1024 },
       { name: '大图.webp', size: 25 * 1024 * 1024 + 1 }, { name: '矢量.svg', size: 100 },
+      { name: '源文件.psd', size: 100 }, { name: '确认稿.pdf', size: 100 },
     ])).added;
     files.forEach((file, index) => { state().files.find(record => record.path === file.path)!.modifiedAt = `2030-03-0${index + 1}T12:00:00Z`; });
     const current = await api.projects.get(project.id);
-    expect(current.fileCount).toBe(4);
-    expect(current.coverPath).toBe(`${designAssetId(files[1].path)}?cover`);
-    await api.files.rename(files[1].path, '不作封面.bmp');
-    expect((await api.projects.get(project.id)).coverPath).toBe(`${designAssetId(files[0].path)}?cover`);
-    await api.files.trash(files[0].path);
+    expect(current.fileCount).toBe(6);
+    expect(current.coverPath).toBe(files[3].path);
+    await api.files.trash(files[3].path);
+    expect((await api.projects.get(project.id)).coverPath).toBe(files[2].path);
+    for (const file of files.slice(0, 3)) await api.files.trash(file.path);
+    expect((await api.projects.get(project.id)).coverPath).toBe(files[5].path);
+    await api.files.trash(files[5].path);
+    expect((await api.projects.get(project.id)).coverPath).toBe(files[4].path);
+    await api.files.trash(files[4].path);
     expect((await api.projects.get(project.id)).coverPath).toBeNull();
-    } finally { resolveCover.mockRestore(); }
   });
   it('约六成种子项目分配示例设计图片，素材未到时安全返回空封面', () => {
     const seed = createSeed('2030-03-15');

@@ -8,9 +8,33 @@ export const dayDifference = (date: string, base = today()) => differenceInCalen
 export const isOpen = (status?: ProjectStatus) => status !== 'done' && status !== 'cancelled';
 export const isOverdue = (date: string | null, status?: ProjectStatus, base = today()): boolean => !!date && isOpen(status) && dayDifference(date, base) < 0;
 export const isDueSoon = (date: string | null, status?: ProjectStatus, base = today(), days = 3): boolean => !!date && isOpen(status) && dayDifference(date, base) >= 0 && dayDifference(date, base) <= days;
+/** Calendar dates stay local; timestamps are converted to the local calendar. */
+export function formatDate(value: string | null | undefined, base = today()): string {
+  if (!value) return '—';
+  const date = parseISO(value);
+  if (!isValid(date)) return '—';
+  return format(date, today(date).slice(0, 4) === base.slice(0, 4) ? 'M月d日' : 'yyyy年M月d日', { locale: zhCN });
+}
+export function formatTime(value: string): string {
+  const date = parseISO(value);
+  return isValid(date) ? format(date, 'HH:mm') : '—';
+}
+export function formatDateTime(value: string, base = today()): string {
+  return formatDate(value, base) === '—' ? '—' : `${formatDate(value, base)} ${formatTime(value)}`;
+}
+export function formatMonth(value: string, base = today()): string {
+  const date = parseISO(`${value}-01`);
+  if (!isValid(date)) return '—';
+  return format(date, value.slice(0, 4) === base.slice(0, 4) ? 'M月' : 'yyyy年M月');
+}
+export function formatDateWithWeekday(value: string, base = today()): string {
+  const date = parseISO(value);
+  return isValid(date) ? `${formatDate(value, base)} ${format(date, 'EEEE', { locale: zhCN })}` : '—';
+}
 export function relativeDate(date: string | null, base = today(), overdue = false): string {
   if (!date) return '无截止日';
   const delta = dayDifference(date, base);
+  if (date.slice(0, 4) !== base.slice(0, 4)) return `${formatDate(date, base)}${overdue && delta < 0 ? `（逾期 ${-delta} 天）` : ''}`;
   if (overdue && delta < 0) return `逾期 ${-delta} 天`;
   if (delta === 0) return '今天';
   if (delta === 1) return '明天';
@@ -21,7 +45,7 @@ export function relativeDate(date: string | null, base = today(), overdue = fals
     if (parseISO(date) >= lastWeek && parseISO(date) < startOfWeek(parseISO(base), { weekStartsOn: 1 })) return `上${format(parseISO(date), 'EEEE', { locale: zhCN }).replace('星期', '周')}`;
     return `${-delta} 天前`;
   }
-  return format(parseISO(date), date.slice(0, 4) === base.slice(0, 4) ? 'M月d日' : 'yyyy年M月d日', { locale: zhCN });
+  return formatDate(date, base);
 }
 export function quickDates(base = today()) {
   return [{ label: '今天', value: base }, { label: '明天', value: dateOffset(1, base) }, { label: '3天后', value: dateOffset(3, base) }, { label: '下周一', value: today(nextMonday(parseISO(base))) }];

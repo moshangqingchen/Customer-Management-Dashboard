@@ -121,7 +121,7 @@ pub fn project_files(root: Option<&Path>, folder: Option<&str>) -> ProjectFiles 
             return None;
         }
         let mut files = ProjectFiles::default();
-        let mut newest = None;
+        let mut cover: Option<(u8, std::time::SystemTime, String)> = None;
         walk(&base, false, |path| {
             files.file_count += 1;
             let extension = path
@@ -129,26 +129,27 @@ pub fn project_files(root: Option<&Path>, folder: Option<&str>) -> ProjectFiles 
                 .unwrap_or_default()
                 .to_string_lossy()
                 .to_lowercase();
-            if matches!(extension.as_str(), "png" | "jpg" | "jpeg" | "webp" | "gif") {
+            let priority = match kind(&extension) {
+                FileKind::Image => Some(2),
+                FileKind::Design | FileKind::Pdf => Some(1),
+                _ => None,
+            };
+            if let Some(priority) = priority {
                 let metadata = fs::metadata(path)?;
-                if metadata.len() <= 25 * 1024 * 1024 {
-                    let modified = metadata.modified()?;
-                    let candidate = display(path);
-                    if newest.is_none_or(|at| modified > at)
-                        || newest == Some(modified)
-                            && files
-                                .cover_path
-                                .as_ref()
-                                .is_some_and(|current| candidate < *current)
-                    {
-                        newest = Some(modified);
-                        files.cover_path = Some(candidate);
-                    }
+                let modified = metadata.modified()?;
+                let candidate = display(path);
+                if cover.as_ref().is_none_or(|(rank, at, name)| {
+                    priority > *rank
+                        || priority == *rank
+                            && (modified > *at || modified == *at && candidate < *name)
+                }) {
+                    cover = Some((priority, modified, candidate));
                 }
             }
             Ok(())
         })
         .ok()?;
+        files.cover_path = cover.map(|(_, _, path)| path);
         Some(files)
     })
 }

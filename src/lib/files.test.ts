@@ -1,9 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import type { FileEntry } from '../api/types';
-import { canThumbnail, destinationFolders, groupFiles, middleEllipsis } from './files';
+import { canThumbnail, destinationFolders, fileModifiedDate, groupFiles, middleEllipsis } from './files';
 
 const file = (name: string, projectId: string | null, folderGroup = '', modifiedAt = '2026-11-02T12:00:00Z'): FileEntry => ({ path: `D:/库/${name}`, relPath: name, name, ext: 'png', kind: 'image', sizeBytes: 100, modifiedAt, folderGroup, clientId: 'c', projectId });
 describe('文件分组', () => {
+  it('修改时间按本地日历显示，跨年带年份，无效时间显示占位', () => {
+    const previousYear = new Date(2025, 11, 31, 23, 30).toISOString();
+    expect(fileModifiedDate(previousYear, '2026-11-02')).toBe('2025年12月31日');
+    expect(fileModifiedDate(new Date(2026, 10, 2, 23, 30).toISOString(), '2026-11-02')).toBe('今天');
+    expect(fileModifiedDate('invalid', '2026-11-02')).toBe('—');
+  });
   it('统一路径分隔符、根目录分组并按修改时间排序，不修改原数组', () => {
     const source = [file('旧稿.png', 'p', '过程稿\\初稿', '2026-10-01T00:00:00Z'), file('新稿.png', 'p', '过程稿/初稿'), file('说明.png', 'p')];
     const result = groupFiles(source);

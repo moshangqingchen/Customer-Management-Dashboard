@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Project } from '../../api/types';
 import { createSeed } from '../../api/mock/seed';
@@ -6,13 +7,15 @@ import { ProjectsTable } from './ProjectsTable';
 
 const template = createSeed('2026-11-02').projects[0];
 const projects: Project[] = Array.from({ length: 360 }, (_, index) => ({ ...template, id: `large-${index}`, title: `大列表项目 ${index + 1}`, coverPath: null, tagIds: [] }));
-beforeEach(() => vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} }));
-afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+let queryClient: QueryClient;
+beforeEach(() => { queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } }); vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} }); });
+afterEach(() => { queryClient.clear(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+const wrapper = ({ children }: { children: React.ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
 
 describe('大项目列表虚拟化', () => {
   it('360个项目只渲染视口附近行，键盘可跨视口到首尾并打开', async () => {
     const open = vi.fn();
-    render(<ProjectsTable projects={projects} tags={[]} onOpen={open} onPin={vi.fn()} menu={() => []} />);
+    render(<ProjectsTable projects={projects} tags={[]} onOpen={open} onPin={vi.fn()} menu={() => []} />, { wrapper });
     const table = screen.getByRole('table', { name: '项目列表' });
     expect(table.getAttribute('aria-rowcount')).toBe('361');
     const initial = within(table).getAllByRole('row').filter(row => row.hasAttribute('data-drop-target'));
@@ -33,7 +36,7 @@ describe('大项目列表虚拟化', () => {
 
   it('滚动后行仍有文件目标与菜单，筛选缩小时恢复可访问行', async () => {
     const open = vi.fn(); const props = { tags: [], onOpen: open, onPin: vi.fn(), menu: () => [] };
-    const view = render(<ProjectsTable {...props} projects={projects} />);
+    const view = render(<ProjectsTable {...props} projects={projects} />, { wrapper });
     const table = screen.getByRole('table', { name: '项目列表' }); const scroll = table.parentElement;
     if (!scroll) throw new Error('缺少表格滚动容器');
     fireEvent.scroll(scroll, { target: { scrollTop: 48 * 180 } });

@@ -132,7 +132,7 @@ pub(super) fn exists(path: &Path) -> Result<bool> {
     }
 }
 
-pub(super) fn numbered(name: &str, index: usize, is_dir: bool) -> String {
+pub(crate) fn numbered(name: &str, index: usize, is_dir: bool) -> String {
     if index == 1 {
         return name.into();
     }

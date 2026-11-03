@@ -41,7 +41,7 @@ describe('Mock 封面身份与兼容升级', () => {
     expect(current.path).toContain('新的项目名/');
     expect(current.name).toBe('定稿.webp');
     expect(thumbnail(current.path)).toBe(designImageById(assetId));
-    expect((await mockApi.projects.get(project.id)).coverPath).toBe(designImageById(assetId));
+    expect((await mockApi.projects.get(project.id)).coverPath).toBe(current.path);
     expect(state().fileAssets?.[current.path]).toBe(assetId);
     expect(state().fileAssets?.[original.path]).toBeUndefined();
     expect(current).not.toHaveProperty('assetId');
@@ -75,7 +75,7 @@ describe('Mock 封面身份与兼容升级', () => {
     state().files.push(...hidden);
     state().files.filter(file => file.path === deep.path || hidden.some(value => value.path === file.path)).forEach(file => { file.modifiedAt = '2099-01-01T00:00:00Z'; });
     const value = await mockApi.projects.get(project.id);
-    expect(value.coverPath).toBe(thumbnail(valid.path));
+    expect(value.coverPath).toBe(valid.path);
     expect(value.fileCount).toBe(6);
   });
 

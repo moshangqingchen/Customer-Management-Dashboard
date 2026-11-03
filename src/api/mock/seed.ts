@@ -54,9 +54,10 @@ export function createSeed(base = today()): MockData {
     id: `payment-${index + 1}`, projectId: project.id, kind: 'income', amountCents: ['done', 'delivered'].includes(project.status) ? project.priceCents : Math.floor(project.priceCents / 2),
     paidAt: dateOffset(2, project.startDate ?? base), method: methods[index % methods.length], note: project.status === 'done' ? '已结清' : '首付款', createdAt: timestamp(dateOffset(2, project.startDate ?? base)) }));
   for (let index = 0; payments.length < 38; index++) {
-    const project = projects[index % 7];
-    payments.push({ id: `payment-${payments.length + 1}`, projectId: project.id, kind: 'income', amountCents: 5000 + index * 1000,
-      paidAt: dateOffset(-index, base), method: methods[index % methods.length], note: '阶段款', createdAt: timestamp(dateOffset(-index, base)) });
+    const project = projects[index % 5];
+    const paidAt = dateOffset(-Math.min(index, Number(base.slice(-2)) - 1), base);
+    payments.push({ id: `payment-${payments.length + 1}`, projectId: project.id, kind: 'income', amountCents: [38000, 80000, 34000, 96000, 48000, 26000, 100000][index % 7],
+      paidAt, method: methods[index % methods.length], note: ['初稿确认阶段款', '品牌升级第二期款', '定稿尾款'][index % 3], createdAt: timestamp(paidAt) });
   }
   payments.push(...[5, 11].map((projectIndex, index): T.Payment => ({ id: `refund-${index + 1}`, projectId: projects[projectIndex].id, kind: 'refund', amountCents: 12000 + index * 8000,
     paidAt: dateOffset(6, projects[projectIndex].startDate ?? base), method: '微信', note: '取消部分设计内容，退回差额', createdAt: timestamp(dateOffset(6, projects[projectIndex].startDate ?? base)) })));
@@ -71,7 +72,7 @@ export function createSeed(base = today()): MockData {
   });
   const recentTime = base === today() ? new Date() : parseISO(`${base}T12:00:00`);
   const recentEvents: Pick<T.Activity, 'kind' | 'body' | 'meta'>[] = [
-    { kind: 'file', body: '添加了 3 个文件', meta: { names: ['初稿.webp', '源文件.psd', '参考图.jpg'] } },
+    { kind: 'file', body: '从剪贴板粘贴入库，添加了 3 个文件', meta: { names: ['初稿.webp', '源文件.psd', '参考图.jpg'], source: 'clipboard' } },
     { kind: 'status', body: '更新了项目状态', meta: { from: 'active', to: 'review' } },
     { kind: 'note', body: '客户确认了配色，明天发送第二版。', meta: {} },
     { kind: 'payment', body: '记录了收款', meta: { kind: 'income', amountCents: 5000, method: '微信' } },
@@ -86,7 +87,7 @@ export function createSeed(base = today()): MockData {
   const coverProjects = projects.filter((_, index) => index % 5 < 3);
   for (let index = 0; index < coverProjects.length + 4; index++) {
     const image = index < coverProjects.length;
-    const project = image ? coverProjects[index] : projects[index - coverProjects.length];
+    const project = image ? coverProjects[index] : projects[[0, 4, 3, 1][index - coverProjects.length]];
     const client = clients.find(c => c.id === project.clientId)!;
     client.folder = client.name;
     project.folder = `${client.folder}/${project.createdAt.slice(0, 7)} ${project.title}`;
@@ -102,6 +103,9 @@ export function createSeed(base = today()): MockData {
   const groupNames = ['接单沟通', '进度与修改', '交付与收款'];
   const snippetTitles = ['首次问候', '确认需求', '报价说明', '排期确认', '初稿已发送', '修改意见整理', '进度同步', '追加修改', '成品交付', '尾款提醒', '确认收款', '感谢合作'];
   const bodies = ['您好，很高兴为您服务！请问需要设计什么内容？\n可以先发一下尺寸、用途和参考风格。', '我整理一下本次需求：尺寸、文案、风格、交付日期。\n请确认后我们开始。', '本次报价包含设计与两轮修改，交付高清成品及源文件。', '已为您安排制作，预计约定时间提供初稿。', '初稿已发送，请您查收。\n有调整意见可以集中整理发给我。', '收到您的意见，我先整理后逐项调整。', '项目正在按计划推进，完成后第一时间发您确认。', '这部分超出原定范围，我会先说明补充费用与时间。', '最终文件已整理好，包含成品和源文件，请及时下载备份。', '本次设计已完成交付，方便时请安排剩余款项，谢谢。', '款项已收到，谢谢！有问题随时联系。', '感谢信任与支持，期待下次合作！'];
+  bodies[2] = '{客户}您好，「{项目}」报价为{报价}，包含设计与两轮修改，交付高清成品及源文件。';
+  bodies[3] = '「{项目}」已安排制作，预计{截止日}前完成，请您留意进度。';
+  bodies[9] = '{客户}您好，「{项目}」已交付，报价{报价}，已收{已收}，还剩{待收}，方便时请安排，谢谢。';
   return { version: 1, clients, projects, payments, activities, files, fileAssets, assetVersion: 1, libraryRoot: null,
     tags: tagNames.map((name, index) => ({ id: `tag-${index + 1}`, name, color: tagColors[index], sort: index, clientCount: 0, projectCount: 0 })),
     groups: groupNames.map((name, index) => ({ id: `group-${index + 1}`, name, sort: index })),

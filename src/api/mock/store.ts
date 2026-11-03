@@ -18,6 +18,8 @@ export interface MockData {
   trashedFiles?: T.FileEntry[];
   fileAssets?: Record<string, string>;
   assetVersion?: 1;
+  clipboard?: { kind: 'files'; files: { name: string; size: number }[] } | { kind: 'image' } | { kind: 'empty' };
+  workflowOperations?: { command: string; paths?: string[]; size?: number; target?: T.FileTarget; subfolder?: string }[];
 }
 export const storageKey = 'clientdesk.mock.v1';
 let data: MockData | undefined;
@@ -68,17 +70,18 @@ export function projectValue(record: StoredProject): T.Project {
   const { deletedAt: _deletedAt, deletedWithClient: _deletedWithClient, ...project } = record;
   const payments = state().payments.filter(p => p.projectId === project.id);
   const files = state().files.filter(file => file.projectId === project.id);
-  const cover = files.filter(eligibleCover)
-    .sort((a, b) => b.modifiedAt.localeCompare(a.modifiedAt) || a.path.localeCompare(b.path))[0];
+  const candidates = files.filter(eligibleCover)
+    .sort((a, b) => b.modifiedAt.localeCompare(a.modifiedAt) || a.path.localeCompare(b.path));
+  const cover = candidates.find(file => file.kind === 'image') ?? candidates[0];
   return { ...project, tagIds: [...project.tagIds], clientName: clientRecord(project.clientId, true).name,
     receivedCents: netReceived(payments), paymentCount: payments.length,
-    fileCount: files.length, coverPath: cover ? mockImage(cover.path) : null };
+    fileCount: files.length, coverPath: cover?.path ?? null };
 }
 
 export function eligibleCover(file: T.FileEntry): boolean {
   const parts = [...file.folderGroup.split(/[\\/]/).filter(Boolean), file.name];
   return parts.length <= 3 && parts.every(name => !name.startsWith('.') && !name.startsWith('~$') && !['thumbs.db', 'desktop.ini'].includes(name.toLowerCase()))
-    && ['png', 'jpg', 'jpeg', 'webp', 'gif'].includes(file.ext.toLowerCase()) && file.sizeBytes <= 25 * 1024 * 1024;
+    && ['image', 'design', 'pdf'].includes(file.kind);
 }
 
 export function mockImage(path: string): string | null {

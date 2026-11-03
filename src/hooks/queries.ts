@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient, type QueryKey } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { api, type ActivityFilter, type GroupPatch, type NoteInput, type SnippetInput, type SnippetPatch, type TagPatch, type TrashType } from '../api/client';
+import { api, isTauri, type ActivityFilter, type GroupPatch, type NoteInput, type SnippetInput, type SnippetPatch, type TagPatch, type TrashType } from '../api/client';
 import type { Activity, Client, ClientInput, ClientPatch, FileEntry, FileTarget, MutationResult, Payment, PaymentInput, PaymentPatch, Project, ProjectInput, ProjectPatch, ProjectStatus, Settings, SnippetGroup, TagColor } from '../api/types';
 import { today } from '../lib/dates';
 import { useUI } from '../stores/ui';
@@ -15,6 +15,7 @@ export const queryKeys = {
   recentActivities: (limit: number) => ['activities', 'recent', limit] as const,
   files: ['files'] as const, fileList: (target?: FileTarget, includeProjects = false) => ['files', 'list', target, includeProjects] as const,
   recentFiles: (limit: number) => ['files', 'recent', limit] as const,
+  thumbnail: (path?: string, size: 256 | 1024 = 256, version?: string) => ['thumbnails', path, size, version] as const,
   snippetGroups: ['snippetGroups'] as const, snippets: ['snippets'] as const, settings: ['settings'] as const,
   backups: ['backups'] as const, trash: ['trash'] as const,
 };
@@ -31,6 +32,14 @@ export const useActivities = (filter?: ActivityFilter) => useQuery({ queryKey: q
 export const useRecentActivities = (limit = 10) => useQuery({ queryKey: queryKeys.recentActivities(limit), queryFn: () => api.activities.recent(limit) });
 export const useFiles = (target?: FileTarget, includeProjects = false) => useQuery({ queryKey: queryKeys.fileList(target, includeProjects), queryFn: () => api.files.list(target!, includeProjects), enabled: !!target, refetchOnWindowFocus: 'always' });
 export const useRecentFiles = (limit = 100) => useQuery({ queryKey: queryKeys.recentFiles(limit), queryFn: () => api.files.recent(limit), refetchOnWindowFocus: 'always' });
+export const useFileThumbnail = (path: string | undefined, size: 256 | 1024, enabled = true, version?: string) => useQuery({
+  queryKey: queryKeys.thumbnail(path, size, version), enabled: !!path && enabled,
+  queryFn: async () => {
+    const result = await api.files.thumbnail(path!, size);
+    return result && isTauri ? (await import('@tauri-apps/api/core')).convertFileSrc(result) : result;
+  },
+  staleTime: Infinity, gcTime: 30 * 60 * 1000, retry: false, refetchOnWindowFocus: 'always',
+});
 export const useSnippetGroups = () => useQuery({ queryKey: queryKeys.snippetGroups, queryFn: () => api.snippetGroups.list() });
 export const useSnippets = () => useQuery({ queryKey: queryKeys.snippets, queryFn: () => api.snippets.list() });
 export const useSettings = () => useQuery({ queryKey: queryKeys.settings, queryFn: () => api.settings.get() });
@@ -160,6 +169,8 @@ const fileKeys = (q: QueryClient, files: FileEntry[], target?: FileTarget): Quer
 };
 export const useAddFiles = () => useAction(({ target, sourcePaths, subfolder }: { target: FileTarget; sourcePaths: string[]; subfolder?: string }) => api.files.add(target, sourcePaths, subfolder), (q, result, a) => fileKeys(q, result.added, a.target));
 export const usePickAndAddFiles = () => useAction(({ target, subfolder }: { target: FileTarget; subfolder?: string }) => api.files.pickAndAdd(target, subfolder), (q, result, a) => fileKeys(q, result.added, a.target));
+export const usePasteFiles = () => useAction(({ target, subfolder }: { target: FileTarget; subfolder?: string }) => api.files.paste(target, subfolder), (q, result, a) => fileKeys(q, result.added, a.target));
+export const useCopyFiles = () => useAction((paths: string[]) => api.files.copyToClipboard(paths));
 export const useAddBrowserFiles = () => useAction(async ({ target, files, subfolder }: { target: FileTarget; files: { name: string; size: number }[]; subfolder?: string }) => (await import('../api/mock')).addBrowserFiles(target, files, subfolder), (q, result, a) => fileKeys(q, result.added, a.target));
 export const useRenameFile = () => useAction(({ path, newName }: { path: string; newName: string }) => api.files.rename(path, newName), (q, file) => fileKeys(q, [file]));
 export const useTrashFile = () => useAction((path: string) => api.files.trash(path), () => [queryKeys.files, queryKeys.projects, queryKeys.project(), queryKeys.activities]);

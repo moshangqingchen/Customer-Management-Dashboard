@@ -1,6 +1,4 @@
-import { useEffect, useState } from 'react';
-import type { Project } from '../../api/types';
-import { thumbnail } from '../../api/client';
+import { ProjectCover } from '../project/ProjectCover';
 import { useSetProjectStatus } from '../../hooks/queries';
 import { statusMeta } from '../../lib/status';
 import type { todayOverview } from '../../lib/today';
@@ -9,14 +7,6 @@ import { useUI } from '../../stores/ui';
 import { Avatar, Button, Card, DueChip, EmptyState, Money, Section, StatusPill, StatusSelect } from '../ui';
 
 export type TodayOverview = ReturnType<typeof todayOverview>;
-function ProjectCover({ project }: { project: Project }) {
-  const [failed, setFailed] = useState<string | null>(null);
-  const [source, setSource] = useState<{ path: string; url: string } | null>(null);
-  const path = project.coverPath;
-  useEffect(() => { let active = true; if (path) { if ('__TAURI_INTERNALS__' in window) void thumbnail(path).then(url => { if (active) setSource({ path, url }); }).catch(() => { if (active) setFailed(path); }); else setSource({ path, url: path }); } return () => { active = false; }; }, [path]);
-  if (!path || failed === path || source?.path !== path) return <Avatar id={project.clientId} name={project.clientName} size="lg" className="size-11" />;
-  return <img src={source.url} alt={`${project.title}设计稿`} className="size-11 shrink-0 rounded-md object-cover" onError={() => setFailed(path)} />;
-}
 export function TodayProjects({ overview, base }: { overview: TodayOverview; base: string }) {
   const navigate = useNav(s => s.navigate); const setStatus = useSetProjectStatus(); const newProject = useUI(s => s.setNewProjectOpen);
   const open = (id: string) => navigate('today', { projectId: id });
@@ -33,7 +23,7 @@ export function TodayProjects({ overview, base }: { overview: TodayOverview; bas
       {overview.groups.every(g => g.projects.length === 0) ? <EmptyState illustrationName="empty-projects" title="留一点空间，给新的灵感" description="新项目会在这里陪你一起向前。" action={<Button variant="soft" onClick={() => newProject(true)}>新建项目</Button>} /> : <div className="space-y-5">{overview.groups.filter(g => g.projects.length > 0).map(group => <div key={group.status}>
         <div className="mb-2 flex items-center gap-2 text-xs font-medium text-fg-2"><span className={`size-1.5 rounded-full ${statusMeta[group.status].dotClass}`} />{statusMeta[group.status].label}<span className="text-fg-3">{group.projects.length}</span></div>
         <div className="divide-y divide-line">{group.projects.map(p => <div key={p.id} className="flex min-h-16 items-center gap-3 rounded-md py-2 hover:bg-hover">
-          <button type="button" className="flex min-w-0 flex-1 items-center gap-3 text-left" onClick={() => open(p.id)} aria-label={`打开项目：${p.title}`}><ProjectCover project={p} /><span className="min-w-0"><span className="block truncate font-medium">{p.title}</span><span className="mt-0.5 block truncate text-xs text-fg-2">{p.clientName}</span></span></button>
+          <button type="button" className="flex min-w-0 flex-1 items-center gap-3 text-left" onClick={() => open(p.id)} aria-label={`打开项目：${p.title}`}><ProjectCover project={p} className="size-11" /><span className="min-w-0"><span className="block truncate font-medium">{p.title}</span><span className="mt-0.5 block truncate text-xs text-fg-2">{p.clientName}</span></span></button>
           <div className="w-[116px] shrink-0"><StatusSelect value={p.status} label={`${p.title}的状态`} onChange={status => setStatus.mutate({ id: p.id, status })} /></div>
         </div>)}</div>
       </div>)}</div>}

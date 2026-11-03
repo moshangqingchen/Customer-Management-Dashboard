@@ -34,6 +34,9 @@ export interface Api {
     list(target: T.FileTarget, includeProjects?: boolean): Promise<T.FileListResult>; recent(limit: number): Promise<T.FileEntry[]>;
     add(target: T.FileTarget, sourcePaths: string[], subfolder?: string): Promise<T.FilesAddResult>;
     pickAndAdd(target: T.FileTarget, subfolder?: string): Promise<T.FilesAddResult>;
+    thumbnail(path: string, size: 256 | 1024): Promise<string | null>;
+    copyToClipboard(paths: string[]): Promise<void>;
+    paste(target: T.FileTarget, subfolder?: string): Promise<T.FilesAddResult>;
     open(path: string): Promise<void>; reveal(path: string): Promise<void>; rename(path: string, newName: string): Promise<T.FileEntry>;
     trash(path: string): Promise<void>; openFolder(target: T.FileTarget): Promise<void>;
   };

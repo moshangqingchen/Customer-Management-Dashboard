@@ -1,8 +1,26 @@
 import { describe, expect, it } from 'vitest';
-import { comparisonRanges, incomeCsv, incomeLedger, incomeStats, metricChange, outstandingProjects, periodRange } from './stats';
+import { comparisonRanges, incomeCsv, incomeLedger, incomeStats, inRange, metricChange, outstandingProjects, periodRange } from './stats';
 import { filterProjects } from './filters';
 import { todayOverview } from './today';
 import { createSeed } from '../api/mock/seed';
+
+describe('收入按本地日历归属', () => {
+  it('UTC日期已到次日时，本地当晚创建的项目仍计入当天成本与成交', () => {
+    const project = { ...createSeed('2026-11-02').projects[0], status: 'active' as const, createdAt: new Date(2026, 10, 2, 23, 59).toISOString(), costCents: 2000 };
+    const range = { from: '2026-11-02', to: '2026-11-02' };
+    expect(inRange(project.createdAt, range)).toBe(true);
+    expect(inRange(new Date(2026, 10, 3, 0, 1).toISOString(), range)).toBe(false);
+    expect(incomeStats([project], [], range)).toMatchObject({ costCents: 2000, dealCount: 1 });
+  });
+  it('跨年时间戳转为本地日历，收款的日期字段保持原样', () => {
+    const range = { from: '2025-12-31', to: '2025-12-31' };
+    expect(inRange(new Date(2025, 11, 31, 23, 59).toISOString(), range)).toBe(true);
+    expect(inRange(new Date(2026, 0, 1, 0, 1).toISOString(), range)).toBe(false);
+    expect(inRange('2025-12-31', range)).toBe(true);
+    expect(inRange('2026-01-01', range)).toBe(false);
+    expect(inRange('invalid', range)).toBe(false);
+  });
+});
 
 describe('同期收入比较', () => {
   it('月初只对比上月同一天，不把整月放进分母', () => {

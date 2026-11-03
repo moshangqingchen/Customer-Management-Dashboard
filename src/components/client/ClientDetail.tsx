@@ -10,11 +10,14 @@ import { useUI } from '../../stores/ui';
 import { Avatar, Button, Card, ConfirmDialog, Dialog, DropdownMenu, DueChip, EmptyState, IconButton, InlineEdit, Money, Skeleton, StatusPill, Tabs, TagPicker, undoToast } from '../ui';
 import { ActivityTimeline } from '../activity/ActivityTimeline';
 import { FilesArea } from '../files/FilesArea';
+import { useFilePaste } from '../../hooks/useFilePaste';
+import { SnippetPicker } from '../snippets/SnippetPicker';
 import { ClientContacts } from './ClientContacts';
 import { ClientNotes } from './ClientNotes';
 import { EditableProperty } from '../ui/EditableProperty';
 
 export function ClientDetail({ client }: { client: Client }) {
+  useFilePaste({ clientId: client.id });
   const [tab, setTab] = useState('projects'); const [deleting, setDeleting] = useState(false); const [rename, setRename] = useState<string | null>(null);
   const update = useUpdateClient(); const remove = useDeleteClient(); const restore = useRestoreTrash(); const setTags = useSetClientTags(); const createTag = useCreateTag();
   const { data: tags = [] } = useTags(); const projectsQuery = useProjects(); const nav = useNav(); const newProject = useUI(state => state.setNewProjectOpen);
@@ -37,6 +40,7 @@ export function ClientDetail({ client }: { client: Client }) {
   }
   return <article data-drop-target={`client:${client.id}`} className="min-w-0 space-y-5 rounded-xl">
     <Card className="p-6"><div className="flex items-start gap-4"><Avatar id={client.id} name={client.name} size="lg" /><div className="min-w-0 flex-1"><InlineEdit label="编辑客户名称" className="max-w-full text-[26px] leading-[34px] font-semibold" value={client.name} onSave={changeName} /><EditableProperty icon={<Building2 size={15} />} label="公司店铺" editLabel="编辑公司或店铺" className="mt-1" value={client.company} placeholder="添加公司 / 店铺" onSave={company => save({ company: company.trim() })} /></div>
+      <SnippetPicker context={{ clientName: client.name, receivedCents: client.receivedCents, outstandingCents: client.outstandingCents }} />
       <IconButton label={client.pinned ? '取消客户星标' : '星标客户'} aria-pressed={client.pinned} disabled={update.isPending} onClick={() => void save({ pinned: !client.pinned }).catch(() => undefined)}><Star size={18} className={cn(client.pinned && 'fill-current text-warning-fg')} /></IconButton>
       <DropdownMenu label="客户更多操作" trigger={<IconButton label="客户更多操作"><MoreHorizontal size={18} /></IconButton>} items={[{ label: '删除客户', icon: <Trash2 size={16} />, danger: true, onSelect: () => setDeleting(true) }]} />
     </div><div className="mt-4 flex flex-wrap items-center gap-3"><div className="flex items-center gap-0.5" role="group" aria-label="客户星级">{[1, 2, 3, 4, 5].map(rating => <IconButton key={rating} label={`设为 ${rating} 星${client.rating === rating ? '，再次点击清除' : ''}`} size="sm" aria-pressed={client.rating === rating} disabled={update.isPending} onClick={() => void save({ rating: rating === client.rating ? 0 : rating }).catch(() => undefined)}><Star size={17} className={cn(rating <= client.rating ? 'fill-current text-warning-fg' : 'text-fg-3')} /></IconButton>)}</div><span className="text-sm text-fg-2">{client.rating ? `${client.rating} 星客户` : '未设置星级'}</span></div>

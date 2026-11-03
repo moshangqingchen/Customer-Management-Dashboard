@@ -92,8 +92,8 @@ describe('文件改名刷新项目列表封面', () => {
     expect(result.current.project.data?.coverPath).not.toBeNull();
     expect(result.current.projects.data?.find(value => value.id === project.id)?.coverPath).not.toBeNull();
     await act(async () => { await result.current.rename.mutateAsync({ path: file.path, newName: '封面.psd' }); });
-    await waitFor(() => expect(result.current.projects.data?.find(value => value.id === project.id)?.coverPath).toBeNull());
-    expect(result.current.project.data?.coverPath).toBeNull();
+    await waitFor(() => expect(result.current.projects.data?.find(value => value.id === project.id)?.coverPath).toContain('封面.psd'));
+    expect(result.current.project.data?.coverPath).toContain('封面.psd');
     expect(result.current.files.data?.files[0].name).toBe('封面.psd');
     expect(result.current.project.data?.fileCount).toBe(1);
   });

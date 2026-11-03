@@ -1,4 +1,5 @@
 pub mod backup;
+pub mod clipboard;
 pub mod commands;
 pub mod db;
 pub mod error;
@@ -6,6 +7,7 @@ pub mod library;
 pub mod models;
 pub mod portable;
 pub mod repo;
+pub mod thumbnails;
 pub mod window_state;
 
 use error::{AppError, Result};
@@ -106,6 +108,8 @@ fn setup(app: &mut tauri::App, mode: &DataMode) -> Result<()> {
         DataMode::Portable { data_dir, .. } => data_dir.clone(),
     };
     let mut state = AppState::open(data_dir.clone())?;
+    let thumbs = thumbnails::initialize(&data_dir)?;
+    register_library_path(app.handle(), Some(&thumbs))?;
     if let DataMode::Portable {
         suggested_library_root,
         ..
@@ -206,6 +210,9 @@ pub fn run() -> Result<()> {
             commands::file_reveal,
             commands::file_rename,
             commands::file_trash,
+            commands::file_thumbnail,
+            commands::files_copy_to_clipboard,
+            commands::files_paste,
             commands::folder_open,
             commands::pick_folder,
             commands::snippet_groups_list,

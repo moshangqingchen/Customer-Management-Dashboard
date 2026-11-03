@@ -4,6 +4,7 @@ import type * as T from '../types';
 import { fileExtension, fileKind } from '../../lib/files';
 import { activity, clientRecord, fail, moveImageIdentity, now, operation, projectRecord, required, state } from './store';
 import type { StoredClient, StoredProject } from './store';
+import { mockImage } from './store';
 
 const normalize = (path: string) => path.replace(/\\/g, '/').replace(/\/+$/, '');
 export function sanitize(name: string): string {
@@ -125,6 +126,28 @@ function pickFiles(): Promise<File[]> {
   });
 }
 export const files: Api['files'] = {
+  thumbnail: operation((path, size) => {
+    if (size !== 256 && size !== 1024) fail('invalidInput', '缩略图尺寸必须为 256 或 1024');
+    const file = fileRecord(path);
+    (state().workflowOperations ??= []).push({ command: 'file_thumbnail', paths: [path], size });
+    return ['psd', 'ai'].includes(file.ext.toLowerCase()) ? mockImage(path) : null;
+  }),
+  copyToClipboard: operation(paths => {
+    if (!paths.length) fail('invalidInput', '请选择要复制的文件');
+    const records = paths.map(fileRecord);
+    state().clipboard = { kind: 'files', files: records.map(file => ({ name: file.name, size: file.sizeBytes })) };
+    (state().workflowOperations ??= []).push({ command: 'files_copy_to_clipboard', paths: [...paths] });
+  }),
+  paste: operation((target, subfolder) => {
+    const clipboard = state().clipboard ?? { kind: 'image' };
+    if (clipboard.kind === 'empty') fail('clipboardEmpty', '剪贴板里没有文件或图片');
+    const stamp = new Date();
+    const pad = (value: number) => String(value).padStart(2, '0');
+    const name = `粘贴图片 ${stamp.getFullYear()}${pad(stamp.getMonth() + 1)}${pad(stamp.getDate())}-${pad(stamp.getHours())}${pad(stamp.getMinutes())}${pad(stamp.getSeconds())}.png`;
+    const result = addResult(target, clipboard.kind === 'files' ? clipboard.files : [{ name, size: 168420 }], subfolder);
+    (state().workflowOperations ??= []).push({ command: 'files_paste', target, subfolder });
+    return result;
+  }),
   list: operation((target, includeProjects = false) => {
     const libraryRoot = normalize(root());
     const record = 'projectId' in target ? projectRecord(target.projectId) : clientRecord(target.clientId);

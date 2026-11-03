@@ -4,6 +4,7 @@ import { ArrowRight, Copy, FolderOpen, Moon, Plus, Search, Sun, Users, Wallet, P
 import { useClients, useMarkSnippetUsed, useOpenLibrary, useProjects, useSnippets, useUpdateSettings } from '../../hooks/queries';
 import { useCopy } from '../../hooks/useCopy';
 import { matchesSearch, searchScore } from '../../lib/search';
+import { hasSnippetVariables } from '../../lib/snippets';
 import { useUI } from '../../stores/ui';
 import { useNav, pageLabels } from '../../stores/nav';
 import { Dialog, Kbd } from '../ui';
@@ -40,7 +41,7 @@ export function CommandPalette() {
         {!paymentMode && <Command.Group heading="命令">{commands.filter(c => matchesSearch(c.label, search)).map(c => <Command.Item key={c.label} value={c.label} onSelect={c.run}><c.Icon size={16} /><span className="flex-1">{c.label}</span>{c.shortcut && <Kbd>{c.shortcut}</Kbd>}</Command.Item>)}</Command.Group>}
         <Command.Group heading="项目">{matchingProjects.slice(0, search ? 12 : 5).map(p => <Command.Item key={p.id} value={`project-${p.id}`} onSelect={() => go(() => navigate('projects', { projectId: p.id, ...(paymentMode ? { payment: true } : {}) }))}><FolderOpen size={16} /><span className="flex-1 truncate">{p.title}</span><span className="text-xs text-fg-2">{p.clientName}</span></Command.Item>)}</Command.Group>
         {!paymentMode && <><Command.Group heading="客户">{clients.filter(c => matchesSearch(`${c.name} ${c.company} ${c.phone} ${c.wechat}`, search)).slice(0, search ? 10 : 3).map(c => <Command.Item key={c.id} value={`client-${c.id}`} onSelect={() => go(() => navigate('clients', { clientId: c.id }))}><Users size={16} />{c.name}</Command.Item>)}</Command.Group>
-          <Command.Group heading="话术 · 回车复制">{snippets.filter(s => matchesSearch(`${s.title} ${s.body}`, search)).slice(0, search ? 10 : 3).map(s => <Command.Item key={s.id} value={`snippet-${s.id}`} onSelect={() => { void copy(s.body).then(ok => { if (ok) { markUsed.mutate(s.id); close(); } }); }}><Copy size={16} />{s.title}</Command.Item>)}</Command.Group></>}
+          <Command.Group heading="话术 · 回车复制">{snippets.filter(s => matchesSearch(`${s.title} ${s.body}`, search)).slice(0, search ? 10 : 3).map(s => <Command.Item key={s.id} value={`snippet-${s.id}`} onSelect={() => { void copy(s.body, hasSnippetVariables(s.body) ? '已复制（含未填写的变量）' : '已复制').then(ok => { if (ok) { markUsed.mutate(s.id); close(); } }); }}><Copy size={16} />{s.title}</Command.Item>)}</Command.Group></>}
       </Command.List><div className="flex items-center gap-3 border-t border-line px-3 pt-3 text-xs text-fg-2"><span>↑↓ 选择</span><span>Enter 执行</span><span className="ml-auto">Esc 关闭</span></div>
     </Command>
   </Dialog>;

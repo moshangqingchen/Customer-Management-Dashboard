@@ -1,6 +1,7 @@
-﻿import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { cn } from '../../lib/cn';
+import { formatDate } from '../../lib/dates';
 import { Input, inputClass } from './Input';
 
 interface EditablePropertyProps {
@@ -21,6 +22,7 @@ export function EditableProperty({ icon, label, editLabel = `编辑${label}`, va
   const [editing, setEditing] = useState(false); const [draft, setDraft] = useState(value); const [saving, setSaving] = useState(false);
   const input = useRef<HTMLInputElement>(null); const select = useRef<HTMLSelectElement>(null); const trigger = useRef<HTMLButtonElement>(null);
   const canceled = useRef(false); const committing = useRef(false);
+  const displayed = displayValue ?? (draft ? type === 'date' ? formatDate(draft) : draft : placeholder);
   useEffect(() => { if (!editing && !saving) setDraft(value); }, [value, editing, saving]);
   useEffect(() => { if (editing) { (options ? select.current : input.current)?.focus(); if (type === 'text' && !options) input.current?.select(); } }, [editing, options, type]);
   async function commit(restoreFocus = false) {
@@ -41,7 +43,7 @@ export function EditableProperty({ icon, label, editLabel = `编辑${label}`, va
   };
   return <div className={cn('flex min-w-0 items-center gap-2 rounded-md px-2 py-1 transition-colors hover:bg-hover', className)}>
     <span aria-hidden className="shrink-0 text-fg-2">{icon}</span><span className="w-16 shrink-0 text-xs text-fg-2">{label}</span>
-    <div className="min-w-0 flex-1">{editing ? options ? <select ref={select} aria-label={editLabel} value={draft} className={cn(inputClass, 'h-[34px]')} onChange={event => setDraft(event.target.value)} onBlur={() => void commit()} onKeyDown={keyDown}>{options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select> : <Input ref={input} type={type} aria-label={editLabel} value={draft} className="h-[34px]" onChange={event => setDraft(event.target.value)} onBlur={() => void commit()} onKeyDown={keyDown} /> : <button ref={trigger} type="button" aria-label={editLabel} disabled={disabled || saving} title={displayValue ?? draft} className={cn('h-[34px] w-full truncate rounded-sm px-2 text-left disabled:opacity-50', !draft && 'text-fg-2')} onClick={() => { canceled.current = false; setDraft(value); setEditing(true); }}>{displayValue ?? (draft || placeholder)}</button>}</div>
+    <div className="min-w-0 flex-1">{editing ? options ? <select ref={select} aria-label={editLabel} value={draft} className={cn(inputClass, 'h-[34px]')} onChange={event => setDraft(event.target.value)} onBlur={() => void commit()} onKeyDown={keyDown}>{options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select> : <Input ref={input} type={type} aria-label={editLabel} value={draft} className="h-[34px]" onChange={event => setDraft(event.target.value)} onBlur={() => void commit()} onKeyDown={keyDown} /> : <button ref={trigger} type="button" aria-label={editLabel} disabled={disabled || saving} title={displayed} className={cn('h-[34px] w-full truncate rounded-sm px-2 text-left disabled:opacity-50', !draft && 'text-fg-2')} onClick={() => { canceled.current = false; setDraft(value); setEditing(true); }}>{displayed}</button>}</div>
   </div>;
 }
 

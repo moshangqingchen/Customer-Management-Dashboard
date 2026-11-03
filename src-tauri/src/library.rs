@@ -7,6 +7,7 @@ mod transfer;
 use count_cache::invalidate_file_counts;
 pub use folders::{ensure_folder, rename_client_folder, rename_project_folder};
 pub(crate) use paths::display;
+pub(crate) use paths::numbered;
 pub use paths::sanitize;
 pub use scan::{files_list, files_recent, project_file_count, project_files};
 pub use transfer::{file_rename, file_trash, files_add, files_add_with_copy_hook};
