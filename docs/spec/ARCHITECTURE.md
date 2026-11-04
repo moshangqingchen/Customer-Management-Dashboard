@@ -27,7 +27,7 @@ src-tauri/
     main.rs            # 调用 lib::run()
     lib.rs             # Builder、插件、State、命令注册、启动时自动备份
     error.rs           # AppError（thiserror），序列化为 { code, message }
-    db.rs              # 打开连接（WAL、foreign_keys=ON）、迁移（PRAGMA user_version）
+    db.rs              # 打开连接（WAL、foreign_keys=ON）、启动与退出时合并 WAL、迁移（PRAGMA user_version）
     schema.sql         # v1 建表语句（include_str!）
     models.rs          # 所有 serde 结构体，#[serde(rename_all = "camelCase")]
     repo/              # 纯数据访问，函数签名接收 &Connection / &Transaction，便于测试

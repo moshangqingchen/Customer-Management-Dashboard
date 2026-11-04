@@ -17,7 +17,7 @@ use std::{
     path::{Path, PathBuf},
     sync::{Mutex, MutexGuard},
 };
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Manager, RunEvent};
 
 const DB_FILE: &str = "client-desk.db";
 
@@ -72,6 +72,12 @@ impl AppState {
     fn backup_connection(&self) -> Result<Connection> {
         // A dedicated SQLite connection keeps backup I/O off the command mutex.
         db::open(&self.data_dir.join(DB_FILE))
+    }
+
+    fn checkpoint(&self) {
+        if let Err(error) = self.read(db::checkpoint) {
+            eprintln!("数据库合并失败（{error}）");
+        }
     }
 }
 
@@ -130,6 +136,8 @@ fn setup(app: &mut tauri::App, mode: &DataMode) -> Result<()> {
     {
         eprintln!("自动备份失败（{error}）");
     }
+    // Exits that skip RunEvent::Exit (crashes, shutdowns, the updater) are merged here.
+    state.checkpoint();
     app.manage(state);
     let config = app
         .config()
@@ -234,6 +242,14 @@ pub fn run() -> Result<()> {
             commands::trash_purge,
             commands::save_text_file,
         ])
-        .run(tauri::generate_context!())
-        .map_err(|error| AppError::new("startup", error.to_string()))
+        .build(tauri::generate_context!())
+        .map_err(|error| AppError::new("startup", error.to_string()))?
+        .run(|app, event| {
+            if matches!(event, RunEvent::Exit) {
+                if let Some(state) = app.try_state::<AppState>() {
+                    state.checkpoint();
+                }
+            }
+        });
+    Ok(())
 }

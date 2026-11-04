@@ -16,6 +16,17 @@ pub fn configure(connection: &Connection) -> Result<()> {
     Ok(())
 }
 
+/// Merges committed WAL pages into the main file and empties the WAL. SQLite only does
+/// this by itself once the WAL grows large, and a process exit skips the final merge.
+pub fn checkpoint(connection: &Connection) -> Result<()> {
+    let busy: i64 =
+        connection.query_row("PRAGMA wal_checkpoint(TRUNCATE)", [], |row| row.get(0))?;
+    if busy != 0 {
+        return Err(AppError::new("db", "数据库正在使用，暂时无法合并"));
+    }
+    Ok(())
+}
+
 pub fn migrate(connection: &Connection) -> Result<()> {
     let transaction = connection.unchecked_transaction()?;
     let version: i64 = transaction.pragma_query_value(None, "user_version", |row| row.get(0))?;

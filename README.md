@@ -97,11 +97,11 @@ cargo test
 
 ```powershell
 # 同步版本（不生成 git 提交或标签）
-./scripts/set-version.ps1 -Version '2.2.0'
+./scripts/set-version.ps1 -Version '2.2.1'
 # 生成带更新签名的 NSIS 安装包；可预先提供私钥及其密码环境变量
 ./scripts/build-tauri-signed.ps1
 # 仅在本地准备更新清单，不联网发布
-./scripts/create-update-manifest.ps1 -DownloadUrl 'https://github.com/moshangqingchen/Customer-Management-Dashboard/releases/download/v2.2.0/client-desk-2.2.0-x64-setup.exe' -Notes '版本说明'
+./scripts/create-update-manifest.ps1 -DownloadUrl 'https://github.com/moshangqingchen/Customer-Management-Dashboard/releases/download/v2.2.1/client-desk-2.2.1-x64-setup.exe' -Notes '版本说明'
 ./scripts/verify-update-release.ps1
 ```
 

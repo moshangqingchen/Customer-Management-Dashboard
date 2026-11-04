@@ -281,3 +281,40 @@ fn daily_backup_rotates_only_automatic_snapshots_and_records_success_once() {
         chrono::Local::now().date_naive().to_string()
     );
 }
+
+#[test]
+fn checkpoint_leaves_all_data_in_the_main_database_file() {
+    let tmp = tempdir().unwrap();
+    let path = tmp.path().join("client-desk.db");
+    let conn = db::open(&path).unwrap();
+    settings::write(&conn, "testMarker", &"已合并").unwrap();
+    let wal = tmp.path().join("client-desk.db-wal");
+    assert!(fs::metadata(&wal).unwrap().len() > 0);
+
+    db::checkpoint(&conn).unwrap();
+
+    assert_eq!(fs::metadata(&wal).unwrap().len(), 0);
+    // conn stays open, like a process that exits without closing it.
+    let copy = tmp.path().join("copy.db");
+    fs::copy(&path, &copy).unwrap();
+    assert_eq!(marker(&Connection::open(&copy).unwrap()), "已合并");
+}
+
+#[test]
+fn checkpoint_reports_busy_while_a_reader_holds_the_wal_and_keeps_data() {
+    let tmp = tempdir().unwrap();
+    let path = tmp.path().join("client-desk.db");
+    let conn = db::open(&path).unwrap();
+    conn.busy_timeout(std::time::Duration::ZERO).unwrap();
+    settings::write(&conn, "testMarker", &"还在").unwrap();
+    let mut reader = Connection::open(&path).unwrap();
+    let snapshot = reader.transaction().unwrap();
+    assert_eq!(marker(&snapshot), "还在");
+
+    assert!(db::checkpoint(&conn).is_err());
+
+    drop(snapshot);
+    assert_eq!(marker(&conn), "还在");
+    db::checkpoint(&conn).unwrap();
+    assert_eq!(marker(&conn), "还在");
+}
