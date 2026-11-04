@@ -53,10 +53,20 @@ const statRoutes: [string, Page, RouteParams][] = [
 ];
 
 describe('今日工作台交互', () => {
+  it('关注区最多显示五项，查看全部保留逾期与临期筛选', async () => {
+    const user = await readyApp();
+    const heading = screen.getByRole('heading', { name: /^需要关注/ });
+    const section = within(heading.closest('section')!);
+    expect(section.getAllByRole('button', { name: /^打开项目：/ })).toHaveLength(5);
+    await user.click(section.getByRole('button', { name: '查看全部 →' }));
+    expect(useNav.getState().entries.at(-1)).toEqual({ page: 'projects', params: { filters: { due: 'attention' } } });
+    expect(await screen.findByRole('button', { name: '移除筛选：需要关注' })).toBeTruthy();
+  });
+
   it.each(statRoutes)('点击%s统计卡打开对应页面和筛选', async (title, page, params) => {
     const user = await readyApp();
     const main = within(screen.getByRole('main'));
-    await user.click(main.getByRole('button', { name: new RegExp(`^${title}\\s*[\\d¥]`) }));
+    await user.click(main.getByRole('button', { name: new RegExp(`^${title}\\s`) }));
     const nav = useNav.getState();
     expect(nav.entries[nav.index]).toEqual({ page, params });
     expect(await screen.findByRole('heading', { name: page === 'income' ? '收入' : '项目' })).toBeTruthy();

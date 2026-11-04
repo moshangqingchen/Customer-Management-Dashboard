@@ -29,7 +29,7 @@ function purgeProject(projectId: string) {
 export const mockApi: Api = {
   clients, projects, payments, tags, activities, files,
   app: {
-    info: operation(() => state().appInfo ?? { version: '2.1.0', dataDir: '浏览器本地存储', dbPath: 'clientdesk.mock.v1', portable: false, suggestedLibraryRoot: null }),
+    info: operation(() => state().appInfo ?? { version: '2.2.0', dataDir: '浏览器本地存储', dbPath: 'clientdesk.mock.v1', portable: false, suggestedLibraryRoot: null }),
     openDataDir: operation(() => { toast.info('模拟打开数据文件夹'); }),
     saveTextFile: async (defaultName, content) => {
       const url = URL.createObjectURL(new Blob(['\ufeff', content], { type: 'text/plain;charset=utf-8' }));

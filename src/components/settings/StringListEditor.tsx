@@ -24,6 +24,5 @@ export function StringListEditor({ label, values, onSave, pending = false, folde
       <Input aria-label={`新${label}`} placeholder={`添加${label}…`} value={draft} onChange={event => setDraft(event.target.value)} disabled={pending} maxLength={80} />
       <Button type="submit" disabled={pending || !draft.trim()} icon={<Plus size={16} />}>添加</Button>
     </form>
-    <p className="text-xs text-fg-2">拖动手柄调整顺序，也可聚焦手柄后按空格和方向键排序。</p>
   </div>;
 }

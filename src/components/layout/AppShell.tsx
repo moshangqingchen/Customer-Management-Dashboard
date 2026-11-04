@@ -1,15 +1,15 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useFileDrop } from '../../hooks/useFileDrop';
 import { useHotkeys } from '../../hooks/useHotkeys';
 import { checkForUpdates } from '../../hooks/useUpdater';
 import { useNav } from '../../stores/nav';
 import { useUI } from '../../stores/ui';
-import { Button, IconButton, Skeleton } from '../ui';
+import { Button, Skeleton } from '../ui';
 import { Sidebar, primaryPages } from './Sidebar';
 import { EntityPreview } from './EntityPreview';
 import { UpdateDialog } from './UpdateDialog';
 import { PageSkeleton } from './PageSkeleton';
+import { PageHeader } from './PageHeader';
 
 const TodayPage = lazy(() => import('../../pages/TodayPage').then(module => ({ default: module.TodayPage })));
 const ProjectsPage = lazy(() => import('../../pages/ProjectsPage').then(module => ({ default: module.ProjectsPage })));
@@ -67,13 +67,8 @@ export function AppShell() {
   }, [nav.back, nav.forward]);
   return <div className="relative flex h-dvh overflow-hidden bg-app" style={{ backgroundImage: 'var(--bg-glow)', backgroundAttachment: 'fixed' }}>
     <Sidebar /><div className="flex min-w-0 flex-1 flex-col">
-      {route.page !== 'today' && <div className="flex h-12 shrink-0 items-center gap-1 px-7">
-        <IconButton label="后退（Alt+←）" disabled={nav.index === 0} onClick={nav.back}><ChevronLeft size={16} /></IconButton>
-        <IconButton label="前进（Alt+→）" disabled={nav.index === nav.entries.length - 1} onClick={nav.forward}><ChevronRight size={16} /></IconButton>
-        <span className="ml-2 text-xs text-fg-3">每一份创意，都有迹可循</span><span className="ml-auto text-xs text-fg-3">本地工作空间</span>
-      </div>}
-      <main id="main-content" className="min-h-0 flex-1 overflow-y-auto"><div key={route.page} className="page-enter min-h-full"><Suspense fallback={<PageSkeleton />}>
-        {route.params.projectFullPage && route.params.projectId ? <div className="mx-auto max-w-[1100px] p-7"><ProjectDetail key={route.params.projectId} projectId={route.params.projectId} initialPayment={route.params.payment} onDeleted={() => nav.navigate('projects')} /></div> : route.page === 'today' ? <TodayPage /> : route.page === 'projects' ? <ProjectsPage /> : route.page === 'clients' ? <ClientsPage /> : route.page === 'income' ? <IncomePage /> : route.page === 'files' ? <FilesPage /> : route.page === 'snippets' ? <SnippetsPage /> : route.page === 'settings' ? <SettingsPage /> : route.page === 'design-system' && DesignSystemPage ? <DesignSystemPage /> : null}
+      <main id="main-content" className={`min-h-0 flex-1 ${!route.params.projectFullPage && (route.page === 'clients' || route.page === 'settings') ? 'overflow-hidden' : 'overflow-y-auto'}`}><div key={route.page} className="page-enter h-full"><Suspense fallback={<PageSkeleton />}>
+        {route.params.projectFullPage && route.params.projectId ? <div className="mx-auto max-w-[1100px] space-y-4 p-6"><PageHeader title="项目" /><ProjectDetail key={route.params.projectId} projectId={route.params.projectId} initialPayment={route.params.payment} onDeleted={() => nav.navigate('projects')} /></div> : route.page === 'today' ? <TodayPage /> : route.page === 'projects' ? <ProjectsPage /> : route.page === 'clients' ? <ClientsPage /> : route.page === 'income' ? <IncomePage /> : route.page === 'files' ? <FilesPage /> : route.page === 'snippets' ? <SnippetsPage /> : route.page === 'settings' ? <SettingsPage /> : route.page === 'design-system' && DesignSystemPage ? <DesignSystemPage /> : null}
       </Suspense>
       </div></main>
     </div>

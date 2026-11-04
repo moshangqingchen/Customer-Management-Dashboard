@@ -83,7 +83,7 @@ describe('筛选、排序与搜索', () => {
     expect(filterProjects(projects, { due: 'overdue' }, '2026-11-02')).toEqual([]);
     expect(filterProjects(projects, { outstanding: true }).map(item => item.id)).toEqual(['p1', 'p2']);
   });
-  it('星标置顶、空截止日最后，排序不改变原数组', () => {
+  it('置顶置顶、空截止日最后，排序不改变原数组', () => {
     const projects = [project({ id: 'null', dueDate: null }), project({ id: 'early', dueDate: '2026-10-01' }), project({ id: 'pinned', pinned: true, dueDate: null })];
     expect(sortProjects(projects).map(item => item.id)).toEqual(['pinned', 'early', 'null']); expect(projects[0].id).toBe('null');
   });

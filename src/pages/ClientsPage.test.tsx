@@ -34,7 +34,7 @@ describe('客户核心交互', () => {
     expect(screen.queryByRole('button', { name: /海风验收.*0 个项目/ })).toBeNull();
     await user.click(row);
     expect(useNav.getState().entries.at(-1)?.params.clientId).toBe(first.id);
-    await user.click(screen.getByRole('button', { name: '为他新建项目' }));
+    await user.click(screen.getAllByRole('button', { name: '新建项目' })[0]);
     expect(useUI.getState().newProjectOpen).toBe(true);
     expect(useNav.getState().entries.at(-1)?.params.clientId).toBe(first.id);
     act(() => useNav.getState().navigate('clients', { clientId: second.id }));
@@ -48,21 +48,46 @@ describe('客户核心交互', () => {
     act(() => useNav.getState().navigate('clients', { clientId: client.id }));
     const user = mount();
     await screen.findByRole('button', { name: '编辑客户名称' });
-    await user.click(screen.getByRole('button', { name: '添加联系方式' }));
-    await user.click(screen.getByRole('button', { name: '编辑电话' }));
+    await user.click(screen.getByRole('button', { name: '添加客户资料' }));
+    await user.click(screen.getByRole('menuitem', { name: '电话' }));
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('textbox', { name: '编辑电话' })));
     await user.type(screen.getByRole('textbox', { name: '编辑电话' }), '13900001111{Enter}');
     await waitFor(async () => expect((await mockApi.clients.get(client.id)).phone).toBe('13900001111'));
     await user.click(screen.getByRole('button', { name: '设为 5 星' }));
     await waitFor(async () => expect((await mockApi.clients.get(client.id)).rating).toBe(5));
     await user.click(await screen.findByRole('button', { name: '设为 5 星，再次点击清除' }));
     await waitFor(async () => expect((await mockApi.clients.get(client.id)).rating).toBe(0));
-    await user.click(screen.getByRole('button', { name: '添加平台账号' }));
+    await user.click(screen.getByRole('button', { name: '添加客户资料' }));
+    await user.click(screen.getByRole('menuitem', { name: '平台账号' }));
     await user.type(screen.getByRole('textbox', { name: '新平台账号' }), 'leaf_official{Enter}');
     await waitFor(async () => expect((await mockApi.clients.get(client.id)).accounts).toEqual([{ platform: '微信', handle: 'leaf_official' }]));
     const notes = screen.getByRole('textbox', { name: '编辑客户备注' });
     fireEvent.focus(notes); fireEvent.change(notes, { target: { value: '喜欢蓝色\n交付源文件' } }); fireEvent.blur(notes);
     await waitFor(async () => expect((await mockApi.clients.get(client.id)).notes).toBe('喜欢蓝色\n交付源文件'));
     expect(document.querySelector(`[data-drop-target="client:${client.id}"]`)).toBeTruthy();
+  });
+
+  it('标签筛选与客户打标签入口分明，置顶与星级分别操作', async () => {
+    const client = await mockApi.clients.create({ name: '标签筛选验收', rating: 4 });
+    const tag = await mockApi.tags.create('客户筛选标签', 'blue');
+    await mockApi.clients.setTags(client.id, [tag.id]);
+    act(() => useNav.getState().navigate('clients', { clientId: client.id }));
+    const user = mount();
+    const filter = await screen.findByRole('button', { name: '按客户标签筛选' });
+    expect(filter.textContent).toBe('标签');
+    await user.click(filter);
+    await user.click(screen.getByRole('checkbox', { name: '客户筛选标签' }));
+    await user.keyboard('{Escape}');
+    expect(within(screen.getByLabelText('客户列表')).getAllByRole('button')).toHaveLength(1);
+    expect(filter.textContent).toBe('标签1');
+    await user.click(screen.getByRole('button', { name: '置顶客户' }));
+    await waitFor(async () => expect((await mockApi.clients.get(client.id)).pinned).toBe(true));
+    expect((await mockApi.clients.get(client.id)).rating).toBe(4);
+    await user.click(screen.getByRole('button', { name: '客户标签' }));
+    await user.type(screen.getByRole('textbox', { name: '搜索客户标签' }), '新客户标签');
+    await user.click(screen.getByRole('button', { name: '创建标签「新客户标签」' }));
+    await waitFor(async () => expect((await mockApi.tags.list()).some(item => item.name === '新客户标签')).toBe(true));
+    await waitFor(async () => expect((await mockApi.clients.get(client.id)).tagIds).toHaveLength(2));
   });
 
   it('修改客户名时询问文件夹同步，删除提示关联项目数并可撤销恢复', async () => {

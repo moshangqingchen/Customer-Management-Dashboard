@@ -5,13 +5,13 @@ import { useMarkSnippetUsed, useSnippetGroups, useSnippets } from '../../hooks/q
 import { useCopy } from '../../hooks/useCopy';
 import { fillSnippet, filterSnippets, hasSnippetVariables, type SnippetContext } from '../../lib/snippets';
 import { Dialog } from '../ui/Dialog';
-import { IconButton } from '../ui/Button';
+import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { EmptyState, Skeleton } from '../ui/Surfaces';
 
 export function SnippetPicker({ context }: { context: SnippetContext }) {
   const [open, setOpen] = useState(false);
-  return <><IconButton label="话术" onClick={() => setOpen(true)}><MessageSquare size={18} /></IconButton>
+  return <><Button variant="ghost" size="sm" title="选择话术并填入当前信息" onClick={() => setOpen(true)} icon={<MessageSquare size={16} />}>话术</Button>
     {open && <SnippetPickerDialog context={context} onClose={() => setOpen(false)} />}
   </>;
 }

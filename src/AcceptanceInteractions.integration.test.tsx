@@ -18,7 +18,7 @@ beforeEach(async () => {
   reset(); await mockApi.library.setRoot('D:/客户工作台');
   query = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   useNav.setState({ entries: [{ page: 'today', params: {} }], index: 0 });
-  useUI.setState({ theme: 'light', projectView: 'list', sidebarCollapsed: false, tagsCollapsed: false, commandOpen: false, newClientOpen: false, newProjectOpen: false });
+  useUI.setState({ theme: 'light', projectView: 'list', sidebarCollapsed: false, tagsCollapsed: false, settingsCategory: 'library', commandOpen: false, newClientOpen: false, newProjectOpen: false });
   vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() })));
   vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} });
   Element.prototype.scrollIntoView = vi.fn(); Element.prototype.hasPointerCapture = () => false;
@@ -38,7 +38,7 @@ async function mount() {
 const currentRoute = () => useNav.getState().entries[useNav.getState().index];
 
 describe('最终验收：标签、命令与删除恢复', () => {
-  it('标签可创建改色、关联客户项目、从侧栏筛选，合并后两种关联均保留且去重', async () => {
+  it('标签可创建改色、关联客户项目、从项目页筛选，旧路由兼容且合并后两种关联均保留去重', async () => {
     const client = await mockApi.clients.create({ name: '标签验收客户' });
     const project = await mockApi.projects.create({ clientId: client.id, title: '标签验收项目' });
     const other = await mockApi.projects.create({ clientId: client.id, title: '无标签对照项目' });
@@ -46,6 +46,7 @@ describe('最终验收：标签、命令与删除恢复', () => {
     const user = await mount();
     await user.click(screen.getByRole('button', { name: '设置' }));
     await screen.findByRole('heading', { name: '设置' });
+    await user.click(screen.getByRole('button', { name: '标签' }));
     await user.type(await screen.findByRole('textbox', { name: '新标签名称' }), '验收新标签');
     const form = screen.getByRole('textbox', { name: '新标签名称' }).closest('form');
     if (!form) throw new Error('未找到新建标签表单');
@@ -65,6 +66,7 @@ describe('最终验收：标签、命令与删除恢复', () => {
     await user.keyboard('{Escape}');
     act(() => useNav.getState().navigate('projects', { projectId: project.id }));
     const panel = await screen.findByRole('dialog', { name: '项目详情' });
+    await user.click(await within(panel).findByRole('tab', { name: '信息' }));
     await user.click(await within(panel).findByRole('button', { name: '编辑项目标签' }));
     await user.click(await screen.findByRole('checkbox', { name: source.name }));
     await waitFor(() => expect(screen.getByRole('checkbox', { name: source.name }).getAttribute('aria-checked')).toBe('true'));
@@ -73,7 +75,12 @@ describe('最终验收：标签、命令与删除恢复', () => {
     await user.keyboard('{Escape}');
     await user.keyboard('{Escape}');
     const sidebar = screen.getByRole('complementary', { name: '主导航' });
-    await user.click(await within(sidebar).findByRole('button', { name: /验收新标签/ }));
+    await user.click(within(sidebar).getByRole('button', { name: '项目' }));
+    await user.click(await screen.findByRole('button', { name: '筛选项目标签' }));
+    await user.click(await screen.findByRole('checkbox', { name: source.name }));
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(currentRoute().params.filters?.tagIds).toEqual([source.id]));
+    act(() => useNav.getState().navigate('projects', { tagId: source.id }));
     await waitFor(() => expect(currentRoute().params.tagId).toBe(source.id));
     const main = screen.getByRole('main');
     await within(main).findByText(project.title);
@@ -88,10 +95,13 @@ describe('最终验收：标签、命令与删除恢复', () => {
     await waitFor(async () => expect((await mockApi.tags.list()).some(tag => tag.id === source.id)).toBe(false));
     expect((await mockApi.clients.get(client.id)).tagIds).toEqual([target.id]);
     expect((await mockApi.projects.get(project.id)).tagIds).toEqual([target.id]);
-    await waitFor(() => expect(within(sidebar).queryByRole('button', { name: /验收新标签/ })).toBeNull());
-    await user.click(within(sidebar).getByRole('button', { name: /验收合并目标/ }));
+    await user.click(within(sidebar).getByRole('button', { name: '项目' }));
+    await user.click(await screen.findByRole('button', { name: '筛选项目标签' }));
+    expect(screen.queryByRole('checkbox', { name: source.name })).toBeNull();
+    await user.click(await screen.findByRole('checkbox', { name: target.name }));
+    await user.keyboard('{Escape}');
     await within(screen.getByRole('main')).findByText(project.title);
-    expect(currentRoute().params.tagId).toBe(target.id);
+    expect(currentRoute().params.filters?.tagIds).toEqual([target.id]);
     const saved: unknown = JSON.parse(localStorage.getItem(storageKey) ?? 'null');
     expect(saved).toMatchObject({ clients: expect.arrayContaining([expect.objectContaining({ id: client.id, tagIds: [target.id] })]), projects: expect.arrayContaining([expect.objectContaining({ id: project.id, tagIds: [target.id] })]) });
   }, 10000);
@@ -135,6 +145,7 @@ describe('最终验收：标签、命令与删除恢复', () => {
     expect((await mockApi.trash.list()).some(item => item.id === project.id)).toBe(false);
     await removeFromPanel();
     await user.click(screen.getByRole('button', { name: '设置' }));
+    await user.click(screen.getByRole('button', { name: '备份与回收站' }));
     const title = await within(screen.getByRole('main')).findByText(project.title);
     const row = title.closest('div')?.parentElement;
     if (!row) throw new Error('未找到回收站项目');

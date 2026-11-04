@@ -13,7 +13,7 @@ let q: QueryClient;
 beforeEach(async () => {
   reset(); await mockApi.library.setRoot('D:/客户工作台');
   q = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
-  useUI.setState({ theme: 'light', sidebarCollapsed: false });
+  useUI.setState({ theme: 'light', sidebarCollapsed: false, settingsCategory: 'library' });
   vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} });
   vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({ matches: false, addEventListener() {}, removeEventListener() {} }));
   HTMLElement.prototype.hasPointerCapture = vi.fn().mockReturnValue(false);
@@ -53,19 +53,24 @@ describe('设置与话术', () => {
 
   it('设置修改即时保存，恢复备份会还原设置并全量刷新', async () => {
     const backup = await mockApi.backups.create(); const user = mount('settings');
+    await user.click(screen.getByRole('button', { name: '外观' }));
     await user.click(await screen.findByRole('button', { name: '深色' }));
     await waitFor(() => expect(useUI.getState().theme).toBe('dark'));
-    await user.type(screen.getByRole('textbox', { name: '新收款方式' }), '云闪付{Enter}');
-    await waitFor(async () => expect((await mockApi.settings.get()).paymentMethods).toContain('云闪付'));
     await user.click(screen.getByRole('checkbox', { name: '侧栏紧凑模式' })); expect(useUI.getState().sidebarCollapsed).toBe(true);
+    await user.click(screen.getByRole('button', { name: '项目与收款' }));
+    await user.type(await screen.findByRole('textbox', { name: '新收款方式' }), '云闪付{Enter}');
+    await waitFor(async () => expect((await mockApi.settings.get()).paymentMethods).toContain('云闪付'));
     await user.click(screen.getByRole('button', { name: '关闭自动创建子文件夹' }));
     await waitFor(async () => expect((await mockApi.settings.get()).subfolderTemplate).toEqual([]));
+    await user.click(screen.getByRole('button', { name: '备份与回收站' }));
+    await screen.findByText(backup.fileName);
     const backupRow = screen.getByText(backup.fileName).closest('div')?.parentElement;
     if (!backupRow) throw new Error('未找到备份行');
     await user.click(within(backupRow).getByRole('button', { name: '恢复' }));
     const confirm = await screen.findByRole('dialog', { name: '从备份恢复？' });
     await user.click(within(confirm).getByRole('button', { name: '确认恢复' }));
     await waitFor(() => expect(useUI.getState().theme).toBe('system'));
+    await user.click(screen.getByRole('button', { name: '项目与收款' }));
     await waitFor(() => expect(screen.queryByRole('button', { name: '删除收款方式：云闪付' })).toBeNull());
     expect((await mockApi.backups.list()).some(item => item.kind === 'beforeRestore')).toBe(true);
   });
@@ -74,15 +79,34 @@ describe('设置与话术', () => {
     const a = await mockApi.tags.create('合并来源', 'blue'); const b = await mockApi.tags.create('合并目标', 'green');
     const client = await mockApi.clients.create({ name: '待恢复客户', tagIds: [a.id] }); await mockApi.clients.delete(client.id);
     const user = mount('settings');
+    await user.click(screen.getByRole('button', { name: '标签' }));
     await user.click(await screen.findByRole('button', { name: '合并标签：合并来源' }));
     const merge = await screen.findByRole('dialog', { name: '合并标签' });
     await user.click(within(merge).getByRole('combobox', { name: '合并到标签' }));
     await user.click(await screen.findByRole('option', { name: '合并目标' }));
     await user.click(within(merge).getByRole('button', { name: '确认合并' }));
     await waitFor(async () => expect((await mockApi.tags.list()).some(item => item.id === a.id)).toBe(false));
+    await user.click(screen.getByRole('button', { name: '备份与回收站' }));
+    await screen.findByText('待恢复客户');
     const trashRow = screen.getByText('待恢复客户').closest('div')?.parentElement;
     if (!trashRow) throw new Error('未找到回收站行');
     await user.click(within(trashRow).getByRole('button', { name: '恢复' }));
     await waitFor(async () => expect((await mockApi.clients.get(client.id)).tagIds).toEqual([b.id]));
+  });
+
+  it('设置一次只显示当前分类并记住选择', async () => {
+    const user = mount('settings');
+    expect(await screen.findByRole('heading', { name: '文件库' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: '外观' })).toBeNull();
+    await user.click(screen.getByRole('button', { name: '项目与收款' }));
+    expect(await screen.findByRole('heading', { name: '新项目子文件夹' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: '收款方式' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: '文件库' })).toBeNull();
+    await user.click(screen.getByRole('button', { name: '关于' }));
+    expect(await screen.findByRole('heading', { name: '关于客户工作台' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: '收款方式' })).toBeNull();
+    expect(useUI.getState().settingsCategory).toBe('about');
+    const preference: { state: { settingsCategory: string } } = JSON.parse(localStorage.getItem('clientdesk.ui.v1') ?? '{}');
+    expect(preference.state.settingsCategory).toBe('about');
   });
 });

@@ -3,6 +3,14 @@ import type { RouteParams } from '../stores/nav';
 import type { ProjectFilters } from './filters';
 import { dayDifference, today } from './dates';
 import { boardStatuses } from './status';
+import { outstanding } from './money';
+import { isOverdue } from './dates';
+
+export function projectViewCounts(projects: readonly Project[], base = today()) {
+  return { pinned: projects.filter(project => project.pinned).length,
+    overdue: projects.filter(project => isOverdue(project.dueDate, project.status, base)).length,
+    outstanding: projects.filter(project => project.status !== 'cancelled' && outstanding(project.priceCents, project.receivedCents) > 0).length };
+}
 
 export function routeProjectFilters(params: RouteParams): ProjectFilters {
   return { ...(params.view === 'pinned' ? { pinned: true } : params.view === 'overdue' ? { due: 'overdue' } : params.view === 'outstanding' ? { outstanding: true } : {}),

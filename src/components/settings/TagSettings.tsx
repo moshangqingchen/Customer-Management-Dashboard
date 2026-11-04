@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Merge, Plus, Tags, Trash2 } from 'lucide-react';
+import { Merge, Plus, Trash2 } from 'lucide-react';
 import type { Tag, TagColor } from '../../api/types';
 import { useCreateTag, useDeleteTag, useMergeTags, useTags, useUpdateTag } from '../../hooks/queries';
 import { colorClasses, colorNames, tagColors } from '../../lib/colors';
@@ -16,7 +16,7 @@ export function TagSettings() {
   const tags = useTags(); const create = useCreateTag(); const update = useUpdateTag(); const remove = useDeleteTag(); const merge = useMergeTags();
   const [name, setName] = useState(''); const [color, setColor] = useState<TagColor>('blue'); const [deleting, setDeleting] = useState<Tag>(); const [source, setSource] = useState<Tag>(); const [targetId, setTargetId] = useState('');
   async function add() { await create.mutateAsync({ name: name.trim(), color }); setName(''); }
-  return <SettingsCard title="标签管理" description="客户与项目共用同一套标签。" icon={<Tags />} tone="mint">
+  return <SettingsCard title="标签管理" description="客户与项目共用同一套标签。">
     {tags.isPending ? <Skeleton className="h-24" /> : tags.isError ? <Button onClick={() => void tags.refetch()}>标签读取失败，重新加载</Button> : <div className="max-h-80 space-y-1 overflow-y-auto">{tags.data.map(tag => <div key={tag.id} className="flex min-w-0 flex-wrap items-center gap-2 rounded-md py-1 hover:bg-hover">
       <div className="w-24"><Select value={tag.color} label={`标签颜色：${tag.name}`} options={colors} onChange={value => update.mutate({ id: tag.id, patch: { color: value as TagColor } })} /></div>
       <InlineEdit value={tag.name} label={`重命名标签：${tag.name}`} className="min-w-20 flex-1 truncate" onSave={value => update.mutateAsync({ id: tag.id, patch: { name: value.trim() } })} />

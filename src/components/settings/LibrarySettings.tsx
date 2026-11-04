@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FolderOpen, HardDrive, RefreshCw } from 'lucide-react';
+import { FolderOpen, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLibraryStatus, useOpenLibrary, usePickFolder, useSetLibraryRoot } from '../../hooks/queries';
 import { formatFileSize } from '../../lib/files';
@@ -11,7 +11,7 @@ const labels = { ready: '文件库已就绪', notConfigured: '尚未选择文件
 export function LibrarySettings() {
   const library = useLibraryStatus(); const open = useOpenLibrary(); const pick = usePickFolder(); const change = useSetLibraryRoot(); const [nextRoot, setNextRoot] = useState<string>();
   async function choose() { const path = await pick.mutateAsync('选择新的文件库位置'); if (path && path !== library.data?.root) setNextRoot(path); }
-  return <SettingsCard title="文件库" description="文件夹就是你的资料库，随时可用系统程序访问。" icon={<HardDrive />} tone="sky">
+  return <SettingsCard title="文件库">
     <div className="space-y-4"><div className="flex flex-wrap items-center gap-3"><span className={`rounded-full px-3 py-1 text-xs font-medium ${library.data?.state === 'ready' ? 'bg-success-bg text-success-fg' : 'bg-warning-bg text-warning-fg'}`}>{library.data ? labels[library.data.state] : '读取状态中…'}</span><span className="text-sm text-fg-2">可用空间：{library.data?.freeBytes == null ? '暂无法读取' : formatFileSize(library.data.freeBytes)}</span></div>
       <p className="break-all rounded-md bg-subtle px-4 py-3 text-sm">{library.data?.root ?? '未设置'}</p>
       <p className="text-xs text-fg-2">{library.error?.message ?? library.data?.message}</p>

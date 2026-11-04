@@ -1,17 +1,15 @@
 import { ArrowRightLeft, FilePlus2, MessageSquareText, Plus, Wallet } from 'lucide-react';
 import type { Activity, ActivityKind } from '../../api/types';
 import { activityStatus, activitySummary } from '../../lib/activity';
-import { IconTile, StatusPill, type IconTone } from '../ui';
+import { StatusPill } from '../ui';
 
-const eventMeta: Record<ActivityKind, { icon: typeof Wallet; tone: IconTone }> = {
-  payment: { icon: Wallet, tone: 'mint' }, file: { icon: FilePlus2, tone: 'sky' },
-  status: { icon: ArrowRightLeft, tone: 'violet' }, note: { icon: MessageSquareText, tone: 'peach' },
-  created: { icon: Plus, tone: 'amber' },
+const eventMeta: Record<ActivityKind, typeof Wallet> = {
+  payment: Wallet, file: FilePlus2, status: ArrowRightLeft, note: MessageSquareText, created: Plus,
 };
 
 export function ActivityIcon({ kind }: { kind: ActivityKind }) {
-  const { icon: Icon, tone } = eventMeta[kind];
-  return <IconTile tone={tone} size="sm"><Icon size={16} /></IconTile>;
+  const Icon = eventMeta[kind];
+  return <span className="inline-flex size-6 shrink-0 items-center justify-center text-fg-2"><Icon size={16} /></span>;
 }
 
 export function ActivityEvent({ activity }: { activity: Activity }) {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Command } from 'cmdk';
-import { ArrowRight, Copy, FolderOpen, Moon, Plus, Search, Sun, Users, Wallet, Palette, Monitor } from 'lucide-react';
+import { ArrowRight, Copy, FolderOpen, Moon, Plus, Search, Sun, Users, Wallet, Palette, Monitor, Pin, TriangleAlert } from 'lucide-react';
 import { useClients, useMarkSnippetUsed, useOpenLibrary, useProjects, useSnippets, useUpdateSettings } from '../../hooks/queries';
 import { useCopy } from '../../hooks/useCopy';
 import { matchesSearch, searchScore } from '../../lib/search';
@@ -23,6 +23,9 @@ export function CommandPalette() {
     { label: '新建客户', Icon: Users, run: () => go(() => ui.setNewClientOpen(true)), shortcut: 'Ctrl+Shift+N' },
     { label: '记一笔收款', Icon: Wallet, run: () => { setPaymentMode(true); setSearch(''); }, shortcut: '' },
     ...primaryPages.map(({ page, icon }) => ({ label: `跳转${pageLabels[page]}`, Icon: icon, run: () => go(() => navigate(page)), shortcut: '' })),
+    { label: '查看置顶项目', Icon: Pin, run: () => go(() => navigate('projects', { view: 'pinned' })), shortcut: '' },
+    { label: '查看逾期项目', Icon: TriangleAlert, run: () => go(() => navigate('projects', { view: 'overdue' })), shortcut: '' },
+    { label: '查看待收款项目', Icon: Wallet, run: () => go(() => navigate('projects', { view: 'outstanding' })), shortcut: '' },
     { label: '跳转设置', Icon: ArrowRight, run: () => go(() => navigate('settings')), shortcut: '' },
     { label: '切换浅色主题', Icon: Sun, run: () => theme('light'), shortcut: '' },
     { label: '切换深色主题', Icon: Moon, run: () => theme('dark'), shortcut: '' },

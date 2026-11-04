@@ -15,7 +15,6 @@ export function AppMark({ className }: { className?: string }) {
 
 export function Brand({ compact = false }: { compact?: boolean }) {
   return <span className="flex min-w-0 items-center gap-3"><AppMark />
-    {!compact && <span className="min-w-0"><span className="block whitespace-nowrap text-[20px] leading-7 font-bold tracking-tight">客户工作台</span>
-      <span className="mt-0.5 block whitespace-nowrap text-[11px] leading-[18px] text-fg-2">每一单，都被好好照顾</span></span>}
+    {!compact && <span className="min-w-0 whitespace-nowrap text-[20px] leading-7 font-bold tracking-tight">客户工作台</span>}
   </span>;
 }

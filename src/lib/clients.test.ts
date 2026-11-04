@@ -11,7 +11,7 @@ describe('客户查询与显示', () => {
     expect(filterClients([client], '', ['food', 'vip'])).toEqual([client]);
     expect(filterClients([client], '', ['food', 'other'])).toEqual([]);
   });
-  it('所有排序星标优先，同值有稳定次序且不改变原数组', () => {
+  it('所有排序置顶优先，同值有稳定次序且不改变原数组', () => {
     const a = { ...data[0], id: 'a', name: '甲', pinned: false, receivedCents: 500, lastActivityAt: '2026-11-01', createdAt: '2026-10-01' };
     const b = { ...a, id: 'b', name: '乙', receivedCents: 900, lastActivityAt: '2026-11-02', createdAt: '2026-11-01' };
     const pinned = { ...a, id: 'pin', pinned: true, receivedCents: 0, lastActivityAt: '2026-01-01' };

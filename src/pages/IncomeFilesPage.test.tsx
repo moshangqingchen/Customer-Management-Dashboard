@@ -32,18 +32,19 @@ describe('收入与文件工作页', () => {
     await mockApi.projects.setStatus(cancelled.id, 'cancelled');
     await mockApi.payments.add({ projectId: current.id, amountCents: 5000, paidAt: today(), method: '微信' });
     const user = mount('income');
-    const pendingCard = (await screen.findByText('当前待收')).closest('.stat-card');
+    const pendingCard = await screen.findByRole('group', { name: '当前待收' });
     expect(pendingCard?.textContent).toContain('¥450');
     expect(pendingCard?.textContent).toContain('共 2 个项目未收齐');
     expect(pendingCard?.textContent).not.toContain('较上期');
+    await user.click(screen.getByRole('tab', { name: '待收款 2' }));
     const pendingSection = screen.getByRole('heading', { name: '待收款项目' }).closest('section')!;
     const rows = within(pendingSection).getAllByRole('row');
     expect(rows[1].textContent).toContain(older.title); expect(rows[2].textContent).toContain(current.title);
     expect(within(pendingSection).queryByText(cancelled.title)).toBeNull();
-    expect(screen.getByText('成本').closest('.stat-card')?.textContent).toContain('¥20');
+    expect(screen.getByRole('group', { name: '成本' }).textContent).toContain('¥20');
     await user.click(screen.getByRole('button', { name: '去年' }));
-    expect(screen.getByText('当前待收').closest('.stat-card')?.textContent).toContain('¥450');
-    expect(screen.getByText('成本').closest('.stat-card')?.textContent).toContain('¥10');
+    expect(screen.getByRole('group', { name: '当前待收' }).textContent).toContain('¥450');
+    expect(screen.getByRole('group', { name: '成本' }).textContent).toContain('¥10');
     expect(within(pendingSection).getAllByRole('row')).toHaveLength(3);
   });
   it('收入呈现退款，导出当前方式流水，并可在本页完成收款', async () => {
@@ -54,11 +55,13 @@ describe('收入与文件工作页', () => {
     await mockApi.payments.add({ projectId: project.id, kind: 'refund', amountCents: 1000, paidAt: today(), method: '微信' });
     const save = vi.spyOn(mockApi.app, 'saveTextFile').mockResolvedValue('流水.csv');
     const user = mount('income');
+    await user.click(await screen.findByRole('tab', { name: '收款流水' }));
     await screen.findByText('−¥10');
-    expect(screen.getByText('实收', { selector: '.stat-label' }).closest('.stat-card')?.textContent).toContain('¥90');
+    expect(screen.getByRole('group', { name: '实收' }).textContent).toContain('¥90');
     await user.click(screen.getByRole('button', { name: '导出 CSV' }));
     await waitFor(() => expect(save).toHaveBeenCalledOnce());
     expect(save.mock.calls[0][1]).toContain(',-10.00,"退款",');
+    await user.click(screen.getByRole('tab', { name: '待收款 1' }));
     await user.click(screen.getByRole('button', { name: '记一笔' }));
     const dialog = await screen.findByRole('dialog', { name: '记一笔收款' });
     expect((within(dialog).getByRole('textbox', { name: '金额（元）' }) as HTMLInputElement).value).toBe('110');

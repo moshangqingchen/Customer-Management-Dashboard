@@ -13,7 +13,7 @@ fn app_info_reports_standard_and_portable_data_locations() {
         assert_eq!(info["portable"], portable);
         assert_eq!(info["dataDir"], display(dir.path()));
         assert_eq!(info["dbPath"], display(&dir.path().join(DB_FILE)));
-        assert_eq!(info["version"], "2.1.0");
+        assert_eq!(info["version"], "2.2.0");
         if portable {
             assert_eq!(
                 info["suggestedLibraryRoot"],

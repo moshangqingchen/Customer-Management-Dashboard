@@ -1,4 +1,4 @@
-﻿@import "@fontsource-variable/inter";
+@import "@fontsource-variable/inter";
 @import "tailwindcss" source(none);
 @import "./tokens.css";
 @source "../";
@@ -78,20 +78,14 @@
 @utility bg-primary-gradient { background-image: var(--primary-gradient); }
 @utility shadow-primary { box-shadow: var(--primary-shadow); }
 @utility transition-sky { transition-duration: var(--duration-fast); transition-timing-function: var(--ease); }
-.hero-banner { height: 280px; background: var(--hero-fallback); }
+.hero-banner { height: 116px; background: var(--hero-fallback); }
 .hero-art { animation: hero-in 400ms var(--ease); }
 .hero-overlay { background: var(--hero-overlay); }
 .illustration-glow { background: var(--illustration-glow); }
 .card-interactive { transition: transform var(--duration-fast) var(--ease), box-shadow var(--duration-fast) var(--ease); }
 .card-interactive:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
 .today-stats .stat-card { container-type: inline-size; }
-.today-stats .stat-value { font-size: clamp(20px, 13cqi, 32px); line-height: 1.25; overflow-wrap: anywhere; }
-@media (min-width: 1000px) and (max-width: 1279px) {
-  .today-stats .stat-card { position: relative; display: block; padding: 16px; }
-  .today-stats .stat-icon { position: absolute; top: 16px; left: 16px; width: 32px; height: 32px; border-radius: 10px; }
-  .today-stats .stat-label { display: flex; min-height: 32px; align-items: center; padding-left: 42px; }
-  .today-stats .stat-value { margin-top: 12px; }
-}
+.today-stats .stat-value { font-size: clamp(18px, 11cqi, 24px); line-height: 1.25; overflow-wrap: anywhere; }
 .table-selected td:first-child { position: relative; }
 .table-selected td:first-child::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--primary-gradient); }
 .skeleton-shimmer { position: relative; overflow: hidden; }
@@ -101,7 +95,11 @@
 [cmdk-item] { cursor: pointer; }
 [cmdk-group-heading] { padding: 12px 12px 4px; font-size: 12px; color: var(--text-2); }
 .page-enter { animation: page-in var(--duration-panel) var(--ease); }
-@media (max-height: 819px) { .hero-banner { height: 220px; } .hero-banner .hero-heading { font-size: 32px; line-height: 40px; } }
+.today-stats .stat-card { height: 76px; gap: 12px; padding: 12px 16px; }
+.today-stats .stat-icon { width: 36px; height: 36px; border-radius: 10px; }
+.today-stats .stat-label { font-size: 12px; line-height: 18px; }
+.today-stats .stat-value { margin-top: 0; }
+.today-stats .stat-change { margin-top: 0; padding: 0; font-size: 11px; background: transparent; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; scroll-behavior: auto !important; }
   .animate-pop, .animate-panel, .animate-page, .page-enter, .hero-art { animation-name: fade-in !important; animation-duration: 120ms !important; }

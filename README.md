@@ -5,7 +5,7 @@
 ## 功能
 
 - 今日：关注逾期与即将到期的项目，查看收入、待收款和最近动态。
-- 项目：列表与拖拽看板、智能排序、组合筛选、星标、侧滑详情和就地编辑。
+- 项目：列表与拖拽看板、智能排序、组合筛选、置顶、侧滑详情和就地编辑。
 - 客户：联系方式、平台账号、评级、标签，以及项目、文件和动态汇总。
 - 收入：周期指标与环比、近十二个月实收与利润、收款流水、CSV 导出及客户排行。金额以整数分存储，退款按负数统计。
 - 文件：图片缩略图、文件类型图块、全库检索、拖入复制、重命名与回收。
@@ -97,11 +97,11 @@ cargo test
 
 ```powershell
 # 同步版本（不生成 git 提交或标签）
-./scripts/set-version.ps1 -Version '2.1.0'
+./scripts/set-version.ps1 -Version '2.2.0'
 # 生成带更新签名的 NSIS 安装包；可预先提供私钥及其密码环境变量
 ./scripts/build-tauri-signed.ps1
 # 仅在本地准备更新清单，不联网发布
-./scripts/create-update-manifest.ps1 -DownloadUrl 'https://github.com/moshangqingchen/Customer-Management-Dashboard/releases/download/v2.1.0/client-desk-2.1.0-x64-setup.exe' -Notes '版本说明'
+./scripts/create-update-manifest.ps1 -DownloadUrl 'https://github.com/moshangqingchen/Customer-Management-Dashboard/releases/download/v2.2.0/client-desk-2.2.0-x64-setup.exe' -Notes '版本说明'
 ./scripts/verify-update-release.ps1
 ```
 

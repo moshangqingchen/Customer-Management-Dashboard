@@ -16,7 +16,7 @@ describe('需求就地自动保存', () => {
     const input = screen.getByRole('textbox', { name: '项目需求说明' }) as HTMLTextAreaElement;
     fireEvent.change(input, { target: { value: '新增交付：两版竖屏海报' } }); fireEvent.blur(input);
     await waitFor(async () => expect((await mockApi.projects.get(value.id)).brief).toBe('新增交付：两版竖屏海报'));
-    await screen.findByText('已自动保存');
+    await waitFor(() => expect(input.disabled).toBe(false));
     const update = vi.spyOn(mockApi.projects, 'update');
     let fail: (error: Error) => void = () => undefined;
     update.mockImplementationOnce(() => new Promise((_resolve, reject) => { fail = reject; }));

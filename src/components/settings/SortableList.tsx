@@ -8,7 +8,7 @@ import { cn } from '../../lib/cn';
 function Row({ id, label, children, disabled }: { id: string; label: string; children: ReactNode; disabled: boolean }) {
   const { setNodeRef, transform, transition, attributes, listeners, isDragging } = useSortable({ id, disabled });
   return <div ref={setNodeRef} style={{ transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined, transition }} className={cn('relative flex min-w-0 items-center gap-1 rounded-md bg-surface', isDragging && 'z-10 shadow-md ring-1 ring-primary')}>
-    <IconButton {...attributes} {...listeners} label={`拖动排序：${label}`} disabled={disabled} size="sm" className="touch-none"><GripVertical size={15} /></IconButton>
+    <IconButton {...attributes} {...listeners} label={`拖动排序：${label}（可按空格和方向键排序）`} disabled={disabled} size="sm" className="touch-none"><GripVertical size={15} /></IconButton>
     <div className="min-w-0 flex-1">{children}</div>
   </div>;
 }

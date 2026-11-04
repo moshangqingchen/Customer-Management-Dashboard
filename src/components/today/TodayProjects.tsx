@@ -8,12 +8,12 @@ import { Avatar, Button, Card, DueChip, EmptyState, Money, Section, StatusPill, 
 
 export type TodayOverview = ReturnType<typeof todayOverview>;
 export function TodayProjects({ overview, base }: { overview: TodayOverview; base: string }) {
-  const navigate = useNav(s => s.navigate); const setStatus = useSetProjectStatus(); const newProject = useUI(s => s.setNewProjectOpen);
+  const navigate = useNav(s => s.navigate); const setStatus = useSetProjectStatus(); const newProject = useUI(s => s.setNewProjectOpen); const newClient = useUI(s => s.setNewClientOpen);
   const open = (id: string) => navigate('today', { projectId: id });
   return <Card className="min-w-0 p-5 xl:p-6">
-    <Section title={`需要关注${overview.attention.length ? ` · ${overview.attention.length}` : ''}`} action={<Button variant="ghost" size="sm" onClick={() => navigate('projects', { view: 'overdue' })}>查看逾期 →</Button>}>
-      {overview.attention.length === 0 ? <EmptyState illustrationName="empty-today" title="今天没有着急的事" description="按自己的节奏，安心创作吧。" /> : <div className="divide-y divide-line border-t border-line">
-        {overview.attention.map(p => <button type="button" key={p.id} onClick={() => open(p.id)} className="group flex w-full flex-wrap items-center gap-3 rounded-md py-4 text-left transition-colors hover:bg-hover focus-visible:bg-hover" aria-label={`打开项目：${p.title}`}>
+    <Section title={`需要关注${overview.attention.length ? ` · ${overview.attention.length}` : ''}`} action={<Button variant="ghost" size="sm" onClick={() => navigate('projects', { filters: { due: 'attention' } })}>查看全部 →</Button>}>
+      {overview.attention.length === 0 ? <EmptyState illustrationName="empty-today" title="今天没有着急的事" description="按自己的节奏，安心创作吧。" action={overview.groups.every(g => !g.projects.length) ? <Button onClick={() => newClient(true)}>新建第一个客户</Button> : undefined} /> : <div className="divide-y divide-line border-t border-line">
+        {overview.attention.slice(0, 5).map(p => <button type="button" key={p.id} onClick={() => open(p.id)} className="group flex w-full flex-wrap items-center gap-3 rounded-md py-3 text-left transition-colors hover:bg-hover focus-visible:bg-hover" aria-label={`打开项目：${p.title}`}>
           <Avatar id={p.clientId} name={p.clientName} size="lg" /><span className="min-w-0 flex-1"><span className="block truncate text-[15px] font-semibold group-hover:text-accent">{p.title}</span><span className="mt-0.5 block truncate text-xs text-fg-2">{p.clientName}</span></span>
           <span className="flex flex-wrap items-center gap-2"><StatusPill status={p.status} /><DueChip date={p.dueDate} status={p.status} base={base} /></span><Money cents={p.priceCents} className="ml-auto text-[15px] font-semibold" />
         </button>)}

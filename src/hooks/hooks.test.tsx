@@ -39,7 +39,7 @@ describe('查询mutation缓存', () => {
     expect(invalidation).not.toHaveBeenCalledWith({ queryKey: queryKeys.snippets });
     queryClient.clear();
   });
-  it('客户星标乐观更新，成功后重新请求列表与详情', async () => {
+  it('客户置顶乐观更新，成功后重新请求列表与详情', async () => {
     const { queryClient, wrapper } = provider();
     queryClient.setQueryData(queryKeys.clients, [sampleClient]); queryClient.setQueryData(queryKeys.client('c1'), sampleClient);
     const invalidation = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue();

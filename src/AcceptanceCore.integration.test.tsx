@@ -41,7 +41,7 @@ describe('最终验收核心展示', () => {
     expect(within(section).queryByRole('button', { name: '打开项目：验收完成逾期' })).toBeNull();
     expect(within(section).queryByRole('button', { name: '打开项目：验收取消逾期' })).toBeNull();
     const navigation = within(screen.getByRole('complementary', { name: '主导航' }));
-    expect(navigation.getByRole('button', { name: '逾期 4' })).toBeTruthy();
+    expect(within(navigation.getByRole('button', { name: '项目' })).getByLabelText('4 个逾期项目')).toBeTruthy();
     const seedOverdue = (await mockApi.projects.list()).filter(value => ['project-1', 'project-2', 'project-3'].includes(value.id));
     for (const project of seedOverdue) expect(within(section).getByRole('button', { name: `打开项目：${project.title}` })).toBeTruthy();
   });
@@ -54,7 +54,7 @@ describe('最终验收核心展示', () => {
       await waitFor(async () => expect((await mockApi.settings.get()).theme).toBe(theme));
       expect(document.documentElement.dataset.theme).toBe(theme);
       expect(document.documentElement.style.colorScheme).toBe(theme);
-      expect(screen.getByRole('button', { name: label }).getAttribute('aria-pressed')).toBe('true');
+      expect(screen.getByRole('button', { name: theme === 'dark' ? '切换浅色主题' : '切换深色主题' })).toBeTruthy();
     }
   });
 

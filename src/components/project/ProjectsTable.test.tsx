@@ -13,6 +13,19 @@ afterEach(() => { queryClient.clear(); vi.unstubAllGlobals(); vi.restoreAllMocks
 const wrapper = ({ children }: { children: React.ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
 
 describe('大项目列表虚拟化', () => {
+  it('点标签打开项目，标签超过两个合并，置顶按钮仍独立操作', () => {
+    const open = vi.fn(); const pin = vi.fn();
+    const tags = createSeed('2026-11-02').tags.slice(0, 3);
+    const project = { ...projects[0], tagIds: tags.map(tag => tag.id) };
+    render(<ProjectsTable projects={[project]} tags={tags} onOpen={open} onPin={pin} menu={() => []} />, { wrapper });
+    fireEvent.click(screen.getByText(tags[0].name));
+    expect(open).toHaveBeenCalledWith(project);
+    expect(screen.queryByRole('button', { name: `按标签筛选：${tags[0].name}` })).toBeNull();
+    expect(screen.getByText('+1')).toBeTruthy();
+    expect(screen.queryByText(tags[2].name)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: `${project.pinned ? '取消' : '添加'}置顶：${project.title}` }));
+    expect(pin).toHaveBeenCalledWith(project); expect(open).toHaveBeenCalledTimes(1);
+  });
   it('360个项目只渲染视口附近行，键盘可跨视口到首尾并打开', async () => {
     const open = vi.fn();
     render(<ProjectsTable projects={projects} tags={[]} onOpen={open} onPin={vi.fn()} menu={() => []} />, { wrapper });

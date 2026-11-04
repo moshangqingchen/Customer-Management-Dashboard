@@ -1,11 +1,11 @@
 import type { Client, Project, ProjectStatus } from '../api/types';
-import { isOpen, monthEnd, monthStart, today, weekEnd, weekStart } from './dates';
+import { isDueSoon, isOpen, isOverdue, monthEnd, monthStart, today, weekEnd, weekStart } from './dates';
 import { outstanding, paymentStatus, type PaymentStatus } from './money';
 import { matchesSearch } from './search';
 
 export interface ProjectFilters {
   query?: string; statuses?: ProjectStatus[]; tagIds?: string[]; clientId?: string;
-  paymentStatus?: PaymentStatus; due?: 'overdue' | 'week' | 'month' | 'none';
+  paymentStatus?: PaymentStatus; due?: 'attention' | 'overdue' | 'week' | 'month' | 'none';
   sourcePlatform?: string; pinned?: boolean; outstanding?: boolean;
 }
 export type ProjectSort = 'smart' | 'dueDate' | 'updatedAt' | 'price' | 'createdAt';
@@ -22,6 +22,7 @@ export function filterProjects(projects: readonly Project[], filters: ProjectFil
     if (filters.pinned !== undefined && project.pinned !== filters.pinned) return false;
     if (filters.outstanding && outstanding(project.priceCents, project.receivedCents, project.status) <= 0) return false;
     if (filters.due === 'overdue' && (!project.dueDate || project.dueDate >= base || !isOpen(project.status))) return false;
+    if (filters.due === 'attention' && !isOverdue(project.dueDate, project.status, base) && !isDueSoon(project.dueDate, project.status, base)) return false;
     if (filters.due === 'none' && project.dueDate !== null) return false;
     if (rangeStart && rangeEnd && (!project.dueDate || project.dueDate < rangeStart || project.dueDate > rangeEnd)) return false;
     if (filters.query && !matchesSearch(`${project.title} ${project.clientName} ${project.brief} ${project.sourceOrderNo}`, filters.query)) return false;

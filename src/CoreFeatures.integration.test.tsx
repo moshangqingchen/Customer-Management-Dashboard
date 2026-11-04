@@ -45,11 +45,11 @@ describe('核心业务完整组件集成', () => {
     await user.type(await screen.findByRole('textbox', { name: /客户名称/ }), '朝雾甜品工作室');
     let dialog = screen.getByRole('dialog', { name: '新建客户' });
     await user.click(within(dialog).getByRole('button', { name: '创建客户' }));
-    await screen.findByRole('heading', { name: '合作项目' });
+    await screen.findByRole('tab', { name: '项目 0' });
     const client = (await mockApi.clients.list()).find(value => value.name === '朝雾甜品工作室');
     expect(client).toBeTruthy();
     expect(useNav.getState().entries[useNav.getState().index]).toEqual({ page: 'clients', params: { clientId: client!.id } });
-    await user.click(screen.getByRole('button', { name: '为他新建项目' }));
+    await user.click(within(screen.getByRole('article')).getAllByRole('button', { name: '新建项目' })[0]);
     expect((await screen.findByRole('combobox', { name: '选择客户' })).textContent).toContain(client!.name);
     dialog = screen.getByRole('dialog', { name: '新建项目' });
     await user.type(within(dialog).getByRole('textbox', { name: /项目名称/ }), '朝雾冬季菜单设计');
@@ -69,13 +69,13 @@ describe('核心业务完整组件集成', () => {
     expect(within(panel).getByRole('button', { name: '打开文件：冬季菜单.psd' })).toBeTruthy();
     expect(within(panel).getByRole('button', { name: '打开文件：印刷说明.pdf' })).toBeTruthy();
     await waitFor(async () => expect((await mockApi.projects.get(project!.id)).fileCount).toBe(3));
-    await user.click(within(panel).getByRole('button', { name: '记一笔' }));
+    await user.click(within(within(panel).getByLabelText('项目金额汇总')).getByRole('button', { name: '记一笔' }));
     expect((within(panel).getByRole('textbox', { name: '金额（元）' }) as HTMLInputElement).value).toBe('1280');
     const amount = within(panel).getByRole('textbox', { name: '金额（元）' });
     await user.clear(amount); await user.type(amount, '500');
     await user.click(within(panel).getByRole('button', { name: '记录收款' }));
     await waitFor(async () => expect((await mockApi.projects.get(project!.id)).receivedCents).toBe(50000));
-    await user.click(within(panel).getByRole('button', { name: '记一笔' }));
+    await user.click(within(within(panel).getByLabelText('项目金额汇总')).getByRole('button', { name: '记一笔' }));
     expect((within(panel).getByRole('textbox', { name: '金额（元）' }) as HTMLInputElement).value).toBe('780');
     await user.click(within(panel).getByRole('button', { name: '记录收款' }));
     await waitFor(async () => expect((await mockApi.projects.get(project!.id)).receivedCents).toBe(128000));
@@ -83,7 +83,7 @@ describe('核心业务完整组件集成', () => {
     expect(screen.getByRole('dialog', { name: '项目详情' })).toBe(panel);
     await user.click(within(panel).getByRole('combobox', { name: '项目详情状态' }));
     await user.click(await screen.findByRole('option', { name: '已交付' }));
-    await within(panel).findByText('已交付且已收清，可以标记完成');
+    expect((await within(panel).findByRole('button', { name: '标记完成' })).getAttribute('title')).toBe('已交付且已收清，可以标记完成');
     await user.click(within(panel).getByRole('button', { name: '标记完成' }));
     await waitFor(async () => expect((await mockApi.projects.get(project!.id)).status).toBe('done'));
     panel = screen.getByRole('dialog', { name: '项目详情' });
@@ -112,7 +112,7 @@ describe('核心业务完整组件集成', () => {
     expect(screen.getAllByRole('dialog', { name: '项目详情' })).toHaveLength(1);
     expect(screen.getByRole('heading', { name: '今日' })).toBeTruthy();
     await user.click(within(panel).getByRole('button', { name: `查看客户：${second.clientName}` }));
-    await screen.findByRole('heading', { name: '合作项目' });
+    await screen.findByRole('tab', { name: `项目 ${(await mockApi.clients.get(second.clientId)).projectCount}` });
     expect(document.querySelector(`[data-drop-target="client:${second.clientId}"]`)).toBeTruthy();
     expect(screen.queryByRole('dialog', { name: '项目详情' })).toBeNull();
     await user.keyboard('{Alt>}{ArrowLeft}{/Alt}');

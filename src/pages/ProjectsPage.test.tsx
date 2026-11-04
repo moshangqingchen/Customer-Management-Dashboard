@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mockApi } from '../api/mock';
 import { reset } from '../api/mock/store';
 import { today, dateOffset } from '../lib/dates';
+import { projectViewCounts } from '../lib/projects';
 import { useNav } from '../stores/nav';
 import { useUI } from '../stores/ui';
 import { ToastProvider } from '../components/ui';
@@ -32,6 +33,24 @@ async function sampleProjects() {
 }
 
 describe('项目列表与看板交互', () => {
+  it('快捷视图切换沿用view参数，外部路由显示选中且置顶数只计项目', async () => {
+    await mockApi.clients.create({ name: '额外置顶客户', pinned: true });
+    const all = await mockApi.projects.list(); const counts = projectViewCounts(all);
+    act(() => useNav.getState().navigate('projects', { view: 'pinned' })); const user = mount();
+    await screen.findByRole('table', { name: '项目列表' });
+    const views = screen.getByRole('group', { name: '项目快捷视图' });
+    expect(within(views).getByRole('button', { name: `置顶 ${counts.pinned}` }).getAttribute('aria-pressed')).toBe('true');
+    expect(within(screen.getByRole('table', { name: '项目列表' })).getAllByRole('row')).toHaveLength(counts.pinned + 1);
+    await user.click(within(views).getByRole('button', { name: `逾期 ${counts.overdue}` }));
+    expect(useNav.getState().entries.at(-1)?.params.view).toBe('overdue');
+    expect(within(views).getByRole('button', { name: `逾期 ${counts.overdue}` }).getAttribute('aria-pressed')).toBe('true');
+    await user.type(screen.getByRole('textbox', { name: '搜索项目' }), '海报');
+    expect(useNav.getState().entries.at(-1)?.params.view).toBe('overdue');
+    await user.click(within(views).getByRole('button', { name: `待收款 ${counts.outstanding}` }));
+    expect(useNav.getState().entries.at(-1)?.params.view).toBe('outstanding');
+    await user.click(within(views).getByRole('button', { name: '全部' }));
+    expect(useNav.getState().entries.at(-1)?.params.view).toBeUndefined();
+  });
   it('列表使用上下键移动、Enter打开，项目行声明文件拖入目标', async () => {
     const { first, second } = await sampleProjects(); mount();
     const table = await screen.findByRole('table', { name: '项目列表' });
