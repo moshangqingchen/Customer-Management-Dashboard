@@ -225,6 +225,77 @@ fn import_copy_and_filesystem_views_reflect_current_files() {
 }
 
 #[test]
+fn existing_project_creates_only_the_selected_current_template_on_import() {
+    let f = Fixture::new();
+    let target = project("p1");
+    let base = library::ensure_folder(&f.db, &target).unwrap();
+    client_desk_lib::repo::settings::write(
+        &f.db,
+        "subfolderTemplate",
+        &vec!["新版参考", "新版交付"],
+    )
+    .unwrap();
+    assert_eq!(library::ensure_folder(&f.db, &target).unwrap(), base);
+    assert!(!base.join("新版参考").exists());
+    let source = f.path("新素材.txt");
+    fs::write(&source, "资料").unwrap();
+    let result = library::files_add(&f.db, &target, &[source], Some("新版参考")).unwrap();
+    assert!(result.failed.is_empty());
+    assert_eq!(result.added.len(), 1);
+    assert_eq!(result.added[0].folder_group, "新版参考");
+    assert_eq!(
+        fs::read(base.join("新版参考/新素材.txt")).unwrap(),
+        "资料".as_bytes()
+    );
+    assert!(!base.join("新版交付").exists());
+    assert!(base.join("参考资料").is_dir());
+}
+
+#[test]
+fn template_import_does_not_create_unconfigured_paths_or_missing_project_folders() {
+    let f = Fixture::new();
+    let target = project("p1");
+    let base = library::ensure_folder(&f.db, &target).unwrap();
+    let source = f.path("资料.txt");
+    fs::write(&source, "资料").unwrap();
+    for (folder, code) in [
+        ("未配置", "invalid"),
+        ("参考资料/未配置", "invalid"),
+        ("../越界", "outsideLibrary"),
+    ] {
+        assert_eq!(
+            library::files_add(&f.db, &target, std::slice::from_ref(&source), Some(folder))
+                .unwrap_err()
+                .code,
+            code
+        );
+    }
+    assert!(!base.join("未配置").exists());
+    assert!(!base.join("参考资料/未配置").exists());
+    let docs = library::ensure_folder(&f.db, &client("c1")).unwrap();
+    assert_eq!(
+        library::files_add(
+            &f.db,
+            &client("c1"),
+            std::slice::from_ref(&source),
+            Some("参考资料")
+        )
+        .unwrap_err()
+        .code,
+        "invalid"
+    );
+    assert!(!docs.join("参考资料").exists());
+    fs::rename(&base, base.with_file_name("移动后的项目")).unwrap();
+    assert_eq!(
+        library::files_add(&f.db, &target, &[source], Some("参考资料"))
+            .unwrap_err()
+            .code,
+        "libraryUnavailable"
+    );
+    assert!(!base.exists());
+}
+
+#[test]
 fn project_cover_shares_the_count_scan_depth_visibility_size_and_cache_rules() {
     use std::time::{Duration, SystemTime};
 
@@ -549,6 +620,7 @@ fn folder_junctions_cannot_leak_files_or_redirect_writes() {
         .files
         .is_empty());
     assert!(library::files_recent(&f.db, 100).unwrap().is_empty());
+    client_desk_lib::repo::settings::write(&f.db, "subfolderTemplate", &vec!["跳转"]).unwrap();
     assert_eq!(
         library::files_add(&f.db, &project("p1"), &f.sources(), Some("跳转"))
             .unwrap_err()

@@ -187,14 +187,18 @@ pub fn auto(conn: &Connection, data_dir: &Path) -> Result<()> {
 
 fn validate_source(conn: &Connection) -> Result<()> {
     let version: i64 = conn.pragma_query_value(None, "user_version", |r| r.get(0))?;
-    if version != 1 {
+    if !(1..=db::SCHEMA_VERSION).contains(&version) {
         return Err(AppError::invalid("备份文件的数据库版本不兼容"));
     }
-    // Compare the v1 columns with our own migration rather than duplicating the schema.
+    // Validate against the source's schema before upgrading a private copy.
     let expected = Connection::open_in_memory()?;
-    db::migrate(&expected)?;
+    if version == 1 {
+        expected.execute_batch(include_str!("schema.sql"))?;
+    } else {
+        db::migrate(&expected)?;
+    }
     let check: String = conn.query_row("PRAGMA quick_check(1)", [], |r| r.get(0))?;
-    if columns(conn)? != columns(&expected)?
+    if schema_signature(conn)? != schema_signature(&expected)?
         || check != "ok"
         || conn.prepare("PRAGMA foreign_key_check")?.exists([])?
     {
@@ -204,10 +208,13 @@ fn validate_source(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
-fn columns(conn: &Connection) -> Result<Vec<(String, String, String)>> {
+fn schema_signature(conn: &Connection) -> Result<Vec<(String, String, String)>> {
+    // These are application-owned snapshots. Compare the full definitions, including
+    // foreign keys, CHECK/UNIQUE constraints and indexes, not just compatible columns.
     let mut stmt = conn.prepare(
-        "SELECT m.name, c.name, c.type FROM sqlite_schema m JOIN pragma_table_info(m.name) c
-         WHERE m.type='table' AND m.name NOT LIKE 'sqlite_%' ORDER BY m.name, c.cid",
+        "SELECT type,name,sql FROM sqlite_schema
+         WHERE type IN ('table','index','trigger') AND name NOT LIKE 'sqlite_%'
+         AND sql IS NOT NULL ORDER BY type,name",
     )?;
     let rows = stmt.query_map([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))?;
     Ok(rows.collect::<rusqlite::Result<_>>()?)
@@ -229,9 +236,19 @@ pub fn restore(conn: &mut Connection, data_dir: &Path, file_name: &str) -> Resul
     let source = Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_ONLY)?;
     let source_tx = source.unchecked_transaction()?;
     validate_source(&source_tx)?;
+    // Upgrade off to the side. Invalid/failed migrations leave the live database untouched.
+    let mut upgraded = Connection::open_in_memory()?;
+    {
+        let copy = Backup::new(&source_tx, &mut upgraded)?;
+        if !matches!(copy.step(-1)?, StepResult::Done) {
+            return Err(AppError::new("db", "暂时无法读取备份，请稍后重试"));
+        }
+    }
+    db::migrate(&upgraded)?;
+    validate_source(&upgraded)?;
     snapshot(conn, data_dir, BackupKind::BeforeRestore)?;
     {
-        let restore = Backup::new(&source_tx, conn)?;
+        let restore = Backup::new(&upgraded, conn)?;
         if !matches!(restore.step(-1)?, StepResult::Done) {
             return Err(AppError::new("db", "数据库正在使用，请稍后重试恢复"));
         }

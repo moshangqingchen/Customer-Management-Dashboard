@@ -1,5 +1,6 @@
 mod count_cache;
 mod folders;
+pub mod history;
 mod paths;
 mod scan;
 mod transfer;

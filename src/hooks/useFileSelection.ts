@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FileEntry } from '../api/types';
 
 export interface SelectionModifiers { ctrlKey: boolean; metaKey: boolean; shiftKey: boolean; }
@@ -6,6 +6,14 @@ export function useFileSelection(files: readonly FileEntry[]) {
   const [paths, setPaths] = useState<Set<string>>(new Set());
   const [anchor, setAnchor] = useState<string>();
   const selected = files.filter(file => paths.has(file.path));
+  useEffect(() => {
+    const visible = new Set(files.map(file => file.path));
+    setPaths(previous => {
+      const next = new Set([...previous].filter(path => visible.has(path)));
+      return next.size === previous.size ? previous : next;
+    });
+    setAnchor(previous => previous && visible.has(previous) ? previous : undefined);
+  }, [files]);
   function select(path: string, modifiers: SelectionModifiers) {
     const anchorIndex = files.findIndex(file => file.path === anchor);
     const index = files.findIndex(file => file.path === path);

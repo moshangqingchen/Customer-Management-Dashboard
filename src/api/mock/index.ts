@@ -1,4 +1,8 @@
 import { toast } from 'sonner';
+import { version } from '../../../package.json';
+import { mockCustomerManagement } from './customerManagement';
+import { mockFollowUps } from './followUps';
+import { mockFileHistory } from './fileHistory';
 import type { Api } from '../client';
 import type * as T from '../types';
 import { today } from '../../lib/dates';
@@ -24,12 +28,19 @@ function purgeProject(projectId: string) {
   state().projects = state().projects.filter(project => project.id !== projectId);
   state().payments = state().payments.filter(payment => payment.projectId !== projectId);
   state().activities = state().activities.filter(activity => activity.projectId !== projectId);
+  state().followUps?.forEach(item => { if (item.projectId === projectId) { item.projectId = null; item.projectTitle = null; item.projectAvailable = true; } });
+}
+function rejectMergedClient(clientId: string) {
+  if (state().customerManagement?.some(value => value.clientId === clientId && value.mergedInto)) fail('alreadyMerged', '客户已合并，请在目标客户中查看资料');
 }
 
 export const mockApi: Api = {
+  customerManagement: mockCustomerManagement,
+  followUps: mockFollowUps,
+  fileHistory: mockFileHistory,
   clients, projects, payments, tags, activities, files,
   app: {
-    info: operation(() => state().appInfo ?? { version: '2.2.1', dataDir: '浏览器本地存储', dbPath: 'clientdesk.mock.v1', portable: false, suggestedLibraryRoot: null }),
+    info: operation(() => state().appInfo ?? { version, dataDir: '浏览器本地存储', dbPath: 'clientdesk.mock.v1', portable: false, suggestedLibraryRoot: null }),
     openDataDir: operation(() => { toast.info('模拟打开数据文件夹'); }),
     saveTextFile: async (defaultName, content) => {
       const url = URL.createObjectURL(new Blob(['\ufeff', content], { type: 'text/plain;charset=utf-8' }));
@@ -96,11 +107,12 @@ export const mockApi: Api = {
   },
   trash: {
     list: operation(() => [
-      ...state().clients.filter(client => client.deletedAt).map(client => ({ type: 'client' as const, id: client.id, title: client.name, subtitle: client.company, deletedAt: client.deletedAt! })),
+      ...state().clients.filter(client => client.deletedAt && !state().customerManagement?.some(value => value.clientId === client.id && value.mergedInto)).map(client => ({ type: 'client' as const, id: client.id, title: client.name, subtitle: client.company, deletedAt: client.deletedAt! })),
       ...state().projects.filter(project => project.deletedAt).map(project => ({ type: 'project' as const, id: project.id, title: project.title, subtitle: clientRecord(project.clientId, true).name, deletedAt: project.deletedAt! })),
     ].sort((a, b) => b.deletedAt.localeCompare(a.deletedAt))),
     restore: operation((type, recordId) => {
       if (type === 'client') {
+        rejectMergedClient(recordId);
         clientRecord(recordId, true).deletedAt = null;
         state().projects.filter(project => project.clientId === recordId && project.deletedWithClient).forEach(project => { project.deletedAt = null; project.deletedWithClient = false; });
       } else {
@@ -111,10 +123,14 @@ export const mockApi: Api = {
     }),
     purge: operation((type, recordId) => {
       if (type === 'client') {
+        rejectMergedClient(recordId);
         const record = clientRecord(recordId, true); if (!record.deletedAt) fail('invalidInput', '请先将客户移入回收站');
         state().projects.filter(project => project.clientId === recordId).forEach(project => purgeProject(project.id));
         state().activities = state().activities.filter(activity => activity.clientId !== recordId);
         state().clients = state().clients.filter(client => client.id !== recordId);
+        state().followUps = state().followUps?.filter(item => item.clientId !== recordId);
+        state().customerManagement = state().customerManagement?.filter(item => item.clientId !== recordId);
+        state().clientFolderAliases = state().clientFolderAliases?.filter(item => item.clientId !== recordId);
       } else {
         if (!projectRecord(recordId, true).deletedAt) fail('invalidInput', '请先将项目移入回收站'); purgeProject(recordId);
       }

@@ -1,8 +1,8 @@
 use super::{
     checked_file, ensure_folder,
-    folders::Target,
+    folders::{import_directory, Target},
     invalidate_file_counts,
-    paths::{exists, is_link, numbered, reserved_dir, resolve, valid_name, Created, TRASH},
+    paths::{exists, is_link, numbered, reserved_dir, resolve, valid_name, Created},
     root,
     scan::{entry, owners, with_owner},
 };
@@ -204,10 +204,7 @@ pub fn files_add_with_copy_hook(
     let base = ensure_folder(db, target)?;
     let relative_base = base.strip_prefix(&root).map_err(|_| super::outside())?;
     let base = resolve(&root, relative_base)?;
-    let destination = resolve(&base, Path::new(subfolder.unwrap_or("")))?;
-    if !destination.is_dir() {
-        return Err(AppError::invalid("目标子文件夹不存在"));
-    }
+    let destination = import_directory(db, target, &root, &base, subfolder)?;
     invalidate_file_counts(&base);
     let mut copied = Vec::new();
     let mut failures = Vec::new();
@@ -341,36 +338,27 @@ pub fn file_rename(db: &impl Database, path: &Path, new_name: &str) -> Result<Fi
     invalidate_file_counts(&old);
     invalidate_file_counts(&destination);
     result?;
+    if let Err(error) = db.read(|conn| {
+        let tx = conn.unchecked_transaction()?;
+        super::history::rename_prefix(
+            &tx,
+            &root,
+            &old_entry.rel_path,
+            &super::paths::rel_string(
+                destination
+                    .strip_prefix(&root)
+                    .map_err(|_| super::outside())?,
+            ),
+        )?;
+        tx.commit()?;
+        Ok(())
+    }) {
+        fs::rename(&destination, &old)?;
+        return Err(error);
+    }
     with_owner(&root, &destination, &owners)?.ok_or_else(AppError::not_found)
 }
 
 pub fn file_trash(db: &impl Database, path: &Path) -> Result<()> {
-    let _guard = db.file_guard()?;
-    let root = root(db)?;
-    let old = ordinary_file(db, path, &root)?;
-    let relative = old.strip_prefix(&root).map_err(|_| super::outside())?;
-    let target = resolve(&root, &Path::new(TRASH).join(relative))?;
-    let parent = target.parent().ok_or_else(super::outside)?;
-    fs::create_dir_all(parent)?;
-    let mut destination = target.clone();
-    if exists(&destination)? {
-        let stamp = chrono::Utc::now().format("%Y%m%d-%H%M%S-%9f");
-        let stem = target.file_stem().unwrap_or_default().to_string_lossy();
-        let extension = target
-            .extension()
-            .map(|value| format!(".{}", value.to_string_lossy()))
-            .unwrap_or_default();
-        let name = format!("{stem}-{stamp}{extension}");
-        for index in 1.. {
-            destination = parent.join(numbered(&name, index, false));
-            if !exists(&destination)? {
-                break;
-            }
-        }
-    }
-    invalidate_file_counts(&old);
-    let result = fs::rename(&old, destination);
-    invalidate_file_counts(&old);
-    result?;
-    Ok(())
+    super::history::trash(db, path)
 }

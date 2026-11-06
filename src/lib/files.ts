@@ -26,9 +26,24 @@ export function fileModifiedDate(value: string, base = today()): string {
   return isValid(date) ? relativeDate(today(date), base) : '—';
 }
 
-export interface FileGroup { key: string; label: string; files: FileEntry[]; }
+export interface FileGroup { key: string; folder: string; label: string; files: FileEntry[]; }
+export type FileSort = 'modified-desc' | 'modified-asc' | 'name-asc' | 'name-desc';
+const fileNameOrder = new Intl.Collator('zh-CN', { numeric: true, sensitivity: 'base' });
+const compareFilePaths = (a: FileEntry, b: FileEntry) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0;
+function sortGroupFiles(files: readonly FileEntry[], sort: FileSort): FileEntry[] {
+  const direction = sort.endsWith('-asc') ? 1 : -1;
+  if (sort === 'name-asc' || sort === 'name-desc') {
+    return [...files].sort((a, b) => direction * fileNameOrder.compare(a.name, b.name) || compareFilePaths(a, b));
+  }
+  return files.map(file => ({ file, time: Date.parse(file.modifiedAt) })).sort((a, b) => {
+    const aValid = Number.isFinite(a.time); const bValid = Number.isFinite(b.time);
+    if (aValid !== bValid) return aValid ? -1 : 1;
+    const byTime = aValid && bValid ? direction * (a.time - b.time) : 0;
+    return byTime || fileNameOrder.compare(a.file.name, b.file.name) || compareFilePaths(a.file, b.file);
+  }).map(({ file }) => file);
+}
 /** Client aggregates retain project boundaries even when subfolder names match. */
-export function groupFiles(files: readonly FileEntry[], includeProjects = false, projects: readonly Pick<Project, 'id' | 'title'>[] = []): FileGroup[] {
+export function groupFiles(files: readonly FileEntry[], includeProjects = false, projects: readonly Pick<Project, 'id' | 'title'>[] = [], sort: FileSort = 'modified-desc'): FileGroup[] {
   const result = new Map<string, FileGroup>();
   const projectNames = new Map(projects.map(project => [project.id, project.title]));
   for (const file of files) {
@@ -38,10 +53,21 @@ export function groupFiles(files: readonly FileEntry[], includeProjects = false,
     const ownerLabel = file.projectId ? projectNames.get(file.projectId) ?? '项目文件' : '_客户资料';
     const label = includeProjects ? `${ownerLabel}${folder ? ` / ${folder}` : ''}` : folder || '根目录';
     let group = result.get(key);
-    if (!group) { group = { key, label, files: [] }; result.set(key, group); }
+    if (!group) { group = { key, folder, label, files: [] }; result.set(key, group); }
     group.files.push(file);
   }
-  return [...result.values()].sort((a, b) => a.label.localeCompare(b.label, 'zh-CN')).map(group => ({ ...group, files: [...group.files].sort((a, b) => b.modifiedAt.localeCompare(a.modifiedAt) || a.name.localeCompare(b.name, 'zh-CN')) }));
+  return [...result.values()].sort((a, b) => a.label.localeCompare(b.label, 'zh-CN')).map(group => ({ ...group, files: sortGroupFiles(group.files, sort) }));
+}
+
+export function projectFileFolders(groups: readonly FileGroup[]) {
+  const folders = new Map<string, FileGroup[]>();
+  for (const group of groups) {
+    const name = group.folder.split('/')[0];
+    const contents = folders.get(name);
+    if (contents) contents.push(group);
+    else folders.set(name, [group]);
+  }
+  return [...folders].map(([name, contents]) => ({ name, groups: contents }));
 }
 
 export function destinationFolders(files: readonly FileEntry[], templates: readonly string[] = []): string[] {
@@ -50,4 +76,11 @@ export function destinationFolders(files: readonly FileEntry[], templates: reado
     if (file.folderGroup) folders.add(file.folderGroup);
   }
   return [...folders];
+}
+
+/** Undefined includes all owners; null selects client reference documents only. */
+export function filterFiles(files: readonly FileEntry[], query: string, projectId?: string | null): FileEntry[] {
+  const needle = query.trim().replace(/\\/g, '/').toLocaleLowerCase('zh-CN');
+  return files.filter(file => (projectId === undefined || file.projectId === projectId)
+    && (!needle || `${file.folderGroup.replace(/\\/g, '/')}/${file.name}`.toLocaleLowerCase('zh-CN').includes(needle)));
 }

@@ -10,6 +10,7 @@ import { EntityPreview } from './EntityPreview';
 import { UpdateDialog } from './UpdateDialog';
 import { PageSkeleton } from './PageSkeleton';
 import { PageHeader } from './PageHeader';
+import { FollowUpReminders } from '../followups/FollowUpReminders';
 
 const TodayPage = lazy(() => import('../../pages/TodayPage').then(module => ({ default: module.TodayPage })));
 const ProjectsPage = lazy(() => import('../../pages/ProjectsPage').then(module => ({ default: module.ProjectsPage })));
@@ -66,7 +67,7 @@ export function AppShell() {
     return () => { window.removeEventListener('mousedown', onMouse); window.removeEventListener('mouseup', onMouse); window.removeEventListener('auxclick', onMouse); };
   }, [nav.back, nav.forward]);
   return <div className="relative flex h-dvh overflow-hidden bg-app" style={{ backgroundImage: 'var(--bg-glow)', backgroundAttachment: 'fixed' }}>
-    <Sidebar /><div className="flex min-w-0 flex-1 flex-col">
+    <FollowUpReminders /><Sidebar /><div className="flex min-w-0 flex-1 flex-col">
       <main id="main-content" className={`min-h-0 flex-1 ${!route.params.projectFullPage && (route.page === 'clients' || route.page === 'settings') ? 'overflow-hidden' : 'overflow-y-auto'}`}><div key={route.page} className="page-enter h-full"><Suspense fallback={<PageSkeleton />}>
         {route.params.projectFullPage && route.params.projectId ? <div className="mx-auto max-w-[1100px] space-y-4 p-6"><PageHeader title="项目" /><ProjectDetail key={route.params.projectId} projectId={route.params.projectId} initialPayment={route.params.payment} onDeleted={() => nav.navigate('projects')} /></div> : route.page === 'today' ? <TodayPage /> : route.page === 'projects' ? <ProjectsPage /> : route.page === 'clients' ? <ClientsPage /> : route.page === 'income' ? <IncomePage /> : route.page === 'files' ? <FilesPage /> : route.page === 'snippets' ? <SnippetsPage /> : route.page === 'settings' ? <SettingsPage /> : route.page === 'design-system' && DesignSystemPage ? <DesignSystemPage /> : null}
       </Suspense>

@@ -1,0 +1,93 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { mockApi } from '../../api/mock';
+import { mockFollowUps } from '../../api/mock/followUps';
+import { reset } from '../../api/mock/store';
+import { FollowUpsPanel } from './FollowUpsPanel';
+
+let query: QueryClient; let clientId: string;
+const original = { scrollIntoView: Element.prototype.scrollIntoView, hasPointerCapture: Element.prototype.hasPointerCapture, setPointerCapture: Element.prototype.setPointerCapture, releasePointerCapture: Element.prototype.releasePointerCapture };
+beforeEach(async () => {
+  Element.prototype.scrollIntoView = vi.fn();
+  Element.prototype.hasPointerCapture = () => false;
+  Element.prototype.setPointerCapture = () => undefined;
+  Element.prototype.releasePointerCapture = () => undefined;
+  vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} });
+  reset(); query = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  clientId = (await mockApi.clients.create({ name: '跟进流程客户' })).id;
+});
+afterEach(() => { query.clear(); vi.restoreAllMocks(); vi.unstubAllGlobals(); Object.assign(Element.prototype, original); });
+function mount() { render(<QueryClientProvider client={query}><FollowUpsPanel clientId={clientId} /></QueryClientProvider>); return userEvent.setup(); }
+
+describe('客户跟进操作', () => {
+  it('关联项目选择器可正常展开、选择并解除关联，只列出本客户项目', async () => {
+    const project = await mockApi.projects.create({ clientId, title: '本客户的海报' });
+    const other = await mockApi.clients.create({ name: '其他客户' });
+    await mockApi.projects.create({ clientId: other.id, title: '其他客户的订单' });
+    const user = mount();
+    await user.click(await screen.findByRole('button', { name: '新建跟进' }));
+    await user.type(screen.getByRole('textbox', { name: '跟进主题' }), '确认海报');
+    await user.click(screen.getByRole('combobox', { name: '关联项目' }));
+    expect(screen.queryByRole('option', { name: '其他客户的订单' })).toBeNull();
+    await user.click(await screen.findByRole('option', { name: '本客户的海报' }));
+    await user.click(screen.getByRole('button', { name: '保存计划' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect((await mockFollowUps.list({ clientId }))[0].projectId).toBe(project.id);
+    await user.click(screen.getByRole('button', { name: '编辑跟进：确认海报' }));
+    await user.click(screen.getByRole('combobox', { name: '关联项目' }));
+    await user.click(await screen.findByRole('option', { name: '不关联项目' }));
+    await user.click(screen.getByRole('button', { name: '保存计划' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect((await mockFollowUps.list({ clientId }))[0].projectId).toBeNull();
+  });
+  it('新建、完成记录结果、重开、调整时间、取消都保存并显示在相应分类', async () => {
+    const user = mount(); await screen.findByText('没有待跟进计划');
+    await user.click(screen.getByRole('button', { name: '新建跟进' }));
+    let dialog = screen.getByRole('dialog', { name: '新建跟进计划' });
+    await user.type(within(dialog).getByRole('textbox', { name: '跟进主题' }), '回访海报反馈');
+    fireEvent.change(within(dialog).getByLabelText('跟进计划时间'), { target: { value: '2026-11-07T10:30' } });
+    await user.type(within(dialog).getByRole('textbox', { name: '跟进备注' }), '确认客户是否需要改字');
+    await user.click(within(dialog).getByRole('button', { name: '保存计划' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(screen.getByText('回访海报反馈')).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: '完成' }));
+    dialog = screen.getByRole('dialog', { name: '完成客户跟进' });
+    await user.type(within(dialog).getByRole('textbox', { name: '跟进结果' }), '客户确认文案，下次继续合作');
+    await user.click(within(dialog).getByRole('button', { name: '确认完成' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await user.click(screen.getByRole('button', { name: '已完成' }));
+    expect(await screen.findByText(/客户确认文案，下次继续合作/)).toBeTruthy();
+    const events = await mockApi.activities.list({ clientId });
+    expect(events.some(event => event.kind === 'status' && event.body.includes('客户确认文案'))).toBe(true);
+    await user.click(screen.getByRole('button', { name: '重新开启' }));
+    await user.click(screen.getByRole('button', { name: '待跟进' }));
+    await user.click(await screen.findByRole('button', { name: '调整时间：回访海报反馈' }));
+    dialog = screen.getByRole('dialog', { name: '调整跟进时间' });
+    fireEvent.change(within(dialog).getByLabelText('跟进计划时间'), { target: { value: '2026-11-09T15:00' } });
+    await user.click(within(dialog).getByRole('button', { name: '保存计划' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await user.click(screen.getByRole('button', { name: '取消跟进：回访海报反馈' }));
+    dialog = screen.getByRole('dialog', { name: '取消这次跟进？' });
+    await user.click(within(dialog).getByRole('button', { name: '取消跟进' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await user.click(screen.getByRole('button', { name: '已取消' }));
+    expect(await screen.findByText('回访海报反馈')).toBeTruthy();
+    expect((await mockFollowUps.list({ clientId }))[0]).toMatchObject({ status: 'cancelled', revision: 3, result: '客户确认文案，下次继续合作' });
+  });
+  it('保存失败保留输入可再次提交，不错误关闭表单', async () => {
+    await mockFollowUps.create({ clientId, title: '原主题', dueAt: '2026-11-05T09:00:00Z' });
+    const user = mount();
+    await user.click(await screen.findByRole('button', { name: '编辑跟进：原主题' }));
+    const input = screen.getByRole('textbox', { name: '跟进主题' }); await user.clear(input); await user.type(input, '改后主题');
+    const update = vi.spyOn(mockFollowUps, 'update').mockRejectedValueOnce(new Error('磁盘暂不可写'));
+    await user.click(screen.getByRole('button', { name: '保存计划' }));
+    await waitFor(() => expect(update).toHaveBeenCalledTimes(1));
+    expect((screen.getByRole('textbox', { name: '跟进主题' }) as HTMLInputElement).value).toBe('改后主题');
+    await waitFor(() => expect((screen.getByRole('button', { name: '保存计划' }) as HTMLButtonElement).disabled).toBe(false));
+    await user.click(screen.getByRole('button', { name: '保存计划' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect((await mockFollowUps.list({ clientId }))[0].title).toBe('改后主题');
+  });
+});

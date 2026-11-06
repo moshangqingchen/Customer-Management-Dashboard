@@ -181,7 +181,7 @@ pub fn files_list(
     include_projects: bool,
 ) -> Result<FileListResult> {
     let root = root(db)?;
-    let (target, projects) = db.read(|conn| {
+    let (target, projects, aliases) = db.read(|conn| {
         let target = Target::load(conn, target)?;
         let projects = if include_projects && target.project_id.is_none() {
             let mut stmt = conn.prepare("SELECT id,folder FROM projects WHERE client_id=?1 AND deleted_at IS NULL AND folder IS NOT NULL ORDER BY id")?;
@@ -196,12 +196,23 @@ pub fn files_list(
         } else {
             Vec::new()
         };
-        Ok((target, projects))
+        let aliases = if target.project_id.is_none() {
+            let mut stmt = conn.prepare("SELECT folder FROM client_folder_aliases WHERE client_id=?1 ORDER BY folder")?;
+            let values = stmt.query_map([&target.client_id], |row| row.get::<_, String>(0))?.collect::<rusqlite::Result<Vec<_>>>()?;
+            values
+        } else { Vec::new() };
+        Ok((target, projects, aliases))
     })?;
     let base = target.base(&root)?;
     let mut files = Vec::new();
     if let Some(base) = &base {
         append_files(&root, &target, base, &mut files)?;
+    }
+    for folder in aliases {
+        let alias = resolve_alias_docs(&root, &folder)?;
+        if base.as_ref() != Some(&alias) {
+            append_files(&root, &target, &alias, &mut files)?;
+        }
     }
     {
         for project in projects {
@@ -228,7 +239,8 @@ pub(super) struct Owner {
 pub(super) fn owners(conn: &Connection) -> Result<Vec<Owner>> {
     let mut stmt = conn.prepare("SELECT folder,id,NULL,deleted_at IS NOT NULL FROM clients WHERE folder IS NOT NULL
         UNION ALL SELECT p.folder,p.client_id,p.id,p.deleted_at IS NOT NULL OR c.deleted_at IS NOT NULL
-            FROM projects p JOIN clients c ON p.client_id=c.id WHERE p.folder IS NOT NULL ORDER BY 1")?;
+            FROM projects p JOIN clients c ON p.client_id=c.id WHERE p.folder IS NOT NULL
+        UNION ALL SELECT a.folder,a.client_id,NULL,c.deleted_at IS NOT NULL FROM client_folder_aliases a JOIN clients c ON a.client_id=c.id ORDER BY 1")?;
     let rows = stmt.query_map([], |r| {
         Ok(Owner {
             folder: PathBuf::from(r.get::<_, String>(0)?),
@@ -238,8 +250,28 @@ pub(super) fn owners(conn: &Connection) -> Result<Vec<Owner>> {
         })
     })?;
     let mut owners: Vec<_> = rows.collect::<rusqlite::Result<_>>()?;
-    owners.sort_by_key(|o| std::cmp::Reverse(o.folder.components().count()));
+    owners.sort_by_key(|o| (std::cmp::Reverse(o.folder.components().count()), o.deleted));
     Ok(owners)
+}
+
+fn resolve_alias_docs(root: &Path, folder: &str) -> Result<PathBuf> {
+    record_path(root, folder)?;
+    super::paths::resolve(root, &Path::new(folder).join(CLIENT_DOCS))
+}
+
+pub(super) fn owner_context(
+    root: &Path,
+    path: &Path,
+    owners: &[Owner],
+) -> (Option<String>, Option<String>) {
+    let Some(relative) = path.strip_prefix(root).ok() else {
+        return (None, None);
+    };
+    owners
+        .iter()
+        .find(|owner| relative.starts_with(&owner.folder) && !owner.deleted)
+        .map(|owner| (Some(owner.client.clone()), owner.project.clone()))
+        .unwrap_or_default()
 }
 
 pub(super) fn with_owner(root: &Path, path: &Path, owners: &[Owner]) -> Result<Option<FileEntry>> {

@@ -1,4 +1,7 @@
 import type * as T from './types';
+import type { CustomerManagementApi } from './customerManagement';
+import type { FollowUpsApi } from './followUps';
+import type { FileHistoryApi } from './fileHistory';
 import { toApiError } from './error';
 export { ApiError, toApiError } from './error';
 
@@ -11,6 +14,9 @@ export type NoteInput = { clientId: T.ID; projectId?: T.ID; body: string };
 export type TrashType = T.TrashItem['type'];
 
 export interface Api {
+  customerManagement: CustomerManagementApi;
+  followUps: FollowUpsApi;
+  fileHistory: FileHistoryApi;
   app: { info(): Promise<T.AppInfo>; openDataDir(): Promise<void>; saveTextFile(defaultName: string, content: string): Promise<string | null> };
   library: { status(): Promise<T.LibraryStatus>; setRoot(path: string): Promise<T.LibraryStatus>; openRoot(): Promise<void>; pickFolder(title?: string): Promise<string | null> };
   clients: {

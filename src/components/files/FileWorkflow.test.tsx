@@ -121,32 +121,47 @@ function DetailHarness({ target }: { target: FileTarget }) { useFilePaste(target
 describe('文件粘贴与交付', () => {
   it('默认首个子文件夹，切换后快捷键和按钮使用同一目标；输入区域不拦截粘贴', async () => {
     const client = await mockApi.clients.create({ name: '粘贴客户' }); const project = await mockApi.projects.create({ clientId: client.id, title: '粘贴项目' });
-    const paste = vi.spyOn(mockApi.files, 'paste').mockResolvedValue({ added: [], failed: [] }); const user = userEvent.setup();
+    const paste = vi.spyOn(mockApi.files, 'paste').mockResolvedValue({ added: [], failed: [] });
+    const pick = vi.spyOn(mockApi.files, 'pickAndAdd').mockResolvedValue({ added: [], failed: [] }); const user = userEvent.setup();
     render(wrap(<DetailHarness target={{ projectId: project.id }} />));
-    await screen.findByText('把设计稿放在这里');
+    await screen.findByText('项目里还没有文件');
+    const imports = within(screen.getByRole('group', { name: '添加项目文件' }));
     fireEvent.keyDown(window, { key: 'v', ctrlKey: true });
     await waitFor(() => expect(paste).toHaveBeenCalledExactlyOnceWith({ projectId: project.id }, '参考资料'));
-    await user.click(screen.getByRole('combobox', { name: '目标子文件夹' })); await user.click(await screen.findByRole('option', { name: '过程稿' }));
+    await user.click(imports.getByRole('combobox', { name: '新文件存入' })); await user.click(await screen.findByRole('option', { name: '过程稿' }));
+    expect(screen.getByLabelText('文件区').getAttribute('data-drop-subfolder')).toBe('过程稿');
+    await user.click(imports.getByRole('button', { name: '从电脑添加' }));
+    await waitFor(() => expect(pick).toHaveBeenCalledExactlyOnceWith({ projectId: project.id }, '过程稿'));
     fireEvent.keyDown(window, { key: 'v', ctrlKey: true });
     await waitFor(() => expect(paste).toHaveBeenLastCalledWith({ projectId: project.id }, '过程稿'));
     const count = paste.mock.calls.length;
     const input = screen.getByRole('textbox', { name: '沟通备注' }); input.focus(); fireEvent.keyDown(input, { key: 'v', ctrlKey: true });
     const rich = screen.getByRole('textbox', { name: '富文本备注' }); rich.focus(); fireEvent.keyDown(rich, { key: 'v', ctrlKey: true });
     expect(paste).toHaveBeenCalledTimes(count);
-    await user.click(screen.getByRole('button', { name: '从剪贴板粘贴' }));
+    await user.click(imports.getByRole('button', { name: '从剪贴板粘贴' }));
     await waitFor(() => expect(paste).toHaveBeenCalledTimes(count + 1));
     expect(paste).toHaveBeenLastCalledWith({ projectId: project.id }, '过程稿');
   });
-  it('复制交付文件包含交付子目录，排除参考资料', async () => {
+  it('交付整组与选中复制各自匹配按钮上的数量和范围，切换网格与列表保留选中项', async () => {
     const client = await mockApi.clients.create({ name: '交付客户' }); const project = await mockApi.projects.create({ clientId: client.id, title: '交付项目' });
     const delivery = await addBrowserFiles({ projectId: project.id }, [{ name: '成品.pdf', size: 100 }], '交付成品');
     const nested = await addBrowserFiles({ projectId: project.id }, [{ name: '源文件.ai', size: 100 }], '交付成品/源文件');
-    await addBrowserFiles({ projectId: project.id }, [{ name: '参考.png', size: 100 }], '参考资料');
+    const reference = await addBrowserFiles({ projectId: project.id }, [{ name: '参考.png', size: 100 }], '参考资料');
+    await addBrowserFiles({ projectId: project.id }, [{ name: '旧版.pdf', size: 100 }], '交付成品备份');
     const copy = vi.spyOn(mockApi.files, 'copyToClipboard').mockResolvedValue();
     render(wrap(<FilesArea target={{ projectId: project.id }} />));
-    await userEvent.click(await screen.findByRole('button', { name: '复制交付文件' }));
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: '打开文件：参考.png' }));
+    await user.click(screen.getByRole('button', { name: '列表视图' }));
+    expect(screen.getByRole('button', { name: '打开文件：参考.png' }).getAttribute('aria-pressed')).toBe('true');
+    await user.click(screen.getByRole('button', { name: '复制全部 2 个交付文件' }));
     await waitFor(() => expect(copy).toHaveBeenCalledOnce());
     expect(copy.mock.calls[0][0]).toEqual(expect.arrayContaining([delivery.added[0].path, nested.added[0].path]));
     expect(copy.mock.calls[0][0]).toHaveLength(2);
+    const selected = within(screen.getByRole('region', { name: '文件选择操作' }));
+    await user.click(selected.getByRole('button', { name: '复制选中的 1 个文件' }));
+    await waitFor(() => expect(copy).toHaveBeenLastCalledWith([reference.added[0].path]));
+    await user.click(selected.getByRole('button', { name: '取消选择' }));
+    expect(screen.queryByRole('region', { name: '文件选择操作' })).toBeNull();
   });
 });

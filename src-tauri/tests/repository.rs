@@ -70,7 +70,7 @@ fn reopen_preserves_schema_data_and_settings() {
     assert_eq!(
         conn.pragma_query_value(None, "user_version", |r| r.get::<_, i64>(0))
             .unwrap(),
-        1
+        db::SCHEMA_VERSION
     );
     assert_eq!(
         conn.pragma_query_value(None, "journal_mode", |r| r.get::<_, String>(0))

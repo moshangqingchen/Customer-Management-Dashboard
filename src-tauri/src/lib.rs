@@ -1,8 +1,11 @@
 pub mod backup;
 pub mod clipboard;
 pub mod commands;
+pub mod customer_management;
 pub mod db;
 pub mod error;
+pub mod file_history_commands;
+pub mod followups;
 pub mod library;
 pub mod models;
 pub mod portable;
@@ -176,6 +179,22 @@ pub fn run() -> Result<()> {
         .plugin(tauri_plugin_process::init())
         .setup(move |app| setup(app, &mode).map_err(|error| mode.startup_error(error).into()))
         .invoke_handler(tauri::generate_handler![
+            customer_management::commands::customer_management_states,
+            customer_management::commands::customer_set_archived,
+            customer_management::commands::customer_merge_preview,
+            customer_management::commands::customer_merge,
+            followups::commands::follow_ups_list,
+            followups::commands::follow_up_create,
+            followups::commands::follow_up_update,
+            followups::commands::follow_up_set_status,
+            followups::commands::follow_up_claim_reminder,
+            file_history_commands::file_versions_list,
+            file_history_commands::file_versions_save,
+            file_history_commands::file_versions_replace,
+            file_history_commands::file_versions_pick_replace,
+            file_history_commands::file_versions_restore,
+            file_history_commands::file_recycle_list,
+            file_history_commands::file_recycle_restore,
             commands::app_info,
             commands::app_open_data_dir,
             commands::library_status,

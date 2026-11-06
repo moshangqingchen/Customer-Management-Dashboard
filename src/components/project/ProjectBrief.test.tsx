@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mockApi } from '../../api/mock';
 import { reset } from '../../api/mock/store';
@@ -10,6 +11,28 @@ beforeEach(() => { reset(); query = new QueryClient({ defaultOptions: { queries:
 afterEach(() => { query.clear(); vi.restoreAllMocks(); });
 
 describe('需求就地自动保存', () => {
+  it('空需求可插入模板；已有内容需确认追加，取消不改变原文', async () => {
+    const value = (await mockApi.projects.list())[0];
+    await mockApi.projects.update(value.id, { brief: '' });
+    const user = userEvent.setup();
+    render(<QueryClientProvider client={query}><ProjectBrief projectId={value.id} value="" /></QueryClientProvider>);
+    await user.click(screen.getByRole('button', { name: '选择需求模板' }));
+    await user.click(screen.getByRole('menuitem', { name: '海报设计' }));
+    await waitFor(async () => expect((await mockApi.projects.get(value.id)).brief).toContain('尺寸与方向：'));
+    await waitFor(() => expect((screen.getByRole('textbox', { name: '项目需求说明' }) as HTMLTextAreaElement).disabled).toBe(false));
+    const original = (await mockApi.projects.get(value.id)).brief;
+    await user.click(screen.getByRole('button', { name: '选择需求模板' }));
+    await user.click(screen.getByRole('menuitem', { name: '品牌设计' }));
+    let dialog = await screen.findByRole('dialog', { name: '追加需求模板？' });
+    await user.click(within(dialog).getByRole('button', { name: '取消' }));
+    expect((await mockApi.projects.get(value.id)).brief).toBe(original);
+    await user.click(screen.getByRole('button', { name: '选择需求模板' }));
+    await user.click(screen.getByRole('menuitem', { name: '品牌设计' }));
+    dialog = await screen.findByRole('dialog', { name: '追加需求模板？' });
+    await user.click(within(dialog).getByRole('button', { name: '追加模板' }));
+    await waitFor(async () => expect((await mockApi.projects.get(value.id)).brief).toContain('品牌名称与定位：'));
+    expect((await mockApi.projects.get(value.id)).brief.startsWith(`${original}\n\n`)).toBe(true);
+  });
   it('失焦自动保存，保存期间禁用，失败恢复上次保存内容', async () => {
     const value = (await mockApi.projects.list())[0];
     render(<QueryClientProvider client={query}><ProjectBrief projectId={value.id} value={value.brief} /></QueryClientProvider>);

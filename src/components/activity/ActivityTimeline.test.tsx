@@ -11,6 +11,27 @@ beforeEach(() => { reset(); query = new QueryClient({ defaultOptions: { queries:
 afterEach(() => query.clear());
 
 describe('动态备注组件', () => {
+  it('沟通与系统分类可组合文字检索，无结果可清除筛选', async () => {
+    const client = await mockApi.clients.create({ name: '改稿客户' });
+    const project = await mockApi.projects.create({ clientId: client.id, title: '改稿海报' });
+    await mockApi.activities.addNote({ clientId: client.id, projectId: project.id, body: '第二稿：标题改成暖色' });
+    await mockApi.activities.addNote({ clientId: client.id, projectId: project.id, body: '确认交付源文件' });
+    const user = userEvent.setup();
+    render(<QueryClientProvider client={query}><ActivityTimeline clientId={client.id} projectId={project.id} /></QueryClientProvider>);
+    await screen.findByText('创建了项目');
+    await user.click(screen.getByRole('button', { name: '沟通备注' }));
+    expect(screen.queryByText('创建了项目')).toBeNull();
+    await user.type(screen.getByRole('searchbox', { name: '搜索动态' }), '第二稿');
+    expect(screen.getByText('第二稿：标题改成暖色')).toBeTruthy();
+    expect(screen.queryByText('确认交付源文件')).toBeNull();
+    await user.click(screen.getByRole('button', { name: '系统记录' }));
+    expect(screen.getByText('没有符合条件的动态')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: '编辑备注' })).toBeNull();
+    expect(screen.queryByText('还没有动态')).toBeNull();
+    await user.click(screen.getByRole('button', { name: '清除筛选' }));
+    expect(screen.getByText('创建了项目')).toBeTruthy();
+    expect(screen.getByText('确认交付源文件')).toBeTruthy();
+  });
   it('Ctrl+Enter新增与编辑备注，删除需确认，系统动态没有编辑入口', async () => {
     const client = await mockApi.clients.create({ name: '动态验收客户' });
     const project = await mockApi.projects.create({ clientId: client.id, title: '动态验收单' });

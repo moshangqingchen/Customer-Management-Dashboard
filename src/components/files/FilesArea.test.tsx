@@ -51,4 +51,21 @@ describe('文件共享区', () => {
     expect(buttons.every(button => (button as HTMLButtonElement).disabled)).toBe(true);
     await userEvent.click(buttons[1]); expect(pick).not.toHaveBeenCalled();
   });
+  it('主目录缺失仍展示并可搜索合并客户的有效资料，禁用主目录写入', async () => {
+    await api.library.setRoot('D:/客户工作台');
+    const client = await api.clients.create({ name: '合并资料客户' });
+    const added = await addBrowserFiles({ clientId: client.id }, [{ name: '旧客户品牌说明.txt', size: 20 }]);
+    const { mockApi } = await import('../../api/mock');
+    vi.spyOn(mockApi.files, 'list').mockResolvedValue({ files: added.added, folder: 'D:/客户工作台/已移走', folderMissing: true });
+    const open = vi.spyOn(mockApi.files, 'open').mockResolvedValue();
+    render(<QueryClientProvider client={queryClient}><FilesArea target={{ clientId: client.id }} includeProjects /></QueryClientProvider>);
+    expect(await screen.findByText('找不到原文件夹')).toBeTruthy();
+    expect(screen.getByText('旧客户品牌说明.txt')).toBeTruthy();
+    expect((screen.getByRole('button', { name: '添加文件' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole('button', { name: '从剪贴板粘贴' }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.doubleClick(screen.getByRole('button', { name: '打开文件：旧客户品牌说明.txt' }));
+    await waitFor(() => expect(open).toHaveBeenCalledWith(added.added[0].path));
+    await userEvent.type(screen.getByRole('textbox', { name: '搜索文件名或目录' }), '不匹配');
+    expect(screen.getByText('没有符合条件的文件')).toBeTruthy();
+  });
 });

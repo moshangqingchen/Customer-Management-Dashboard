@@ -4,7 +4,7 @@ import { applyTheme, useUI } from './ui';
 
 afterEach(() => {
   useNav.setState({ entries: [{ page: 'today', params: {} }], index: 0 });
-  useUI.setState({ theme: 'system', sidebarCollapsed: false, tagsCollapsed: false, panelWidth: 600, projectView: 'list', fileView: 'grid', settingsCategory: 'library', commandOpen: false, newProjectOpen: false, newClientOpen: false });
+  useUI.setState({ theme: 'system', sidebarCollapsed: false, tagsCollapsed: false, panelWidth: 600, projectView: 'list', fileView: 'grid', detailFileSort: 'modified-desc', settingsCategory: 'library', commandOpen: false, newProjectOpen: false, newClientOpen: false });
   localStorage.clear(); vi.restoreAllMocks();
 });
 describe('导航和界面偏好', () => {
@@ -22,8 +22,9 @@ describe('导航和界面偏好', () => {
     useUI.getState().setTheme('dark'); useUI.getState().toggleSidebar(); useUI.getState().setPanelWidth(1500);
     useUI.getState().setProjectView('kanban'); useUI.getState().setFileView('list'); useUI.getState().setCommandOpen(true);
     useUI.getState().setSettingsCategory('tags');
+    useUI.getState().setDetailFileSort('name-asc');
     const stored: unknown = JSON.parse(localStorage.getItem('clientdesk.ui.v1') ?? '{}');
-    expect(stored).toEqual({ version: 0, state: { theme: 'dark', sidebarCollapsed: true, tagsCollapsed: false, panelWidth: 900, projectView: 'kanban', fileView: 'list', settingsCategory: 'tags' } });
+    expect(stored).toEqual({ version: 0, state: { theme: 'dark', sidebarCollapsed: true, tagsCollapsed: false, panelWidth: 900, projectView: 'kanban', fileView: 'list', detailFileSort: 'name-asc', settingsCategory: 'tags' } });
     useUI.getState().setPanelWidth(10); expect(useUI.getState().panelWidth).toBe(520);
   });
   it('跟随系统设置html主题，显式主题覆盖系统', () => {

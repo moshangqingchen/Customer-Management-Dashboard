@@ -482,7 +482,7 @@ dependencies = [
 
 [[package]]
 name = "client-desk"
-version = "2.2.1"
+version = "2.3.1"
 dependencies = [
  "base64 0.22.1",
  "chrono",

@@ -18,6 +18,8 @@ export const queryKeys = {
   thumbnail: (path?: string, size: 256 | 1024 = 256, version?: string) => ['thumbnails', path, size, version] as const,
   snippetGroups: ['snippetGroups'] as const, snippets: ['snippets'] as const, settings: ['settings'] as const,
   backups: ['backups'] as const, trash: ['trash'] as const,
+  followUps: ['followUps'] as const, customerManagement: ['customerManagement'] as const,
+  fileHistory: ['fileHistory'] as const,
 };
 export const useAppInfo = () => useQuery({ queryKey: queryKeys.app, queryFn: () => api.app.info() });
 export const useLibraryStatus = () => useQuery({ queryKey: queryKeys.library, queryFn: () => api.library.status() });
@@ -31,7 +33,7 @@ export const useTags = () => useQuery({ queryKey: queryKeys.tags, queryFn: () =>
 export const useActivities = (filter?: ActivityFilter) => useQuery({ queryKey: queryKeys.activityList(filter), queryFn: () => api.activities.list(filter) });
 export const useRecentActivities = (limit = 10) => useQuery({ queryKey: queryKeys.recentActivities(limit), queryFn: () => api.activities.recent(limit) });
 export const useFiles = (target?: FileTarget, includeProjects = false) => useQuery({ queryKey: queryKeys.fileList(target, includeProjects), queryFn: () => api.files.list(target!, includeProjects), enabled: !!target, refetchOnWindowFocus: 'always' });
-export const useRecentFiles = (limit = 100) => useQuery({ queryKey: queryKeys.recentFiles(limit), queryFn: () => api.files.recent(limit), refetchOnWindowFocus: 'always' });
+export const useRecentFiles = (limit = 100, enabled = true) => useQuery({ queryKey: queryKeys.recentFiles(limit), queryFn: () => api.files.recent(limit), enabled, refetchOnWindowFocus: 'always' });
 export const useFileThumbnail = (path: string | undefined, size: 256 | 1024, enabled = true, version?: string) => useQuery({
   queryKey: queryKeys.thumbnail(path, size, version), enabled: !!path && enabled,
   queryFn: async () => {
@@ -79,14 +81,14 @@ export function useUpdateClient() {
     onSuccess: warning,
     onSettled: (_data, _error, { id, patch }) => invalidate(queryClient, [queryKeys.clients, queryKeys.client(id),
       ...(patch.name !== undefined || patch.renameFolder ? [queryKeys.projects, ...clientProjectKeys(queryClient, id)] : []),
-      ...(patch.name !== undefined ? [queryKeys.allPayments, queryKeys.activities] : []), ...(patch.renameFolder ? [queryKeys.files] : [])]),
+      ...(patch.name !== undefined ? [queryKeys.allPayments, queryKeys.activities, queryKeys.followUps] : []), ...(patch.renameFolder ? [queryKeys.files, queryKeys.fileHistory] : [])]),
   });
 }
 export function useDeleteClient() {
   const q = useQueryClient();
   return useMutation({ mutationFn: (id: string) => api.clients.delete(id), onError: errorToast, onSuccess: async (_result, id) => {
     await Promise.all([q.invalidateQueries({ queryKey: queryKeys.client(id), refetchType: 'none' }), q.invalidateQueries({ queryKey: queryKeys.project(), refetchType: 'none' }), q.invalidateQueries({ queryKey: queryKeys.files, refetchType: 'none' }),
-      invalidate(q, [queryKeys.clients, queryKeys.projects, queryKeys.allPayments, queryKeys.activities, queryKeys.tags, queryKeys.trash])]);
+      invalidate(q, [queryKeys.clients, queryKeys.projects, queryKeys.allPayments, queryKeys.activities, queryKeys.tags, queryKeys.trash, queryKeys.followUps, queryKeys.customerManagement])]);
   } });
 }
 export const useSetClientTags = () => useAction(({ clientId, tagIds }: { clientId: string; tagIds: string[] }) => api.clients.setTags(clientId, tagIds), (_q, _r, a) => [queryKeys.clients, queryKeys.client(a.clientId), queryKeys.tags]);
@@ -106,7 +108,7 @@ export function useUpdateProject() {
     },
     onError: (error, { id }, context) => { queryClient.setQueryData(queryKeys.projects, context?.list); queryClient.setQueryData(queryKeys.project(id), context?.detail); errorToast(error); },
     onSuccess: warning,
-    onSettled: (data, _error, { id }, context) => invalidate(queryClient, [...projectKeys(queryClient, id, data?.value.clientId), ...(context?.previousClientId ? [queryKeys.client(context.previousClientId)] : []), queryKeys.allPayments, queryKeys.files]),
+    onSettled: (data, _error, { id }, context) => invalidate(queryClient, [...projectKeys(queryClient, id, data?.value.clientId), ...(context?.previousClientId ? [queryKeys.client(context.previousClientId)] : []), queryKeys.allPayments, queryKeys.files, queryKeys.fileHistory, queryKeys.followUps]),
   });
 }
 export function useSetProjectStatus() {
@@ -136,7 +138,7 @@ export function useDeleteProject() {
   const q = useQueryClient();
   return useMutation({ mutationFn: (id: string) => api.projects.delete(id), onError: errorToast, onSuccess: async (_result, id) => {
     await Promise.all([q.invalidateQueries({ queryKey: queryKeys.project(id), refetchType: 'none' }), q.invalidateQueries({ queryKey: queryKeys.payments(id), refetchType: 'none' }), q.invalidateQueries({ queryKey: queryKeys.files, refetchType: 'none' }),
-      invalidate(q, [queryKeys.projects, queryKeys.clients, queryKeys.client(projectClient(q, id)), queryKeys.allPayments, queryKeys.activities, queryKeys.tags, queryKeys.trash])]);
+      invalidate(q, [queryKeys.projects, queryKeys.clients, queryKeys.client(projectClient(q, id)), queryKeys.allPayments, queryKeys.activities, queryKeys.tags, queryKeys.trash, queryKeys.followUps])]);
   } });
 }
 export const useSetProjectTags = () => useAction(({ projectId, tagIds }: { projectId: string; tagIds: string[] }) => api.projects.setTags(projectId, tagIds), (_q, _r, a) => [queryKeys.projects, queryKeys.project(a.projectId), queryKeys.tags]);
@@ -165,7 +167,7 @@ export function useDeleteActivity() {
 const fileKeys = (q: QueryClient, files: FileEntry[], target?: FileTarget): QueryKey[] => {
   const projectIds = [...new Set(files.flatMap(file => file.projectId ? [file.projectId] : []))];
   if (target && 'projectId' in target) projectIds.push(target.projectId);
-  return [queryKeys.files, queryKeys.projects, queryKeys.clients, queryKeys.activities, ...projectIds.map(id => queryKeys.project(id)), ...projectIds.map(id => queryKeys.client(projectClient(q, id))), ...(target && 'clientId' in target ? [queryKeys.client(target.clientId)] : [])];
+  return [queryKeys.files, queryKeys.fileHistory, queryKeys.projects, queryKeys.clients, queryKeys.activities, ...projectIds.map(id => queryKeys.project(id)), ...projectIds.map(id => queryKeys.client(projectClient(q, id))), ...(target && 'clientId' in target ? [queryKeys.client(target.clientId)] : [])];
 };
 export const useAddFiles = () => useAction(({ target, sourcePaths, subfolder }: { target: FileTarget; sourcePaths: string[]; subfolder?: string }) => api.files.add(target, sourcePaths, subfolder), (q, result, a) => fileKeys(q, result.added, a.target));
 export const usePickAndAddFiles = () => useAction(({ target, subfolder }: { target: FileTarget; subfolder?: string }) => api.files.pickAndAdd(target, subfolder), (q, result, a) => fileKeys(q, result.added, a.target));
@@ -173,7 +175,7 @@ export const usePasteFiles = () => useAction(({ target, subfolder }: { target: F
 export const useCopyFiles = () => useAction((paths: string[]) => api.files.copyToClipboard(paths));
 export const useAddBrowserFiles = () => useAction(async ({ target, files, subfolder }: { target: FileTarget; files: { name: string; size: number }[]; subfolder?: string }) => (await import('../api/mock')).addBrowserFiles(target, files, subfolder), (q, result, a) => fileKeys(q, result.added, a.target));
 export const useRenameFile = () => useAction(({ path, newName }: { path: string; newName: string }) => api.files.rename(path, newName), (q, file) => fileKeys(q, [file]));
-export const useTrashFile = () => useAction((path: string) => api.files.trash(path), () => [queryKeys.files, queryKeys.projects, queryKeys.project(), queryKeys.activities]);
+export const useTrashFile = () => useAction((path: string) => api.files.trash(path), () => [queryKeys.files, queryKeys.fileHistory, queryKeys.projects, queryKeys.project(), queryKeys.activities]);
 export const useOpenFile = () => useAction((path: string) => api.files.open(path));
 export const useRevealFile = () => useAction((path: string) => api.files.reveal(path));
 export const useOpenFolder = () => useAction((target: FileTarget) => api.files.openFolder(target), (q, _r, target) => fileKeys(q, [], target));
@@ -199,7 +201,7 @@ export const useUpdateSnippet = () => useAction(({ id, patch }: { id: string; pa
 export const useDeleteSnippet = () => useAction((id: string) => api.snippets.delete(id), () => [queryKeys.snippets]);
 export const useMarkSnippetUsed = () => useAction((id: string) => api.snippets.markUsed(id), () => [queryKeys.snippets]);
 export const useUpdateSettings = () => useAction((patch: Partial<Settings>) => api.settings.update(patch), () => [queryKeys.settings]);
-export const useSetLibraryRoot = () => useAction((path: string) => api.library.setRoot(path), () => [queryKeys.library, queryKeys.files, queryKeys.projects, queryKeys.project(), queryKeys.clients, queryKeys.client(), queryKeys.backups]);
+export const useSetLibraryRoot = () => useAction((path: string) => api.library.setRoot(path), () => [queryKeys.library, queryKeys.files, queryKeys.fileHistory, queryKeys.projects, queryKeys.project(), queryKeys.clients, queryKeys.client(), queryKeys.backups]);
 export const usePickFolder = () => useAction((title?: string) => api.library.pickFolder(title));
 export const useOpenLibrary = () => useAction(() => api.library.openRoot());
 export const useOpenDataDir = () => useAction(() => api.app.openDataDir());
@@ -211,6 +213,6 @@ export function useRestoreBackup() {
     await q.resetQueries();
   } });
 }
-export const useRestoreTrash = () => useAction(({ type, id }: { type: TrashType; id: string }) => api.trash.restore(type, id), (q, _r, a) => [...(a.type === 'project' ? projectKeys(q, a.id) : [queryKeys.projects, queryKeys.project(), queryKeys.clients, queryKeys.client(a.id), queryKeys.activities, queryKeys.tags]), queryKeys.trash, queryKeys.allPayments, queryKeys.files]);
-export const usePurgeTrash = () => useAction(({ type, id }: { type: TrashType; id: string }) => api.trash.purge(type, id), () => [queryKeys.trash, queryKeys.tags, queryKeys.activities]);
+export const useRestoreTrash = () => useAction(({ type, id }: { type: TrashType; id: string }) => api.trash.restore(type, id), (q, _r, a) => [...(a.type === 'project' ? projectKeys(q, a.id) : [queryKeys.projects, queryKeys.project(), queryKeys.clients, queryKeys.client(a.id), queryKeys.activities, queryKeys.tags]), queryKeys.trash, queryKeys.allPayments, queryKeys.files, queryKeys.followUps, queryKeys.customerManagement]);
+export const usePurgeTrash = () => useAction(({ type, id }: { type: TrashType; id: string }) => api.trash.purge(type, id), () => [queryKeys.trash, queryKeys.tags, queryKeys.activities, queryKeys.followUps, queryKeys.customerManagement, queryKeys.fileHistory]);
 export const useSaveTextFile = () => useAction(({ defaultName, content }: { defaultName: string; content: string }) => api.app.saveTextFile(defaultName, content));

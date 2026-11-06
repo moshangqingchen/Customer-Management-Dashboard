@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArchiveRestore, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import type { BackupInfo, TrashItem } from '../../api/types';
@@ -9,6 +9,10 @@ import { Button } from '../ui/Button';
 import { ConfirmDialog } from '../ui/Dialog';
 import { EmptyState, Skeleton } from '../ui/Surfaces';
 import { SettingsCard } from './SettingsCard';
+import { Tabs } from '../ui';
+import { FileRecyclePanel } from '../files/FileRecyclePanel';
+import { FileHistoryPanel } from '../files/FileHistoryPanel';
+import { useNav } from '../../stores/nav';
 
 const backupKinds = { auto: '自动', manual: '手动', beforeRestore: '恢复前' };
 export function BackupSettings() {
@@ -19,10 +23,21 @@ export function BackupSettings() {
     <ConfirmDialog open={!!selected} onOpenChange={value => { if (!value) setSelected(undefined); }} title="从备份恢复？" description={`将恢复「${selected?.fileName ?? ''}」中的全部数据库内容，当前数据会先自动另存一份恢复前备份。设计文件不受此操作影响。`} confirmLabel="确认恢复" danger={false} onConfirm={async () => { if (selected) { await restore.mutateAsync(selected.fileName); toast.success('备份已恢复，工作空间已刷新'); } }} />
   </SettingsCard>;
 }
-export function TrashSettings() {
+function RecordTrashPanel() {
   const trash = useTrash(); const restore = useRestoreTrash(); const purge = usePurgeTrash(); const [selected, setSelected] = useState<TrashItem>();
-  return <SettingsCard title="回收站">
+  return <div>
     {trash.isPending ? <Skeleton className="h-32" /> : trash.isError ? <Button onClick={() => void trash.refetch()}>回收站读取失败，重新加载</Button> : trash.data.length === 0 ? <EmptyState illustrationName="empty-projects" title="回收站是空的" description="删除的客户与项目会暂存在这里。" /> : <div className="max-h-80 space-y-2 overflow-y-auto">{trash.data.map(item => <div key={`${item.type}:${item.id}`} className="flex min-w-0 flex-wrap items-center gap-2 rounded-md bg-subtle px-3 py-3"><div className="min-w-0 flex-1"><p className="truncate text-sm" title={item.title}>{item.title}</p><p className="mt-1 truncate text-xs text-fg-2">{item.type === 'client' ? '客户' : '项目'} · {item.subtitle || '无备注'} · {formatDate(item.deletedAt)}</p></div><Button size="sm" icon={<RotateCcw size={14} />} disabled={restore.isPending} onClick={() => { void restore.mutateAsync({ type: item.type, id: item.id }).then(() => toast.success('已恢复')).catch(() => undefined); }}>恢复</Button><Button variant="ghost" size="sm" onClick={() => setSelected(item)}>彻底删除</Button></div>)}</div>}
     <ConfirmDialog open={!!selected} onOpenChange={value => { if (!value) setSelected(undefined); }} title="彻底删除？" description={`「${selected?.title ?? ''}」${selected?.type === 'client' ? '及其所有项目、收款和动态' : '及其收款和动态'}将被永久删除，无法撤销。磁盘中的文件夹会保留，请自行处理。`} confirmLabel="彻底删除" onConfirm={async () => { if (selected) { await purge.mutateAsync({ type: selected.type, id: selected.id }); toast.success('记录已彻底删除，文件夹已保留'); } }} />
-  </SettingsCard>;
+  </div>;
+}
+
+export function TrashSettings() {
+  const requested = useNav(state => state.entries[state.index].params.recoveryTab);
+  const [tab, setTab] = useState<string>(requested ?? 'records');
+  useEffect(() => { if (requested) setTab(requested); }, [requested]);
+  return <SettingsCard title="回收站与文件版本"><Tabs label="恢复内容分类" value={tab} onChange={setTab} items={[
+    { value: 'records', label: '客户与项目', content: <RecordTrashPanel /> },
+    { value: 'files', label: '文件回收站', content: <FileRecyclePanel /> },
+    { value: 'versions', label: '文件版本', content: <FileHistoryPanel /> },
+  ]} /></SettingsCard>;
 }

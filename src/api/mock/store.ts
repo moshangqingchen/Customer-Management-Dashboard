@@ -1,4 +1,7 @@
 import type * as T from '../types';
+import type { CustomerManagementState, ClientFolderAlias, ClientMergeRecord } from '../customerManagement';
+import type { FollowUp } from '../followUps';
+import type { MockStoredVersion, MockStoredRecycle } from './fileHistory';
 import { ApiError } from '../error';
 import { today } from '../../lib/dates';
 import { netReceived, outstanding } from '../../lib/money';
@@ -9,6 +12,12 @@ import { migrateMockAssets } from './migrateAssets';
 export type StoredClient = T.Client & { deletedAt: string | null };
 export type StoredProject = T.Project & { deletedAt: string | null; deletedWithClient: boolean };
 export interface MockData {
+  customerManagement?: CustomerManagementState[];
+  clientFolderAliases?: ClientFolderAlias[];
+  clientMergeHistory?: ClientMergeRecord[];
+  followUps?: FollowUp[];
+  fileVersions?: MockStoredVersion[];
+  fileRecycle?: MockStoredRecycle[];
   appInfo?: T.AppInfo;
   version: 1; clients: StoredClient[]; projects: StoredProject[]; payments: T.Payment[];
   tags: T.Tag[]; activities: T.Activity[]; groups: T.SnippetGroup[]; snippets: T.Snippet[];

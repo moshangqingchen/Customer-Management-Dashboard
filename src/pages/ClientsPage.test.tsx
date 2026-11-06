@@ -10,14 +10,16 @@ import { ToastProvider } from '../components/ui';
 import { ClientsPage } from './ClientsPage';
 
 let queryClient: QueryClient;
+const originals = { scrollIntoView: Element.prototype.scrollIntoView, hasPointerCapture: Element.prototype.hasPointerCapture, setPointerCapture: Element.prototype.setPointerCapture, releasePointerCapture: Element.prototype.releasePointerCapture };
 beforeEach(async () => {
   reset(); await mockApi.library.setRoot('D:/客户工作台');
   queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   useNav.setState({ entries: [{ page: 'clients', params: {} }], index: 0 });
   useUI.setState({ theme: 'light', newProjectOpen: false, newClientOpen: false });
   vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} });
+  Element.prototype.scrollIntoView = vi.fn(); Element.prototype.hasPointerCapture = () => false; Element.prototype.setPointerCapture = () => undefined; Element.prototype.releasePointerCapture = () => undefined;
 });
-afterEach(() => { queryClient.clear(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+afterEach(() => { queryClient.clear(); vi.unstubAllGlobals(); vi.restoreAllMocks(); Object.assign(Element.prototype, originals); });
 function mount() {
   render(<QueryClientProvider client={queryClient}><ClientsPage /><ToastProvider /></QueryClientProvider>);
   return userEvent.setup();
@@ -48,6 +50,9 @@ describe('客户核心交互', () => {
     act(() => useNav.getState().navigate('clients', { clientId: client.id }));
     const user = mount();
     await screen.findByRole('button', { name: '编辑客户名称' });
+    expect(screen.getByLabelText('主要联系方式').textContent).toContain('leaf');
+    await user.click(screen.getByRole('button', { name: '查看资料' }));
+    expect(screen.getByRole('tab', { name: '资料' }).getAttribute('aria-selected')).toBe('true');
     await user.click(screen.getByRole('button', { name: '添加客户资料' }));
     await user.click(screen.getByRole('menuitem', { name: '电话' }));
     await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('textbox', { name: '编辑电话' })));
@@ -92,7 +97,7 @@ describe('客户核心交互', () => {
 
   it('修改客户名时询问文件夹同步，删除提示关联项目数并可撤销恢复', async () => {
     const client = await mockApi.clients.create({ name: '删除重命名验收' });
-    await mockApi.projects.create({ clientId: client.id, title: '关联项目' });
+    await mockApi.projects.create({ clientId: client.id, title: '关联项目', priceCents: 128000 });
     await mockApi.files.openFolder({ clientId: client.id });
     act(() => useNav.getState().navigate('clients', { clientId: client.id }));
     const user = mount();
@@ -107,10 +112,54 @@ describe('客户核心交互', () => {
     await user.click(await screen.findByRole('menuitem', { name: '删除客户' }));
     const deleteDialog = await screen.findByRole('dialog', { name: '删除客户「改名验收」？' });
     expect(deleteDialog.textContent).toContain('1 个项目');
+    expect(deleteDialog.textContent).toContain('1 个未完成');
+    expect(deleteDialog.textContent).toContain('待收款 ¥1,280');
     await user.click(within(deleteDialog).getByRole('button', { name: '移入回收站' }));
     await waitFor(async () => expect((await mockApi.clients.list()).some(row => row.id === client.id)).toBe(false));
     fireEvent.click(await screen.findByRole('button', { name: '撤销' }));
     await waitFor(async () => expect((await mockApi.clients.get(client.id)).projectCount).toBe(1));
     await waitFor(() => expect(useNav.getState().entries.at(-1)?.params.clientId).toBe(client.id));
+  });
+
+  it('客户快捷筛选可与搜索组合，清除筛选恢复完整列表', async () => {
+    const active = await mockApi.clients.create({ name: '管理筛选甲' });
+    await mockApi.projects.create({ clientId: active.id, title: '正在设计', priceCents: 50000 });
+    await mockApi.clients.create({ name: '管理筛选乙' });
+    const user = mount();
+    await user.type(await screen.findByRole('textbox', { name: '搜索客户' }), '管理筛选');
+    const list = screen.getByLabelText('客户列表');
+    await waitFor(() => expect(within(list).getAllByRole('button')).toHaveLength(2));
+    await user.click(screen.getByRole('combobox', { name: '客户快捷筛选' }));
+    await user.click(screen.getByRole('option', { name: '待收款' }));
+    await waitFor(() => expect(within(list).getAllByRole('button')).toHaveLength(1));
+    expect(within(list).getByRole('button').textContent).toContain('管理筛选甲');
+    await user.click(screen.getByRole('combobox', { name: '客户快捷筛选' }));
+    await user.click(screen.getByRole('option', { name: '置顶' }));
+    await user.click(await within(list).findByRole('button', { name: '清除筛选' }));
+    await waitFor(() => expect(within(list).getAllByRole('button').length).toBeGreaterThan(2));
+    expect(screen.getByRole('combobox', { name: '客户快捷筛选' }).textContent).toContain('常用客户');
+    expect(screen.getByRole('combobox', { name: '客户排序' }).textContent).toContain('最近动态');
+  });
+
+  it('客户项目默认优先进行中，分类搜索保留历史欠款并可直接记一笔', async () => {
+    const client = await mockApi.clients.create({ name: '项目管理验收', phone: '13900001111' });
+    const active = await mockApi.projects.create({ clientId: client.id, title: '进行中海报', priceCents: 50000 });
+    await mockApi.payments.add({ projectId: active.id, amountCents: 20000, paidAt: '2026-11-01' });
+    const done = await mockApi.projects.create({ clientId: client.id, title: '历史包装', priceCents: 20000 });
+    await mockApi.projects.setStatus(done.id, 'done');
+    const cancelled = await mockApi.projects.create({ clientId: client.id, title: '已取消海报', priceCents: 90000 });
+    await mockApi.projects.setStatus(cancelled.id, 'cancelled');
+    act(() => useNav.getState().navigate('clients', { clientId: client.id }));
+    const user = mount();
+    const area = await screen.findByRole('region', { name: '客户项目' });
+    expect(within(area).getByRole('button', { name: /进行中海报.*待收/ }).textContent).toContain('待收 ¥300');
+    expect(within(area).queryByRole('button', { name: /历史包装.*待收/ })).toBeNull();
+    expect(screen.getByLabelText('主要联系方式').textContent).toContain('13900001111');
+    await user.click(within(area).getByRole('button', { name: '待收款 2' }));
+    expect(within(area).queryByRole('button', { name: /已取消海报.*待收/ })).toBeNull();
+    await user.type(within(area).getByRole('textbox', { name: '搜索此客户的项目' }), '历史包装');
+    expect(within(area).queryByRole('button', { name: /进行中海报.*待收/ })).toBeNull();
+    await user.click(within(area).getByRole('button', { name: '为「历史包装」记一笔' }));
+    expect(useNav.getState().entries.at(-1)?.params).toEqual({ clientId: client.id, projectId: done.id, payment: true });
   });
 });

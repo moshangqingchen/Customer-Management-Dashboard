@@ -2,6 +2,8 @@ use crate::error::{AppError, Result};
 use rusqlite::Connection;
 use std::{path::Path, time::Duration};
 
+pub const SCHEMA_VERSION: i64 = 2;
+
 pub fn open(path: &Path) -> Result<Connection> {
     let connection = Connection::open(path)?;
     configure(&connection)?;
@@ -30,20 +32,22 @@ pub fn checkpoint(connection: &Connection) -> Result<()> {
 pub fn migrate(connection: &Connection) -> Result<()> {
     let transaction = connection.unchecked_transaction()?;
     let version: i64 = transaction.pragma_query_value(None, "user_version", |row| row.get(0))?;
-    match version {
-        0 => {
-            transaction.execute_batch(include_str!("schema.sql"))?;
-            crate::repo::settings::initialize(&transaction)?;
-            transaction.pragma_update(None, "user_version", 1)?;
-        }
-        1 => {}
-        _ => {
-            return Err(AppError::new(
-                "db",
-                "数据库版本高于当前应用，请使用较新版本打开",
-            ))
-        }
+    if !(0..=SCHEMA_VERSION).contains(&version) {
+        return Err(AppError::new(
+            "db",
+            "数据库版本高于当前应用，请使用较新版本打开",
+        ));
     }
+    if version == 0 {
+        transaction.execute_batch(include_str!("schema.sql"))?;
+        crate::repo::settings::initialize(&transaction)?;
+    }
+    if version < 2 {
+        transaction.execute_batch(include_str!("customer_management.sql"))?;
+        transaction.execute_batch(include_str!("followups.sql"))?;
+        transaction.execute_batch(include_str!("file_history.sql"))?;
+    }
+    transaction.pragma_update(None, "user_version", SCHEMA_VERSION)?;
     transaction.commit()?;
     Ok(())
 }

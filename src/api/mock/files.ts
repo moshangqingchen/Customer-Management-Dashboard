@@ -5,6 +5,7 @@ import { fileExtension, fileKind } from '../../lib/files';
 import { activity, clientRecord, fail, moveImageIdentity, now, operation, projectRecord, required, state } from './store';
 import type { StoredClient, StoredProject } from './store';
 import { mockImage } from './store';
+import { historicalFile, recordRecycled, remapHistoryPath } from './fileHistory';
 
 const normalize = (path: string) => path.replace(/\\/g, '/').replace(/\/+$/, '');
 export function sanitize(name: string): string {
@@ -24,8 +25,9 @@ function safePath(path: string): string {
 }
 function uniqueFolder(proposed: string, except?: string): string {
   const occupied = [...state().clients, ...state().projects].filter(record => record.id !== except).map(record => record.folder?.toLocaleLowerCase());
+  occupied.push(...(state().clientFolderAliases ?? []).map(alias => alias.folder.toLocaleLowerCase()));
   let folder = proposed; let count = 2;
-  while (occupied.includes(folder.toLocaleLowerCase()) || ['_备份', '_回收站'].includes(folder)) folder = `${proposed} (${count++})`;
+  while (occupied.includes(folder.toLocaleLowerCase()) || ['_备份', '_回收站', '_文件历史'].includes(folder)) folder = `${proposed} (${count++})`;
   return folder;
 }
 function clientFolder(client: StoredClient) { client.folder ??= uniqueFolder(sanitize(client.name), client.id); return client.folder; }
@@ -39,6 +41,10 @@ function folder(target: T.FileTarget): string {
   return `${clientFolder(clientRecord(target.clientId))}/_客户资料`;
 }
 function replacePrefix(oldFolder: string, newFolder: string) {
+  remapHistoryPath(oldFolder, newFolder);
+  for (const alias of state().clientFolderAliases ?? []) {
+    if (alias.folder === oldFolder || alias.folder.startsWith(`${oldFolder}/`)) alias.folder = newFolder + alias.folder.slice(oldFolder.length);
+  }
   state().files.forEach(file => {
     if (file.relPath === oldFolder || file.relPath.startsWith(`${oldFolder}/`)) {
       file.relPath = newFolder + file.relPath.slice(oldFolder.length);
@@ -70,9 +76,9 @@ export function rebaseFiles(path: string) { state().files.forEach(file => {
   const next = `${normalize(path)}/${file.relPath}`;
   moveImageIdentity(file.path, next); file.path = next;
 }); }
-function fileRecord(path: string) {
+function fileRecord(path: string, includeHistory = false) {
   const normalized = safePath(path);
-  return state().files.find(file => normalize(file.path).toLocaleLowerCase() === normalized.toLocaleLowerCase()) ?? fail('notFound', '文件不存在');
+  return state().files.find(file => normalize(file.path).toLocaleLowerCase() === normalized.toLocaleLowerCase()) ?? (includeHistory ? historicalFile(path) : undefined) ?? fail('notFound', '文件不存在');
 }
 function activeFile(file: T.FileEntry) {
   return (!file.clientId || state().clients.some(c => c.id === file.clientId && !c.deletedAt)) && (!file.projectId || state().projects.some(p => p.id === file.projectId && !p.deletedAt));
@@ -128,13 +134,13 @@ function pickFiles(): Promise<File[]> {
 export const files: Api['files'] = {
   thumbnail: operation((path, size) => {
     if (size !== 256 && size !== 1024) fail('invalidInput', '缩略图尺寸必须为 256 或 1024');
-    const file = fileRecord(path);
+    const file = fileRecord(path, true);
     (state().workflowOperations ??= []).push({ command: 'file_thumbnail', paths: [path], size });
     return ['psd', 'ai'].includes(file.ext.toLowerCase()) ? mockImage(path) : null;
   }),
   copyToClipboard: operation(paths => {
     if (!paths.length) fail('invalidInput', '请选择要复制的文件');
-    const records = paths.map(fileRecord);
+    const records = paths.map(path => fileRecord(path, true));
     state().clipboard = { kind: 'files', files: records.map(file => ({ name: file.name, size: file.sizeBytes })) };
     (state().workflowOperations ??= []).push({ command: 'files_copy_to_clipboard', paths: [...paths] });
   }),
@@ -158,14 +164,15 @@ export const files: Api['files'] = {
   recent: operation(limit => { root(); return state().files.filter(activeFile).sort((a, b) => b.modifiedAt.localeCompare(a.modifiedAt)).slice(0, Math.max(0, limit)); }),
   add: operation((target, sourcePaths, subfolder) => addResult(target, sourcePaths.map(path => ({ name: normalize(path).split('/').at(-1) ?? '未命名', size: 0, error: !/^(?:[A-Za-z]:[\\/]|[\\/])/.test(path) ? '源文件位置必须是绝对路径' : undefined })), subfolder)),
   pickAndAdd: async (target, subfolder) => addBrowserFiles(target, await pickFiles(), subfolder),
-  open: operation(path => { const file = fileRecord(path); toast.info(`模拟打开：${file.name}`); }),
-  reveal: operation(path => { const file = fileRecord(path); toast.info(`模拟在文件夹中显示：${file.name}`); }),
+  open: operation(path => { const file = fileRecord(path, true); toast.info(`模拟打开：${file.name}`); }),
+  reveal: operation(path => { const file = fileRecord(path, true); toast.info(`模拟在文件夹中显示：${file.name}`); }),
   rename: operation((path, rawName) => {
     const file = fileRecord(path); const name = required(rawName, '文件名');
     if (/[\\/]/.test(name) || sanitize(name) !== name) fail('invalidInput', '文件名包含无效字符');
     const directory = file.relPath.slice(0, -(file.name.length + 1));
     if (state().files.some(other => other !== file && other.relPath.toLocaleLowerCase() === `${directory}/${name}`.toLocaleLowerCase())) fail('exists', '已有同名文件');
     const nextPath = `${normalize(root())}/${directory}/${name}`;
+    remapHistoryPath(file.relPath, `${directory}/${name}`);
     moveImageIdentity(file.path, nextPath);
     Object.assign(file, { name, ext: fileExtension(name), kind: fileKind(name), relPath: `${directory}/${name}`, path: nextPath, modifiedAt: now() });
     return file;
@@ -175,7 +182,8 @@ export const files: Api['files'] = {
     const recycled = state().trashedFiles ??= [];
     let relPath = `_回收站/${file.relPath}`;
     if (recycled.some(entry => entry.relPath === relPath)) relPath = `${relPath}.${Date.now()}`;
-    recycled.push({ ...file, relPath, path: `${normalize(root())}/${relPath}` });
+    const entry = { ...file, relPath, path: `${normalize(root())}/${relPath}` };
+    recordRecycled(file, entry); recycled.push(entry);
     toast.info('文件已移入模拟回收站');
   }),
   openFolder: operation(target => { const value = folder(target); toast.info(`模拟打开文件夹：${value}`); }),

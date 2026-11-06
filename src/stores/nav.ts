@@ -3,7 +3,7 @@ import type { ProjectStatus } from '../api/types';
 import type { ProjectFilters } from '../lib/filters';
 
 export type Page = 'today' | 'projects' | 'clients' | 'income' | 'files' | 'snippets' | 'settings' | 'design-system';
-export type RouteParams = { view?: 'pinned' | 'overdue' | 'outstanding'; statuses?: ProjectStatus[]; due?: 'week'; tagId?: string; projectId?: string; clientId?: string; payment?: boolean; filters?: ProjectFilters; projectFullPage?: boolean };
+export type RouteParams = { view?: 'pinned' | 'overdue' | 'outstanding'; statuses?: ProjectStatus[]; due?: 'week'; tagId?: string; projectId?: string; clientId?: string; clientTab?: 'followups'; recoveryTab?: 'records' | 'files' | 'versions'; payment?: boolean; filters?: ProjectFilters; projectFullPage?: boolean };
 export type Route = { page: Page; params: RouteParams };
 interface Navigation {
   entries: Route[]; index: number;

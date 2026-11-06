@@ -68,7 +68,7 @@ pub(super) fn valid_name(name: &str) -> Result<()> {
 }
 
 pub(super) fn reserved_dir(name: &str) -> bool {
-    name == TRASH || name == BACKUPS
+    name == TRASH || name == BACKUPS || name == "_文件历史"
 }
 
 pub(crate) fn display(path: &Path) -> String {

@@ -67,6 +67,16 @@ pub fn files_paste(
     let content = platform::read()?;
     #[cfg(not(windows))]
     let content: Content = return Err(AppError::new("unsupported", "此功能仅支持 Windows"));
+    paste_content(db, data_dir, target, subfolder, content)
+}
+
+fn paste_content(
+    db: &impl Database,
+    data_dir: &Path,
+    target: &FileTarget,
+    subfolder: Option<&str>,
+    content: Content,
+) -> Result<FilesAddResult> {
     match content {
         Content::Files(paths) => library::files_add(db, target, &paths, subfolder),
         Content::Png(bytes) => {
@@ -86,6 +96,48 @@ pub fn files_paste(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn file_and_image_paste_use_the_selected_new_template_for_existing_projects() {
+        let temporary = tempfile::tempdir().unwrap();
+        let db = crate::db::open(&temporary.path().join("client-desk.db")).unwrap();
+        let root = temporary.path().join("文件库");
+        library::set_root(&db, &root).unwrap();
+        db.execute("INSERT INTO clients(id,name,created_at,updated_at) VALUES('c','客户','2026-11-05T00:00:00Z','2026-11-05T00:00:00Z')", []).unwrap();
+        db.execute("INSERT INTO projects(id,client_id,title,created_at,updated_at) VALUES('p','c','项目','2026-11-05T00:00:00Z','2026-11-05T00:00:00Z')", []).unwrap();
+        let target = FileTarget::Project {
+            project_id: "p".into(),
+        };
+        let base = library::ensure_folder(&db, &target).unwrap();
+        crate::repo::settings::write(&db, "subfolderTemplate", &vec!["新文件", "新截图"]).unwrap();
+        let source = temporary.path().join("资料.txt");
+        fs::write(&source, b"document").unwrap();
+        for (name, content, expected) in [
+            (
+                "新文件",
+                Content::Files(vec![library::display(&source)]),
+                b"document".as_slice(),
+            ),
+            (
+                "新截图",
+                Content::Png(b"png bytes".to_vec()),
+                b"png bytes".as_slice(),
+            ),
+        ] {
+            assert!(!base.join(name).exists());
+            let result = paste_content(
+                &db,
+                &temporary.path().join("数据"),
+                &target,
+                Some(name),
+                content,
+            )
+            .unwrap();
+            assert!(result.failed.is_empty());
+            assert_eq!(result.added.len(), 1);
+            assert_eq!(result.added[0].folder_group, name);
+            assert_eq!(fs::read(&result.added[0].path).unwrap(), expected);
+        }
+    }
     #[test]
     fn dropfiles_header_unicode_paths_and_double_terminator() {
         let paths = vec![

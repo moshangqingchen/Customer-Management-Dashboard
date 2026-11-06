@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createSeed } from '../api/mock/seed';
-import { clientContactFields, cooperationDate } from './clients';
+import { activityDate, clientContactFields, clientProjectCounts, cooperationDate, filterClientProjects, filterClientView, primaryClientContact } from './clients';
 import { filterClients, sortClients } from './filters';
 
 describe('客户查询与显示', () => {
@@ -29,5 +29,42 @@ describe('客户查询与显示', () => {
     expect(cooperationDate('invalid', '2026-11-02')).toBe('暂无合作');
     expect(cooperationDate('2026-11-01T12:00:00', '2026-11-02')).toBe('昨天');
     expect(cooperationDate('2026-11-02T12:00:00', '2026-11-02')).toBe('今天');
+    expect(activityDate(null, '2026-11-02')).toBe('暂无动态');
+    expect(activityDate('2026-11-02T12:00:00', '2026-11-02')).toBe('今天');
+  });
+
+  it('客户快捷筛选采用项目和应收口径，互不修改原数据', () => {
+    const active = { ...data[0], id: 'active', openProjectCount: 2, projectCount: 3, outstandingCents: 500, pinned: false };
+    const historical = { ...active, id: 'historical', openProjectCount: 0, outstandingCents: 0, pinned: true };
+    const empty = { ...historical, id: 'empty', projectCount: 0, pinned: false };
+    const clients = [active, historical, empty];
+    expect(filterClientView(clients, 'active').map(client => client.id)).toEqual(['active']);
+    expect(filterClientView(clients, 'outstanding').map(client => client.id)).toEqual(['active']);
+    expect(filterClientView(clients, 'pinned').map(client => client.id)).toEqual(['historical']);
+    expect(filterClientView(clients, 'empty').map(client => client.id)).toEqual(['empty']);
+    expect(filterClientView(clients, 'all')).toEqual(clients);
+  });
+
+  it('客户项目分类保留已完成未收清项目，排除取消项目的待收，并支持范围内搜索', () => {
+    const base = createSeed('2026-11-02').projects[0];
+    const projects = [
+      { ...base, id: 'active', title: '春季海报', status: 'review' as const, priceCents: 10000, receivedCents: 3000 },
+      { ...base, id: 'done', title: '包装交付', status: 'done' as const, priceCents: 20000, receivedCents: 5000 },
+      { ...base, id: 'cancelled', title: '旧需求', status: 'cancelled' as const, priceCents: 90000, receivedCents: 0 },
+    ];
+    expect(clientProjectCounts(projects)).toEqual({ active: 1, outstanding: 2, history: 2, all: 3 });
+    expect(filterClientProjects(projects, 'active').map(project => project.id)).toEqual(['active']);
+    expect(filterClientProjects(projects, 'outstanding').map(project => project.id)).toEqual(['active', 'done']);
+    expect(filterClientProjects(projects, 'history', '包装').map(project => project.id)).toEqual(['done']);
+    expect(filterClientProjects(projects, 'active', '包装')).toEqual([]);
+  });
+
+  it('主要联系方式依次回退到微信、电话、邮箱与有效平台账号', () => {
+    const client = { ...data[0], wechat: 'leaf', phone: '13900001111', email: 'hello@leaf.cn', accounts: [{ platform: '淘宝', handle: '' }, { platform: '小红书', handle: '叶子店' }] };
+    expect(primaryClientContact(client)).toEqual({ label: '微信', value: 'leaf' });
+    expect(primaryClientContact({ ...client, wechat: ' ' })).toEqual({ label: '电话', value: '13900001111' });
+    expect(primaryClientContact({ ...client, wechat: '', phone: '' })).toEqual({ label: '邮箱', value: 'hello@leaf.cn' });
+    expect(primaryClientContact({ ...client, wechat: '', phone: '', email: '' })).toEqual({ label: '小红书', value: '叶子店' });
+    expect(primaryClientContact({ ...client, wechat: '', phone: '', email: '', accounts: [] })).toBeNull();
   });
 });

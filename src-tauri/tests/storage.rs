@@ -21,7 +21,7 @@ fn migration_is_atomic_idempotent_and_preserves_defaults_and_existing_settings()
     let tmp = tempdir().unwrap();
     let path = tmp.path().join("client-desk.db");
     let conn = db::open(&path).unwrap();
-    assert_eq!(check_pragma(&conn, "user_version"), 1);
+    assert_eq!(check_pragma(&conn, "user_version"), db::SCHEMA_VERSION);
     assert_eq!(check_pragma(&conn, "foreign_keys"), 1);
     let mode: String = conn
         .pragma_query_value(None, "journal_mode", |row| row.get(0))
@@ -79,9 +79,10 @@ fn migration_is_atomic_idempotent_and_preserves_defaults_and_existing_settings()
     .unwrap_err();
     assert_eq!(err.code, "invalid");
     assert_eq!(settings::get(&conn).unwrap().theme, Theme::Dark);
-    conn.pragma_update(None, "user_version", 2).unwrap();
+    conn.pragma_update(None, "user_version", db::SCHEMA_VERSION + 1)
+        .unwrap();
     assert_eq!(db::migrate(&conn).unwrap_err().code, "db");
-    assert_eq!(check_pragma(&conn, "user_version"), 2);
+    assert_eq!(check_pragma(&conn, "user_version"), db::SCHEMA_VERSION + 1);
 
     let bad = Connection::open(tmp.path().join("conflict.db")).unwrap();
     bad.execute_batch("CREATE TABLE projects(id TEXT)").unwrap();

@@ -20,7 +20,7 @@ use tauri_plugin_dialog::{DialogExt, FilePath};
 use tauri_plugin_opener::OpenerExt;
 
 // Keep malformed IPC arguments on the same error contract as repository validation.
-pub struct Arg<T>(T);
+pub struct Arg<T>(pub(crate) T);
 
 impl<'de, T: Deserialize<'de>, R: Runtime> CommandArg<'de, R> for Arg<T> {
     fn from_command(item: CommandItem<'de, R>) -> std::result::Result<Self, InvokeError> {

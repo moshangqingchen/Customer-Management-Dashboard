@@ -11,6 +11,7 @@ import { PageHeader } from '../components/layout/PageHeader';
 import { illustrationUrl } from '../components/ui/Illustration';
 import { TodayProjects } from '../components/today/TodayProjects';
 import { TodayIncome, TodayPayments, TodayActivity } from '../components/today/TodaySidebar';
+import { TodayFollowUps } from '../components/followups/TodayFollowUps';
 
 export function TodayPage() {
   const projects = useProjects(); const payments = useAllPayments(); const activities = useRecentActivities(5);
@@ -42,7 +43,7 @@ export function TodayPage() {
       <StatCard title="本月收入" value={formatMoney(overview.current)} numericValue={overview.current} formatValue={formatMoney} icon={<ChartNoAxesColumnIncreasing size={24} />} tone="peach" change={overview.change} onClick={() => navigate('income')} />
     </div>
     <div className="grid min-w-0 items-start gap-5 xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,1fr)]">
-      <TodayProjects overview={overview} base={today(now)} />
+      <div className="grid min-w-0 gap-5"><TodayFollowUps /><TodayProjects overview={overview} base={today(now)} /></div>
       <div className="grid min-w-0 gap-5"><TodayPayments projects={overview.unpaid} /><TodayIncome overview={overview} /><TodayActivity activities={activities.data ?? []} pending={activities.isPending} error={activities.isError} onRetry={() => void activities.refetch()} now={now} /></div>
     </div>
   </div>;

@@ -90,7 +90,8 @@ fn relative(root: &Path, path: &Path) -> Result<String> {
 fn assigned(conn: &Connection) -> Result<HashSet<String>> {
     let mut statement = conn.prepare(
         "SELECT folder FROM clients WHERE folder IS NOT NULL
-         UNION ALL SELECT folder FROM projects WHERE folder IS NOT NULL",
+         UNION ALL SELECT folder FROM projects WHERE folder IS NOT NULL
+         UNION ALL SELECT folder FROM client_folder_aliases",
     )?;
     let rows = statement.query_map([], |row| row.get::<_, String>(0))?;
     Ok(rows
@@ -261,6 +262,53 @@ pub fn ensure_folder(db: &impl Database, target: &FileTarget) -> Result<PathBuf>
     Ok(path)
 }
 
+/// Existing projects may predate the current template. Only the selected,
+/// currently configured template child may be created while importing files.
+pub(super) fn import_directory(
+    db: &impl Database,
+    target: &FileTarget,
+    root: &Path,
+    base: &Path,
+    subfolder: Option<&str>,
+) -> Result<PathBuf> {
+    let _guard = db.file_guard()?;
+    if root != super::root(db)? {
+        return Err(unavailable());
+    }
+    let base = resolve(root, base.strip_prefix(root).map_err(|_| super::outside())?)?;
+    if !base.is_dir() {
+        return Err(AppError::new(
+            "libraryUnavailable",
+            "已记录的文件夹不存在，请检查文件库位置",
+        ));
+    }
+    let name = subfolder.unwrap_or("");
+    let destination = resolve(&base, Path::new(name))?;
+    if !destination.is_dir() {
+        let is_template = matches!(target, FileTarget::Project { .. })
+            && db.read(|conn| {
+                Ok(settings::get(conn)?
+                    .subfolder_template
+                    .iter()
+                    .any(|item| item == name))
+            })?;
+        if !is_template {
+            return Err(AppError::invalid("目标子文件夹不存在，请重新选择存入位置"));
+        }
+        super::paths::valid_name(name)?;
+        match fs::create_dir(&destination) {
+            Ok(()) => {}
+            Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {}
+            Err(error) => return Err(error.into()),
+        }
+    }
+    let destination = resolve(&base, Path::new(name))?;
+    if !destination.is_dir() {
+        return Err(AppError::invalid("目标位置不是文件夹"));
+    }
+    Ok(destination)
+}
+
 fn rename_folder(
     db: &impl Database,
     configured: Option<&Path>,
@@ -330,6 +378,19 @@ fn rename_folder(
                 )?;
             }
         }
+        let old_prefix = format!("{}/", rel_string(Path::new(old_relative)));
+        tx.execute(
+            "UPDATE client_folder_aliases SET folder=CASE WHEN replace(folder,'\\','/')=?1 THEN ?2
+             ELSE ?3 || substr(replace(folder,'\\','/'),length(?4)+1) END
+             WHERE replace(folder,'\\','/')=?1 OR substr(replace(folder,'\\','/'),1,length(?4))=?4",
+            params![
+                rel_string(Path::new(old_relative)),
+                new_relative,
+                format!("{new_relative}/"),
+                old_prefix
+            ],
+        )?;
+        crate::library::history::rename_prefix(&tx, &root, old_relative, &new_relative)?;
         tx.commit()?;
         Ok(())
     });
